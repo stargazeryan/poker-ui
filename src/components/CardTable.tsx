@@ -1,33 +1,23 @@
-import { useRef, useLayoutEffect, useState, useMemo } from "react";
+import { useRef, useLayoutEffect, useState, useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
-import { formatBB } from "../format";
-import { CommunityCards, type CardSize } from "./PlayingCard";
-import { Seat, type SeatView } from "./Seat";
 
-export interface PotRow {
-  label: string;
-  amount: number;
-}
-
-export interface PokerTableProps {
-  /** Six seats (some may be empty). */
-  seats: (SeatView | null)[];
+export interface CardTableProps {
+  /** Number of seats (2–10). Default 6. */
+  seatCount?: number;
+  /** Optional per-seat content. Length should equal `seatCount`. */
+  seats?: (ReactNode | null)[];
+  /** Alternative to `seats`: render a seat by index. */
+  renderSeat?: (index: number, isYou: boolean) => ReactNode;
   /** Which seat belongs to the viewer; rotates that seat to the bottom. */
   yourSeatIndex?: number | null;
-  communityCards?: (string | null)[];
-  pot?: number;
-  pots?: PotRow[];
-  isWaiting?: boolean;
-  winnerSeats?: number[];
-  seatSize?: CardSize;
-  /** Optional override for rendering a seat. */
-  renderSeat?: (seat: SeatView | null, index: number) => React.ReactNode;
+  /** Optional content in the middle of the table (cards, pot, anything). */
+  center?: ReactNode;
+  /** Seat frame size used for layout. */
+  seatWidth?: number;
+  seatHeight?: number;
   className?: string;
 }
 
-const SEAT_COUNT = 6;
-const SEAT_W = 160;
-const SEAT_H = 176;
 const DESIGN_W = 1200;
 const DESIGN_H = 900;
 const MARGIN_X = 164;
@@ -38,17 +28,12 @@ const FELT_GAP = 11;
 const BET_SCALE = 0.72;
 const BET_RX = TABLE_RX * BET_SCALE;
 const BET_RY = TABLE_RY * BET_SCALE;
-const SEAT_RING_X = TABLE_RX - FELT_GAP + SEAT_W / 2 + 6;
-const SEAT_RING_Y = TABLE_RY - FELT_GAP + SEAT_H / 2 + 6;
-
-const BASE_ANGLES = [-90, -30, 30, 90, 150, 210];
 
 interface SeatLayout {
   x: number;
   y: number;
-  logicalIndex: number;
+  index: number;
   isYou: boolean;
-  seat: SeatView | null;
 }
 
 function getEllipsePoint(cx: number, cy: number, rx: number, ry: number, angleDeg: number) {
@@ -57,51 +42,58 @@ function getEllipsePoint(cx: number, cy: number, rx: number, ry: number, angleDe
 }
 
 function calculateSeatLayouts(
-  seats: (SeatView | null)[],
+  seatCount: number,
   yourSeatIndex: number | null,
+  seatWidth: number,
+  seatHeight: number,
 ): SeatLayout[] {
   const cx = DESIGN_W / 2;
   const cy = DESIGN_H / 2;
-  const rotationOffset =
-    yourSeatIndex !== null ? BASE_ANGLES[3] - BASE_ANGLES[yourSeatIndex] : 0;
+  const ringX = TABLE_RX - FELT_GAP + seatWidth / 2 + 6;
+  const ringY = TABLE_RY - FELT_GAP + seatHeight / 2 + 6;
+
+  // Even angular distribution, first seat at the top (-90°).
+  const step = 360 / seatCount;
+  const angleOf = (i: number) => -90 + i * step;
+
+  // Rotate so the viewer's seat sits at the bottom (90°).
+  const rotationOffset = yourSeatIndex !== null ? 90 - angleOf(yourSeatIndex) : 0;
 
   const layouts: SeatLayout[] = [];
-  for (let i = 0; i < SEAT_COUNT; i++) {
-    const pt = getEllipsePoint(cx, cy, SEAT_RING_X, SEAT_RING_Y, BASE_ANGLES[i] + rotationOffset);
+  for (let i = 0; i < seatCount; i++) {
+    const pt = getEllipsePoint(cx, cy, ringX, ringY, angleOf(i) + rotationOffset);
     layouts.push({
-      x: pt.x - SEAT_W / 2,
-      y: pt.y - SEAT_H / 2,
-      logicalIndex: i,
+      x: pt.x - seatWidth / 2,
+      y: pt.y - seatHeight / 2,
+      index: i,
       isYou: i === yourSeatIndex,
-      seat: seats[i] ?? null,
     });
   }
   return layouts;
 }
 
 /**
- * A responsive, themable poker table. It scales a fixed 1200x900 design onto
- * its container and arranges six seats around the felt. Purely presentational:
- * pass seat view-models and card codes in.
+ * A responsive, game-agnostic card table. It scales a fixed 1200x900 design
+ * onto its container and arranges `seatCount` seats around the felt. Purely
+ * presentational: supply seat content and an optional `center` slot.
  */
-export function PokerTable({
+export function CardTable({
+  seatCount = 6,
   seats,
-  yourSeatIndex = null,
-  communityCards = [],
-  pot = 0,
-  pots = [],
-  isWaiting = false,
-  winnerSeats = [],
-  seatSize = "sm",
   renderSeat,
+  yourSeatIndex = null,
+  center,
+  seatWidth = 160,
+  seatHeight = 176,
   className,
-}: PokerTableProps) {
+}: CardTableProps) {
+  const count = Math.max(2, Math.min(10, Math.floor(seatCount)));
   const outerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
   const layouts = useMemo(
-    () => calculateSeatLayouts(seats, yourSeatIndex),
-    [seats, yourSeatIndex],
+    () => calculateSeatLayouts(count, yourSeatIndex, seatWidth, seatHeight),
+    [count, yourSeatIndex, seatWidth, seatHeight],
   );
 
   useLayoutEffect(() => {
@@ -126,19 +118,16 @@ export function PokerTable({
     inset: `${MARGIN_Y + (TABLE_RY - BET_RY)}px ${MARGIN_X + (TABLE_RX - BET_RX)}px`,
   };
 
-  const potRows: PotRow[] = pots.length > 0 ? pots : pot > 0 ? [{ label: "Pot", amount: pot }] : [];
-
   return (
     <div
       ref={outerRef}
-      className={cn("relative flex h-full w-full items-center justify-center overflow-hidden min-h-0", className)}
+      className={cn("relative flex h-full w-full min-h-0 items-center justify-center overflow-hidden", className)}
     >
       <div style={{ width: DESIGN_W * scale, height: DESIGN_H * scale }}>
         <div
           className="relative"
           style={{ width: DESIGN_W, height: DESIGN_H, transform: `scale(${scale})`, transformOrigin: "top left" }}
         >
-          {/* ambient spotlight */}
           <div
             className="absolute -inset-6 rounded-[50%] bg-[radial-gradient(closest-side,rgba(240,192,74,0.16),transparent_72%)] blur-3xl"
             aria-hidden="true"
@@ -172,39 +161,21 @@ export function PokerTable({
             </span>
           </div>
 
-          {/* center: community cards + pots */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div className="mb-4 flex flex-col items-center gap-3">
-              <CommunityCards cards={communityCards} size="lg" className="filter drop-shadow-lg" />
-              {potRows.length > 0 && (
-                <div className="flex flex-col items-center gap-1">
-                  {potRows.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 font-mono text-sm text-amber-400">
-                      <span className="text-neutral-400">{p.label}</span>
-                      <span className="whitespace-nowrap rounded-full border border-amber-400/50 bg-neutral-900/80 px-3 py-1 shadow-inner">
-                        {formatBB(p.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {/* center slot (optional) */}
+          {center !== undefined && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              {center}
             </div>
-            {isWaiting && (
-              <div className="rounded-full border border-neutral-700 bg-neutral-900/70 px-3 py-1 text-xs text-neutral-400">
-                Waiting to start
-              </div>
-            )}
-          </div>
+          )}
 
           {/* seats */}
-          <div className="absolute inset-0 z-20 pointer-events-none">
-            {layouts.map(({ x, y, logicalIndex, isYou, seat }) => {
-              const merged: SeatView | null = seat
-                ? { ...seat, isYou, isWinner: winnerSeats.includes(logicalIndex) || seat.isWinner }
-                : null;
+          <div className="absolute inset-0 z-20">
+            {layouts.map(({ x, y, index, isYou }) => {
+              const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou) : null;
+              if (content === null) return null;
               return (
-                <div key={logicalIndex} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
-                  {renderSeat ? renderSeat(merged, logicalIndex) : <Seat seat={merged} size={seatSize} />}
+                <div key={index} className="absolute" style={{ left: `${x}px`, top: `${y}px` }}>
+                  {content}
                 </div>
               );
             })}
