@@ -1,0 +1,62 @@
+/*
+ * Styles for @stargazeryan/poker-ui.
+ *
+ * IMPORTANT (Tailwind v4): because this is a compiled package, your app's
+ * Tailwind build cannot see the class names used inside it. Add this package
+ * as a content source so the utilities are generated:
+ *
+ *   @import "tailwindcss";
+ *   @source "../node_modules/@stargazeryan/poker-ui";
+ *   @import "@stargazeryan/poker-ui/styles.css";
+ *
+ * The directives below add theme tokens and the two keyframe animations the
+ * components rely on.
+ */
+
+@theme {
+  --color-felt: #0f4d2e;
+  --color-felt-light: #1a6b3d;
+  --color-wood: #8b5e3c;
+  --color-wood-dark: #5d3f1f;
+  --color-chip-red: #c0392b;
+  --color-chip-blue: #2980b9;
+  --color-chip-green: #27ae60;
+  --color-chip-black: #1a1a2e;
+  --color-chip-white: #ecf0f1;
+  --color-gold: #f39c12;
+
+  --animate-card-deal: card-deal 0.35s ease-out both;
+  --animate-bubble-pop: bubble-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes card-deal {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) rotateY(90deg) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateY(0) scale(1);
+  }
+}
+
+@keyframes bubble-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
