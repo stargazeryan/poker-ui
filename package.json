@@ -4,6 +4,11 @@
   "description": "Themable React + Tailwind CSS v4 components for poker tables and playing cards.",
   "license": "MIT",
   "author": "Ryan",
+  "homepage": "https://stargazeryan.github.io/poker-ui/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stargazeryan/poker-ui.git"
+  },
   "type": "module",
   "sideEffects": ["**/*.css"],
   "files": ["dist", "src/styles.css", "README.md", "LICENSE"],
