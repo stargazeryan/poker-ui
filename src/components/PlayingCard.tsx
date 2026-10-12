@@ -72,7 +72,8 @@ export interface PlayingCardProps {
 
 /**
  * A single playing card. Size is driven by the `size` prop (never viewport
- * breakpoints) so cards scale predictably inside any container.
+ * breakpoints) so cards scale predictably inside any container. Small sizes
+ * (xs / sm) keep only the upright corner index.
  */
 export function PlayingCard({ card, size = "md", className }: PlayingCardProps) {
   if (!card) return <CardBack size={size} className={className} />;
@@ -80,7 +81,7 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
   const { rank, suit } = parseCard(card);
   const suitSymbol = getSuitSymbol(suit);
   const suitClass = getSuitClass(suit);
-  const showCenter = size === "md" || size === "lg";
+  const large = size === "md" || size === "lg";
 
   return (
     <div
@@ -97,11 +98,14 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
         <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
         <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
       </div>
-      <div className={cn("absolute bottom-[3px] right-[5px] flex flex-col items-center leading-none rotate-180", suitClass)}>
-        <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-        <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
-      </div>
-      {showCenter && (
+      {/* Bottom-right index only on larger cards; xs/sm keep just the upright one. */}
+      {large && (
+        <div className={cn("absolute bottom-[3px] right-[5px] flex flex-col items-center leading-none rotate-180", suitClass)}>
+          <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
+          <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
+        </div>
+      )}
+      {large && (
         <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", suitClass)}>
           <span className={CENTER_SUIT[size]}>{suitSymbol}</span>
         </div>
@@ -154,14 +158,18 @@ export interface HoleCardsProps {
   cards: (string | null)[];
   size?: CardSize;
   className?: string;
+  /** Animate the cards dealing in, one after another. Default true. */
+  deal?: boolean;
 }
 
-/** A row of a player's two hole cards. */
-export function HoleCards({ cards, size = "lg", className }: HoleCardsProps) {
+/** A row of a player's hole cards. */
+export function HoleCards({ cards, size = "lg", className, deal = true }: HoleCardsProps) {
   return (
     <div className={cn("flex gap-2", className)}>
       {cards.map((card, i) => (
-        <PlayingCard key={i} card={card} size={size} />
+        <div key={i} className={cn(deal && "animate-deal-in")} style={deal ? { animationDelay: `${i * 100}ms` } : undefined}>
+          <PlayingCard card={card} size={size} />
+        </div>
       ))}
     </div>
   );
@@ -171,14 +179,20 @@ export interface CommunityCardsProps {
   cards: (string | null)[];
   size?: CardSize;
   className?: string;
+  /** Animate each card with a 3D flip. Default true. */
+  animated?: boolean;
 }
 
-/** The five community cards, each dealt with a staggered flip animation. */
-export function CommunityCards({ cards, size = "md", className }: CommunityCardsProps) {
+/** A row of community cards, each flipping in with a staggered delay. */
+export function CommunityCards({ cards, size = "md", className, animated = true }: CommunityCardsProps) {
   return (
-    <div className={cn("flex gap-1.5", className)}>
+    <div className={cn("flex gap-1.5", animated && "[perspective:800px]", className)}>
       {cards.map((card, i) => (
-        <div key={i} className="animate-card-deal" style={{ animationDelay: `${i * 90}ms` }}>
+        <div
+          key={i}
+          className={cn(animated && "animate-card-flip")}
+          style={animated ? { animationDelay: `${i * 70}ms` } : undefined}
+        >
           <PlayingCard card={card} size={size} />
         </div>
       ))}

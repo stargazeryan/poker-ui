@@ -12,6 +12,14 @@ export interface CardTableProps {
   yourSeatIndex?: number | null;
   /** Optional content in the middle of the table (cards, pot, anything). */
   center?: ReactNode;
+  /** Ambient spotlight + felt shimmer. Default true. */
+  ambient?: boolean;
+  /** Highlight the table edge (e.g. when it is your turn). Default false. */
+  yourTurn?: boolean;
+  /** Winning seat indices; when non-empty, confetti falls. */
+  winnerSeats?: number[];
+  /** Show confetti for winners. Default true. */
+  confetti?: boolean;
   /** Seat frame size used for layout. */
   seatWidth?: number;
   seatHeight?: number;
@@ -28,6 +36,7 @@ const FELT_GAP = 11;
 const BET_SCALE = 0.72;
 const BET_RX = TABLE_RX * BET_SCALE;
 const BET_RY = TABLE_RY * BET_SCALE;
+const CONFETTI_COLORS = ["#f39c12", "#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#9b59b6"];
 
 interface SeatLayout {
   x: number;
@@ -52,11 +61,8 @@ function calculateSeatLayouts(
   const ringX = TABLE_RX - FELT_GAP + seatWidth / 2 + 6;
   const ringY = TABLE_RY - FELT_GAP + seatHeight / 2 + 6;
 
-  // Even angular distribution, first seat at the top (-90°).
   const step = 360 / seatCount;
   const angleOf = (i: number) => -90 + i * step;
-
-  // Rotate so the viewer's seat sits at the bottom (90°).
   const rotationOffset = yourSeatIndex !== null ? 90 - angleOf(yourSeatIndex) : 0;
 
   const layouts: SeatLayout[] = [];
@@ -83,6 +89,10 @@ export function CardTable({
   renderSeat,
   yourSeatIndex = null,
   center,
+  ambient = true,
+  yourTurn = false,
+  winnerSeats = [],
+  confetti = true,
   seatWidth = 160,
   seatHeight = 176,
   className,
@@ -114,6 +124,7 @@ export function CardTable({
   const tableFrameInset = { inset: `${MARGIN_Y}px ${MARGIN_X}px` };
   const feltInset = { inset: `${MARGIN_Y + FELT_GAP}px ${MARGIN_X + FELT_GAP}px` };
   const rimInset = { inset: `${MARGIN_Y + 6}px ${MARGIN_X + 6}px` };
+  const ringInset = { inset: `${MARGIN_Y + 2}px ${MARGIN_X + 2}px` };
   const betLineInset = {
     inset: `${MARGIN_Y + (TABLE_RY - BET_RY)}px ${MARGIN_X + (TABLE_RX - BET_RX)}px`,
   };
@@ -147,6 +158,20 @@ export function CardTable({
             aria-hidden="true"
           />
 
+          {/* ambient: breathing spotlight + felt shimmer */}
+          {ambient && (
+            <>
+              <div
+                className="absolute animate-spotlight rounded-[50%] bg-[radial-gradient(closest-side,rgba(255,214,120,0.14),transparent_70%)] blur-2xl"
+                style={feltInset}
+                aria-hidden="true"
+              />
+              <div className="absolute overflow-hidden rounded-[50%]" style={feltInset} aria-hidden="true">
+                <div className="absolute inset-0 animate-felt-shimmer bg-[linear-gradient(115deg,transparent_42%,rgba(255,255,255,0.06)_50%,transparent_58%)] bg-[length:220%_100%]" />
+              </div>
+            </>
+          )}
+
           {/* betting line */}
           <div
             className="absolute rounded-[50%] border-2 border-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]"
@@ -160,6 +185,15 @@ export function CardTable({
               ♠♥♦♣
             </span>
           </div>
+
+          {/* your-turn edge glow */}
+          {yourTurn && (
+            <div
+              className="pointer-events-none absolute z-10 animate-turn-glow rounded-[50%]"
+              style={ringInset}
+              aria-hidden="true"
+            />
+          )}
 
           {/* center slot (optional) */}
           {center !== undefined && (
@@ -180,6 +214,25 @@ export function CardTable({
               );
             })}
           </div>
+
+          {/* winner confetti */}
+          {confetti && winnerSeats.length > 0 && (
+            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="absolute top-[34%] animate-confetti rounded-[2px]"
+                  style={{
+                    left: `${6 + i * 5.6}%`,
+                    width: 6,
+                    height: 11,
+                    backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                    animationDelay: `${(i % 8) * 90}ms`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
           {/* outer rim highlight */}
           <div className="absolute rounded-[50%] border border-white/10 pointer-events-none" style={rimInset} aria-hidden="true" />

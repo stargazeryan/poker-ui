@@ -2,13 +2,13 @@
 
 Game-agnostic **React + Tailwind CSS v4** card-table UI: tables, seats, and
 playing cards. Seats are neutral frames with **slots**, so you decide what goes
-in them (0 cards, N cards, avatars, anything). The table supports **2–10 seats**
-and an optional center slot.
+in them (0 cards, N cards, avatars, anything). The table supports **2–10 seats**,
+an optional center slot, and a small set of built-in **game-feel animations**.
 
-- 🎴 `PlayingCard` / `CardBack` / `HoleCards` / `CommunityCards`
-- 🎯 `CardTable` — responsive, scale-to-fit table with `seatCount` seats
-- 💺 `Seat` — a neutral seat frame with slots + generic states
-- 🪙 `Pot` — an optional pot pill (not required by the table)
+- 🎴 `PlayingCard` / `CardBack` / `HoleCards` / `CommunityCards` (with deal/flip animations)
+- 🎯 `CardTable` — responsive, scale-to-fit table with ambient felt, a your-turn edge glow, and winner confetti
+- 💺 `Seat` — a neutral seat frame with slots + animated turn/winner states
+- 🪙 `Pot` — an optional pot pill with a count-up animation
 - 🔁 `nextSeatIndex()` — pure helper for "next seat on the ring"
 
 > Formerly `PokerTable`; kept as a back-compat alias for `CardTable`.
@@ -60,6 +60,8 @@ export function Table() {
         seatCount={6}
         seats={seats}
         yourSeatIndex={0}
+        yourTurn
+        winnerSeats={[]}
         center={
           <>
             <CommunityCards cards={["Ah", "Kd", "7c", null, null]} size="lg" />
@@ -72,33 +74,47 @@ export function Table() {
 }
 ```
 
-### 4-seat game with no pot and no community cards (e.g. Big Two)
-
-```tsx
-<CardTable
-  seatCount={4}
-  yourSeatIndex={2}
-  renderSeat={(i) => <Seat header={<b>P{i}</b>}>{/* 0..N cards */}</Seat>}
-/>
-```
-
 ## Components
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou)`, `yourSeatIndex`, `center`, `seatWidth`, `seatHeight` |
-| `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`; states: `isActive`, `isWinner`, `isDimmed`; `onClick` |
-| `Pot` | `amount`, `label`, `format` |
+| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou)`, `yourSeatIndex`, `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `seatWidth`, `seatHeight` |
+| `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName` |
+| `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
-| `CardBack` / `HoleCards` / `CommunityCards` | `size`, `cards` |
+| `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true) |
+| `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true) |
 
 Also exported: `nextSeatIndex`, `cn`, `formatBB`, `BB`, `parseCard`,
 `getSuitSymbol`, and the types `SeatProps`, `CardTableProps`, `PotProps`, `CardSize`.
 
+### Sizes
+
+`xs` and `sm` cards keep only the **upright** corner index; `md` and `lg` also
+show the rotated corner index and the large center suit.
+
+## Animations
+
+Built-in game-feel (all **on by default**, each toggleable):
+
+| Effect | Where | Disable with |
+| --- | --- | --- |
+| Deal-in (hand cards) | `HoleCards` | `deal={false}` |
+| 3D flip (community cards) | `CommunityCards` | `animated={false}` |
+| Turn glow | `Seat isActive` | `animated={false}` |
+| Winner glow | `Seat isWinner` | `animated={false}` |
+| Pot count-up | `Pot` | `animate={false}` |
+| Ambient felt + spotlight | `CardTable` | `ambient={false}` |
+| Your-turn edge glow | `CardTable` | omit `yourTurn` |
+| Winner confetti | `CardTable` | `confetti={false}` |
+
+All animations are disabled automatically when the user prefers reduced motion.
+
 ## "Whose turn is next?"
 
 Turn order is game logic, not UI. Compute it in your own engine and pass the
-result into `Seat`'s `isActive`. A generic helper is provided:
+result into `Seat`'s `isActive` (and `CardTable`'s `yourTurn`). A generic helper
+is provided:
 
 ```ts
 import { nextSeatIndex } from "@stargazeryan/poker-ui";
@@ -107,7 +123,7 @@ const next = nextSeatIndex(current, seatCount, { skip: (i) => players[i].out });
 
 ## Theming
 
-Override the tokens in your own `@theme` block, or pass `className`:
+Override the tokens in your own `@theme` block, or pass `className` / `frameClassName`:
 
 ```css
 @theme {
