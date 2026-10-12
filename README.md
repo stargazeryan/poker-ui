@@ -83,7 +83,7 @@ export function Table() {
 | `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
 | `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true) |
-| `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true) |
+| `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true), `slots` (fixed slot count) |
 
 Also exported: `nextSeatIndex`, `cn`, `formatBB`, `BB`, `parseCard`,
 `getSuitSymbol`, and the types `SeatProps`, `CardTableProps`, `PotProps`, `CardSize`.

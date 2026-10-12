@@ -181,19 +181,26 @@ export interface CommunityCardsProps {
   className?: string;
   /** Animate each card with a 3D flip. Default true. */
   animated?: boolean;
+  /** Reserve a fixed number of slots so the row width never changes. */
+  slots?: number;
 }
 
 /** A row of community cards, each flipping in with a staggered delay. */
-export function CommunityCards({ cards, size = "md", className, animated = true }: CommunityCardsProps) {
+export function CommunityCards({ cards, size = "md", className, animated = true, slots }: CommunityCardsProps) {
+  const count = slots ?? cards.length;
+  const list = Array.from({ length: count }, (_, i) => cards[i] ?? null);
   return (
     <div className={cn("flex gap-1.5", animated && "[perspective:800px]", className)}>
-      {cards.map((card, i) => (
-        <div
-          key={i}
-          className={cn(animated && "animate-card-flip")}
-          style={animated ? { animationDelay: `${i * 70}ms` } : undefined}
-        >
-          <PlayingCard card={card} size={size} />
+      {list.map((card, i) => (
+        <div key={i} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }}>
+          {card ? (
+            <div
+              className={cn("h-full w-full", animated && "animate-card-flip")}
+              style={animated ? { animationDelay: `${i * 70}ms` } : undefined}
+            >
+              <PlayingCard card={card} size={size} />
+            </div>
+          ) : null}
         </div>
       ))}
     </div>
