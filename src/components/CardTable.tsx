@@ -218,19 +218,27 @@ export function CardTable({
           {/* winner confetti */}
           {confetti && winnerSeats.length > 0 && (
             <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
-              {Array.from({ length: 16 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="absolute top-[34%] animate-confetti rounded-[2px]"
-                  style={{
-                    left: `${6 + i * 5.6}%`,
-                    width: 6,
-                    height: 11,
-                    backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-                    animationDelay: `${(i % 8) * 90}ms`,
-                  }}
-                />
-              ))}
+              {Array.from({ length: 44 }).map((_, i) => {
+                const w = 5 + (i % 4) * 2;
+                const h = 9 + (i % 3) * 4;
+                const dur = 1.7 + (i % 5) * 0.28;
+                const delay = (i % 12) * 0.14;
+                return (
+                  <span
+                    key={i}
+                    className="absolute top-[26%] animate-confetti rounded-[2px]"
+                    style={{
+                      left: `${(i * 37) % 96}%`,
+                      width: w,
+                      height: h,
+                      backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                      animationDuration: `${dur}s`,
+                      animationDelay: `${delay}s`,
+                      animationIterationCount: "infinite",
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
 

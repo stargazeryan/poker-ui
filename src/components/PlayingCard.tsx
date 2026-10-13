@@ -33,8 +33,8 @@ const SMALL_RANK: Partial<Record<CardSize, string>> = {
   sm: "text-xl",
 };
 const SMALL_SUIT: Partial<Record<CardSize, string>> = {
-  xs: "text-base",
-  sm: "text-xl",
+  xs: "text-lg",
+  sm: "text-2xl",
 };
 const BACK_EMBLEM_SIZE: Record<CardSize, number> = {
   xs: 14,
@@ -95,13 +95,17 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
   const suitClass = getSuitClass(suit);
   const large = size === "md" || size === "lg";
 
-  // Small cards: single upright rank + suit, centered, larger.
+  // Small cards: rank centered in the top half, suit centered in the bottom half.
   if (!large) {
     return (
       <div className={cn(SIZE_CLASSES[size], CARD_FACE, className)} style={{ aspectRatio: "10/14" }}>
-        <div className={cn("absolute inset-0 flex flex-col items-center justify-center leading-none", suitClass)}>
-          <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-          <span className={cn(SMALL_SUIT[size], "mt-[1px]")}>{suitSymbol}</span>
+        <div className={cn("absolute inset-0 flex flex-col leading-none", suitClass)}>
+          <div className="flex flex-1 items-center justify-center">
+            <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
+          </div>
+          <div className="flex flex-1 items-center justify-center">
+            <span className={SMALL_SUIT[size]}>{suitSymbol}</span>
+          </div>
         </div>
       </div>
     );

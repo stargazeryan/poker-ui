@@ -1,6 +1,6 @@
 {
   "name": "@stargazeryan/poker-ui",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Themable React + Tailwind CSS v4 components for poker tables and playing cards.",
   "license": "MIT",
   "author": "Ryan",
