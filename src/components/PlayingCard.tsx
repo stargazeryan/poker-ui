@@ -33,8 +33,8 @@ const SMALL_RANK: Partial<Record<CardSize, string>> = {
   sm: "text-xl",
 };
 const SMALL_SUIT: Partial<Record<CardSize, string>> = {
-  xs: "text-sm",
-  sm: "text-base",
+  xs: "text-base",
+  sm: "text-xl",
 };
 const BACK_EMBLEM_SIZE: Record<CardSize, number> = {
   xs: 14,
