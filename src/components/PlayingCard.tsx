@@ -27,6 +27,15 @@ const CENTER_SUIT: Record<CardSize, string> = {
   md: "text-3xl",
   lg: "text-5xl",
 };
+// Small cards (xs/sm) show a single, larger index centered in the card.
+const SMALL_RANK: Partial<Record<CardSize, string>> = {
+  xs: "text-base",
+  sm: "text-xl",
+};
+const SMALL_SUIT: Partial<Record<CardSize, string>> = {
+  xs: "text-sm",
+  sm: "text-base",
+};
 const BACK_EMBLEM_SIZE: Record<CardSize, number> = {
   xs: 14,
   sm: 18,
@@ -66,14 +75,17 @@ function getSuitClass(suit: string): string {
 export interface PlayingCardProps {
   /** Compact card code ("As", "10h") or null to render a face-down card back. */
   card: string | null;
+  /** xs / sm show a single, larger, centered index; md / lg show corner + center. */
   size?: CardSize;
   className?: string;
 }
 
+const CARD_FACE = "relative bg-gradient-to-br from-white via-white to-neutral-100 rounded-md border border-neutral-300/90 overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
+
 /**
  * A single playing card. Size is driven by the `size` prop (never viewport
  * breakpoints) so cards scale predictably inside any container. Small sizes
- * (xs / sm) keep only the upright corner index.
+ * (xs / sm) show only a larger upright index, centered in the card.
  */
 export function PlayingCard({ card, size = "md", className }: PlayingCardProps) {
   if (!card) return <CardBack size={size} className={className} />;
@@ -83,33 +95,31 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
   const suitClass = getSuitClass(suit);
   const large = size === "md" || size === "lg";
 
+  // Small cards: single upright rank + suit, centered, larger.
+  if (!large) {
+    return (
+      <div className={cn(SIZE_CLASSES[size], CARD_FACE, className)} style={{ aspectRatio: "10/14" }}>
+        <div className={cn("absolute inset-0 flex flex-col items-center justify-center leading-none", suitClass)}>
+          <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
+          <span className={cn(SMALL_SUIT[size], "mt-[1px]")}>{suitSymbol}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        SIZE_CLASSES[size],
-        "relative bg-gradient-to-br from-white via-white to-neutral-100",
-        "rounded-md border border-neutral-300/90 overflow-hidden",
-        "shadow-[0_2px_6px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]",
-        className,
-      )}
-      style={{ aspectRatio: "10/14" }}
-    >
+    <div className={cn(SIZE_CLASSES[size], CARD_FACE, className)} style={{ aspectRatio: "10/14" }}>
       <div className={cn("absolute top-[3px] left-[5px] flex flex-col items-center leading-none", suitClass)}>
         <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
         <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
       </div>
-      {/* Bottom-right index only on larger cards; xs/sm keep just the upright one. */}
-      {large && (
-        <div className={cn("absolute bottom-[3px] right-[5px] flex flex-col items-center leading-none rotate-180", suitClass)}>
-          <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-          <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
-        </div>
-      )}
-      {large && (
-        <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", suitClass)}>
-          <span className={CENTER_SUIT[size]}>{suitSymbol}</span>
-        </div>
-      )}
+      <div className={cn("absolute bottom-[3px] right-[5px] flex flex-col items-center leading-none rotate-180", suitClass)}>
+        <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
+        <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
+      </div>
+      <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", suitClass)}>
+        <span className={CENTER_SUIT[size]}>{suitSymbol}</span>
+      </div>
     </div>
   );
 }
