@@ -78,15 +78,39 @@ export function Table() {
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou)`, `yourSeatIndex`, `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `seatWidth`, `seatHeight` |
+| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `seatWidth`, `seatHeight` |
 | `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName` |
 | `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
 | `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true) |
 | `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true), `slots` (fixed slot count) |
 
-Also exported: `nextSeatIndex`, `cn`, `formatBB`, `BB`, `parseCard`,
-`getSuitSymbol`, and the types `SeatProps`, `CardTableProps`, `PotProps`, `CardSize`.
+Also exported: `nextSeatIndex`, `seatAngle`, `ellipsePoint`, `ringPoints`,
+`cn`, `formatBB`, `BB`, `parseCard`, `getSuitSymbol`, and the types
+`SeatProps`, `CardTableProps`, `PotProps`, `CardSize`, `Point`.
+
+### Ellipse layout
+
+The table, the seat ring and the betting line are all one parametric ellipse:
+
+```
+x(θ) = cx + rx·cos θ      y(θ) = cy + ry·sin θ        θ = startAngle + i·(360/n)
+```
+
+Screen coordinates (y grows downward), so θ = 90° is **directly below** the
+center. **Seat 0 sits at `startAngle` (default 90°)**, and seats divide 360°
+evenly, so 2–10 players always spread out. The betting line uses the same
+formula with a smaller radius (`betRadiusScale`). To keep "you" at the bottom,
+reorder your seat array so the viewer is index 0 (the package adds no offset).
+
+```tsx
+import { seatAngle, ellipsePoint, ringPoints } from "@stargazeryan/poker-ui";
+
+seatAngle(0, 6);                        // 90   (below the center)
+seatAngle(3, 6);                        // 270  (above the center)
+ellipsePoint(300, 200, 120, 80, 90);    // { x: 300, y: 280 }
+ringPoints(4, 300, 200, 120, 80);       // 4 points, first directly below
+```
 
 ### Sizes
 

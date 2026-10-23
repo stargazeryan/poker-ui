@@ -1,6 +1,12 @@
 export { cn } from "./cn";
 export { BB, formatBB } from "./format";
 export { nextSeatIndex, type NextSeatOptions } from "./seat";
+export {
+  seatAngle,
+  ellipsePoint,
+  ringPoints,
+  type Point,
+} from "./geometry";
 
 export {
   PlayingCard,

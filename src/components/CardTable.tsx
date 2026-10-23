@@ -1,5 +1,6 @@
 import { useRef, useLayoutEffect, useState, useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
+import { ellipsePoint, seatAngle } from "../geometry";
 
 export interface CardTableProps {
   /** Number of seats (2–10). Default 6. */
@@ -8,7 +9,22 @@ export interface CardTableProps {
   seats?: (ReactNode | null)[];
   /** Alternative to `seats`: render a seat by index. */
   renderSeat?: (index: number, isYou: boolean) => ReactNode;
-  /** Which seat belongs to the viewer; rotates that seat to the bottom. */
+  /**
+   * Optional per-seat "bet" content, auto-positioned on the betting line
+   * (`betRadiusScale`) along the seat-to-center radius, so it faces the middle
+   * of the table. Length should equal `seatCount`; `null` entries are skipped.
+   */
+  bets?: (ReactNode | null)[];
+  /** Alternative to `bets`: render a bet by index (return `null` to skip). */
+  renderBet?: (index: number) => ReactNode;
+  /** Radius of the bet ring, as a fraction of the table radius. Default 0.72 (the betting line). */
+  betRadiusScale?: number;
+  /**
+   * Angle (degrees) of seat 0. Default 90° = directly below the table centre.
+   * Seats advance by `360 / seatCount` from there, so 2–10 players spread evenly.
+   */
+  startAngle?: number;
+  /** Which seat is the viewer (adds no offset; only flags `isYou`). Default null. */
   yourSeatIndex?: number | null;
   /** Optional content in the middle of the table (cards, pot, anything). */
   center?: ReactNode;
@@ -42,37 +58,26 @@ interface SeatLayout {
   x: number;
   y: number;
   index: number;
-  isYou: boolean;
-}
-
-function getEllipsePoint(cx: number, cy: number, rx: number, ry: number, angleDeg: number) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return { x: cx + rx * Math.cos(rad), y: cy + ry * Math.sin(rad) };
 }
 
 function calculateSeatLayouts(
   seatCount: number,
-  yourSeatIndex: number | null,
   seatWidth: number,
   seatHeight: number,
+  startAngle: number,
 ): SeatLayout[] {
   const cx = DESIGN_W / 2;
   const cy = DESIGN_H / 2;
   const ringX = TABLE_RX - FELT_GAP + seatWidth / 2 + 6;
   const ringY = TABLE_RY - FELT_GAP + seatHeight / 2 + 6;
 
-  const step = 360 / seatCount;
-  const angleOf = (i: number) => -90 + i * step;
-  const rotationOffset = yourSeatIndex !== null ? 90 - angleOf(yourSeatIndex) : 0;
-
   const layouts: SeatLayout[] = [];
   for (let i = 0; i < seatCount; i++) {
-    const pt = getEllipsePoint(cx, cy, ringX, ringY, angleOf(i) + rotationOffset);
+    const pt = ellipsePoint(cx, cy, ringX, ringY, seatAngle(i, seatCount, startAngle));
     layouts.push({
       x: pt.x - seatWidth / 2,
       y: pt.y - seatHeight / 2,
       index: i,
-      isYou: i === yourSeatIndex,
     });
   }
   return layouts;
@@ -87,6 +92,10 @@ export function CardTable({
   seatCount = 6,
   seats,
   renderSeat,
+  bets,
+  renderBet,
+  betRadiusScale = BET_SCALE,
+  startAngle = 90,
   yourSeatIndex = null,
   center,
   ambient = true,
@@ -102,9 +111,13 @@ export function CardTable({
   const [scale, setScale] = useState(1);
 
   const layouts = useMemo(
-    () => calculateSeatLayouts(count, yourSeatIndex, seatWidth, seatHeight),
-    [count, yourSeatIndex, seatWidth, seatHeight],
+    () => calculateSeatLayouts(count, seatWidth, seatHeight, startAngle),
+    [count, seatWidth, seatHeight, startAngle],
   );
+
+  const betRx = TABLE_RX * betRadiusScale;
+  const betRy = TABLE_RY * betRadiusScale;
+  const hasBets = bets !== undefined || renderBet !== undefined;
 
   useLayoutEffect(() => {
     const el = outerRef.current;
@@ -204,7 +217,8 @@ export function CardTable({
 
           {/* seats */}
           <div className="absolute inset-0 z-20">
-            {layouts.map(({ x, y, index, isYou }) => {
+            {layouts.map(({ x, y, index }) => {
+              const isYou = index === yourSeatIndex;
               const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou) : null;
               if (content === null) return null;
               return (
@@ -214,6 +228,26 @@ export function CardTable({
               );
             })}
           </div>
+
+          {/* bets on the betting line (positioned toward the table center) */}
+          {hasBets && (
+            <div className="pointer-events-none absolute inset-0 z-20">
+              {Array.from({ length: count }).map((_, index) => {
+                const content = bets ? (bets[index] ?? null) : renderBet ? renderBet(index) : null;
+                if (content === null || content === undefined) return null;
+                const pt = ellipsePoint(DESIGN_W / 2, DESIGN_H / 2, betRx, betRy, seatAngle(index, count, startAngle));
+                return (
+                  <div
+                    key={index}
+                    className="absolute"
+                    style={{ left: `${pt.x}px`, top: `${pt.y}px`, transform: "translate(-50%, -50%)" }}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* winner confetti */}
           {confetti && winnerSeats.length > 0 && (
