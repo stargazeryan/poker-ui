@@ -24,6 +24,10 @@ jobs:
 
       # Types, unit tests and the package build are all things the old pipeline
       # skipped, which is how a broken build shipped green.
+      #
+      # Typecheck deliberately runs before anything is built: a clean checkout
+      # has no dist/, and type checking must not depend on one (see the "paths"
+      # note in tsconfig.json). Do not reorder these to "fix" a resolution error.
       - name: Typecheck
         run: npm run typecheck
 
