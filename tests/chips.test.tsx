@@ -5,7 +5,9 @@ import {
   DEFAULT_DENOMINATIONS,
   chipBreakdown,
   chipCount,
+  chipSpotColor,
   chipsTotal,
+  relativeLuminance,
   type Denomination,
 } from "../src/chips";
 
@@ -108,6 +110,95 @@ describe("the default denominations reference the theme tokens", () => {
       [1, "fill-chip-white"],
     ]);
     for (const d of DEFAULT_DENOMINATIONS) expect(d.color, `fallback colour for ${d.value}`).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("edge spots stay visible on every chip", () => {
+  /*
+   * Measured rather than eyeballed. With a fixed white spot the white chip sits
+   * at 1.1:1 against its own body - a blank oval with no edge - which is only
+   * visible if you compute the contrast.
+   */
+  const channels = (css: string): [number, number, number] => {
+    const hex = css.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hex) {
+      const h = hex[1].length === 3 ? hex[1].replace(/./g, (c) => c + c) : hex[1];
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+    const parts = css.trim().match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+    if (!parts) throw new Error(`unparseable colour ${css}`);
+    return [Number(parts[1]), Number(parts[2]), Number(parts[3])];
+  };
+  const alpha = (css: string) => {
+    if (!css.startsWith("rgba")) return 1;
+    const m = css.match(/([\d.]+)\s*\)$/);
+    return m ? Number(m[1]) : 1;
+  };
+  const luminance = ([r, g, b]: [number, number, number]) => {
+    const f = (c: number) => {
+      const s = c / 255;
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const contrast = (a: [number, number, number], b: [number, number, number]) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const over = (fg: [number, number, number], a: number, bg: [number, number, number]): [number, number, number] => [
+    a * fg[0] + (1 - a) * bg[0],
+    a * fg[1] + (1 - a) * bg[1],
+    a * fg[2] + (1 - a) * bg[2],
+  ];
+  const spotContrast = (bodyColor: string) => {
+    const spot = chipSpotColor(bodyColor);
+    return contrast(channels(bodyColor), over(channels(spot), alpha(spot), channels(bodyColor)));
+  };
+
+  it("picks dark spots on a light body, white spots on a dark one", () => {
+    expect(chipSpotColor("#ecf0f1")).toBe("rgba(0,0,0,0.45)");
+    expect(chipSpotColor("#1a1a2e")).toBe("rgba(255,255,255,0.9)");
+    // colours we cannot measure keep the default white spots
+    expect(chipSpotColor("var(--color-chip-white)")).toBe("rgba(255,255,255,0.9)");
+    expect(chipSpotColor("rebeccapurple")).toBe("rgba(255,255,255,0.9)");
+  });
+
+  it("keeps every default chip above 1.5:1", () => {
+    for (const d of DEFAULT_DENOMINATIONS) {
+      expect(spotContrast(d.color), `${d.value} chip spots`).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
+  it("is a real fix: the old fixed white spot fails that bar", () => {
+    const body = channels("#ecf0f1");
+    const white = "rgba(255,255,255,0.9)";
+    const ratio = contrast(body, over(channels(white), alpha(white), body));
+    expect(ratio).toBeLessThan(1.5);
+    expect(ratio).toBeCloseTo(1.13, 1);
+  });
+
+  it("reads hex and rgb(), and admits when it cannot read a colour", () => {
+    expect(chipSpotColor("rgb(236, 240, 241)")).toBe("rgba(0,0,0,0.45)");
+    expect(chipSpotColor("#fff")).toBe("rgba(0,0,0,0.45)");
+    expect(relativeLuminance("#ffffff")).toBeCloseTo(1, 5);
+    expect(relativeLuminance("#000000")).toBeCloseTo(0, 5);
+    expect(relativeLuminance("not a colour")).toBeNull();
+  });
+
+  it("lets a caller override the spot colour", () => {
+    const { container } = render(<Chip value={1} color="#ecf0f1" spotColor="rgba(255,0,0,0.9)" />);
+    const rects = [...container.querySelectorAll("rect")];
+    expect(rects).toHaveLength(8);
+    expect(rects.every((r) => r.getAttribute("fill") === "rgba(255,0,0,0.9)")).toBe(true);
+  });
+
+  it("carries the per-denomination override through ChipStack", () => {
+    const { container } = render(
+      <ChipStack amount={5} denominations={[{ value: 5, color: "#ecf0f1", spotColor: "rgba(0,0,255,0.9)" }]} />,
+    );
+    expect([...container.querySelectorAll("rect")].every((r) => r.getAttribute("fill") === "rgba(0,0,255,0.9)")).toBe(
+      true,
+    );
   });
 });
 

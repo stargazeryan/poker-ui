@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { cn } from "../cn";
-import { chipBreakdown, chipCount, DEFAULT_DENOMINATIONS, type Denomination } from "../chips";
+import { chipBreakdown, chipCount, chipSpotColor, DEFAULT_DENOMINATIONS, type Denomination } from "../chips";
 
 export type ChipSize = "sm" | "md" | "lg";
 
@@ -17,6 +17,8 @@ export interface ChipProps {
   color?: string;
   /** `fill-*` utility applied over `color` — see `Denomination.className`. */
   colorClassName?: string;
+  /** Colour of the eight edge spots. Defaults to `chipSpotColor(color)`. */
+  spotColor?: string;
   /** Default `"md"`. */
   size?: ChipSize;
   /** Accessible name. Defaults to `"<value> chip"`. */
@@ -36,6 +38,7 @@ export function Chip({
   value,
   color = "#2980b9",
   colorClassName,
+  spotColor,
   size = "md",
   label,
   className,
@@ -43,6 +46,7 @@ export function Chip({
   // useId() contains colons, which are legal in an id but fiddly inside url(#…)
   const clipId = `chip-clip-${useId().replace(/:/g, "")}`;
   const width = CHIP_WIDTH[size];
+  const spots = spotColor ?? chipSpotColor(color);
 
   return (
     <svg
@@ -81,7 +85,7 @@ export function Chip({
               width={3.4}
               height={6}
               rx={1.3}
-              fill="rgba(255,255,255,0.9)"
+              fill={spots}
               transform={`translate(${24 + 19.3 * Math.cos(rad)} ${15 + 10.7 * Math.sin(rad)}) rotate(${angle})`}
             />
           );
@@ -174,6 +178,7 @@ export function ChipStack({
                 value={entry.label ?? entry.value}
                 color={entry.color}
                 colorClassName={entry.className}
+                spotColor={entry.spotColor}
                 size={size}
               />
             </div>

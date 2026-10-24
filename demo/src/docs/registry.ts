@@ -257,6 +257,12 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           "A `fill-*` utility applied over `color`. The default denominations use these so the `--color-chip-*` tokens get emitted and stay themeable; a class wins over the `fill` attribute, so `color` is the fallback.",
       },
+      {
+        name: "spotColor",
+        type: "string",
+        description:
+          "Colour of the eight edge spots. Defaults to `chipSpotColor(color)`, which is white except on a light body — white spots on the white chip sit at 1.1:1 and vanish.",
+      },
       { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
       { name: "label", type: "string", description: 'Accessible name. Defaults to "<value> chip".' },
       { name: "className", type: "string", description: "Extra classes." },

@@ -38,7 +38,9 @@ export {
   DEFAULT_DENOMINATIONS,
   chipBreakdown,
   chipCount,
+  chipSpotColor,
   chipsTotal,
+  relativeLuminance,
   type ChipStackEntry,
   type Denomination,
 } from "./chips";

@@ -19,6 +19,11 @@ export interface Denomination {
    */
   color: string;
   /**
+   * Colour of the eight edge spots. Defaults to white, or to a dark spot on a
+   * light body — see `chipSpotColor`.
+   */
+  spotColor?: string;
+  /**
    * Optional `fill-*` utility applied on top of `color`. The default set uses
    * these so the `--color-chip-*` theme tokens are actually emitted by Tailwind
    * (it only outputs a theme variable something references) and can therefore be
@@ -43,6 +48,46 @@ export const DEFAULT_DENOMINATIONS: Denomination[] = [
   { value: 5, color: "#c0392b", className: "fill-chip-red" },
   { value: 1, color: "#ecf0f1", className: "fill-chip-white" },
 ];
+
+/** White edge spots, and the darker variant used on light chips. */
+const SPOT_ON_DARK_BODY = "rgba(255,255,255,0.9)";
+const SPOT_ON_LIGHT_BODY = "rgba(0,0,0,0.45)";
+
+/**
+ * Relative luminance of a `#rgb` / `#rrggbb` / `rgb()` colour, or `null` when it
+ * is something we cannot read (a `var(...)`, a named colour).
+ */
+export function relativeLuminance(color: string): number | null {
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  let rgb: [number, number, number];
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].replace(/./g, (c) => c + c) : hex[1];
+    rgb = [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  } else {
+    const parts = color.trim().match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+    if (!parts) return null;
+    rgb = [Number(parts[1]), Number(parts[2]), Number(parts[3])];
+  }
+  const channel = (c: number) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+}
+
+/**
+ * Spot colour for a chip body.
+ *
+ * White spots on a light body are invisible: over `--color-chip-white` (#ecf0f1)
+ * they land at a 1.1:1 contrast ratio, so the white chip reads as a blank oval
+ * with no edge at all. Anything light enough to have that problem gets dark spots
+ * instead (3.3:1). Colours we cannot measure — a `var(...)` or a named colour —
+ * keep white spots.
+ */
+export function chipSpotColor(bodyColor: string): string {
+  const luminance = relativeLuminance(bodyColor);
+  return luminance !== null && luminance > 0.55 ? SPOT_ON_LIGHT_BODY : SPOT_ON_DARK_BODY;
+}
 
 export interface ChipStackEntry extends Denomination {
   /** How many chips of this denomination the amount needs. */

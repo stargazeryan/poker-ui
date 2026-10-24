@@ -227,7 +227,8 @@ export function ChipsPage() {
           <>
             Each chip names itself for screen readers, carries eight edge spots clipped to the body, and takes its
             colour from <Prop>--color-chip-*</Prop> through a <Prop>fill-*</Prop> utility — so the chip palette is
-            themeable exactly like the felt and the gold.
+            themeable exactly like the felt and the gold. The spots pick themselves: white, except on a light body,
+            where white spots would sit at 1.1:1 and disappear.
           </>
         }
         code={`<Chip value={100} color="#1a1a2e" colorClassName="fill-chip-black" size="lg" />`}
