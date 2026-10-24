@@ -1,12 +1,36 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
-export default defineConfig({
+const pkgDir = fileURLToPath(new URL("..", import.meta.url));
+
+/**
+ * The docs site imports the package by its published name, never by a relative
+ * path into `src`. Which artefact that name resolves to depends on the mode:
+ *
+ *   vite              -> src/index.ts   (HMR while writing docs)
+ *   vite --mode dist  -> dist/index.js  (the packed library, built by tsup)
+ *
+ * GitHub Pages builds the docs with `--mode dist`, so the deployed site is
+ * itself evidence that the published artefact works.
+ */
+const resolvePkg = (mode: string) => (mode === "dist" ? "dist/index.js" : "src/index.ts");
+
+export default defineConfig(({ mode }) => ({
   root: "demo",
   // GitHub Pages project sites are served under /<repo>/, so the workflow sets
   // PAGES_BASE=/poker-ui/. Locally this stays "/".
   base: process.env.PAGES_BASE ?? "/",
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: [
+      // exact match, so the subpath export below still resolves on its own
+      { find: /^@stargazeryan\/poker-ui$/, replacement: join(pkgDir, resolvePkg(mode)) },
+      // mirrors the "./styles.css" entry in package.json's exports map
+      { find: "@stargazeryan/poker-ui/styles.css", replacement: join(pkgDir, "src/styles.css") },
+    ],
+  },
   build: { outDir: "dist", emptyOutDir: true },
-});
+}));
