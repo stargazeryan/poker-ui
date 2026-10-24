@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { CardTable, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
+import { CardTable, ChipStack, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Callout, CodeBlock, Demo, Field, H2, P, Prop, Row } from "../ui";
 
 /* --------------------------------------------------------- getting started -- */
@@ -115,6 +115,8 @@ const TOKEN_FIELDS = [
   { name: "--color-rail", label: "rail", initial: "#a5744a" },
   { name: "--color-gold", label: "gold", initial: "#f39c12" },
   { name: "--color-card-back", label: "card-back", initial: "#5a0c18" },
+  { name: "--color-chip-red", label: "chip-red", initial: "#c0392b" },
+  { name: "--color-chip-blue", label: "chip-blue", initial: "#2980b9" },
 ];
 
 const TOKEN_DOCS = [
@@ -126,7 +128,7 @@ const TOKEN_DOCS = [
   { token: "--color-card-back / -light / -dark", controls: "the card back gradient" },
   { token: "--color-card-back-ink", controls: "the card back border" },
   { token: "--color-card-back-emblem", controls: "the card back rosette" },
-  { token: "--color-chip-red|blue|green|black|white", controls: "a palette for your own chips — nothing in the package uses it" },
+  { token: "--color-chip-red|blue|green|black|white", controls: "the chip denominations used by Chip and ChipStack" },
 ];
 
 export function Theming() {
@@ -197,7 +199,10 @@ export function Theming() {
               center={
                 <div className="flex flex-col items-center gap-3">
                   <CommunityCards cards={["Ah", "Kd", "7c"]} size="lg" />
-                  <Pot label="Main" amount={240} />
+                  <div className="flex items-center gap-3">
+                    <Pot label="Main" amount={240} format={(n) => n.toLocaleString()} />
+                    <ChipStack amount={65} size="sm" />
+                  </div>
                 </div>
               }
             />

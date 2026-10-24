@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { COMPONENTS } from "../demo/src/docs/registry";
+import { COMPONENTS, NAV } from "../demo/src/docs/registry";
 
 /**
  * The README used to document behaviour the code did not have — a theming
@@ -58,11 +58,23 @@ describe("docs API tables", () => {
     expect(undocumented, "a new component was added without a docs page").toEqual([]);
   });
 
-  it("has a nav entry for every component page", () => {
-    const componentSlugs = COMPONENTS.map((c) => c.slug).sort();
-    // the nav is the source of truth for routable pages
-    const navSlugs = COMPONENTS.map((c) => c.slug).filter((slug) => slug !== "card-back").sort();
-    expect(navSlugs).toEqual(componentSlugs.filter((s) => s !== "card-back"));
+  it("documents every component on a real nav page", () => {
+    const componentsNav = NAV.find((group) => group.section === "Components");
+    expect(componentsNav, "the nav must have a Components section").toBeTruthy();
+    const pageSlugs = componentsNav!.items.map((item) => item.slug);
+
+    // every component has to be reachable from a page someone can click to
+    for (const doc of COMPONENTS) {
+      const page = doc.page ?? doc.slug;
+      expect(pageSlugs, `${doc.title} is not on any nav page`).toContain(page);
+    }
+    // and every component page has to document something
+    for (const slug of pageSlugs) {
+      expect(
+        COMPONENTS.some((doc) => (doc.page ?? doc.slug) === slug),
+        `nav page "${slug}" documents nothing`,
+      ).toBe(true);
+    }
   });
 
   it("never documents a prop twice on one page", () => {

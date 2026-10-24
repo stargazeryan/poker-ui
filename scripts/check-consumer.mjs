@@ -104,7 +104,7 @@ import { CardTable, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack 
 import "./app.css";
 
 createRoot(document.getElementById("root")!).render(
-  <div className="bg-chip-red">
+  <div>
     <CardTable
       seatCount={6}
       yourTurn
@@ -183,7 +183,11 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     [".via-rail-dark", /\.via-rail-dark\s*{/],
     [".to-rail-deep", /\.to-rail-deep\s*{/],
     [".w-8.h-11 (card size)", /\.h-11\s*{/],
-    [".bg-chip-red", /\.bg-chip-red\s*{/],
+    // ChipStack is the only thing referencing the chip palette, so these prove
+    // the tokens reach a consumer's CSS rather than the consumer emitting them
+    // themselves.
+    [".fill-chip-black", /\.fill-chip-black\s*{/],
+    [".fill-chip-blue", /\.fill-chip-blue\s*{/],
   ];
   for (const [label, re] of utilities) {
     (re.test(css) ? ok : fail)(`utility present: ${label}`);
@@ -198,8 +202,8 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     ["felt-shimmer", true],
     ["spotlight-breathe", true],
     ["confetti", true],
-    ["card-deal (unused)", false],
-    ["bubble-pop (unused)", false],
+    ["card-deal (removed as dead)", false],
+    ["bubble-pop (removed as dead)", false],
   ];
   for (const [name, expected] of keyframes) {
     const present = css.includes(`@keyframes ${name}`);
@@ -217,11 +221,20 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     "--color-rail",
     "--color-gold",
     "--color-card-back",
-    // a chip token, only used by the consumer's own markup
     "--color-chip-red",
+    "--color-chip-black",
+    "--color-chip-blue",
+    // removed as dead: nothing in the package or the docs referenced them
+    "--color-wood",
   ];
+  const mustBeAbsent = new Set(["--color-wood"]);
   for (const token of packageTokens) {
-    css.includes(`${token}:`) ? ok(`token referenced by the components is emitted: ${token}`) : fail(`token missing: ${token}`);
+    const present = css.includes(`${token}:`);
+    if (mustBeAbsent.has(token)) {
+      present ? fail(`token should be gone but is still emitted: ${token}`) : ok(`dead token still gone: ${token}`);
+    } else {
+      present ? ok(`token referenced by the components is emitted: ${token}`) : fail(`token missing: ${token}`);
+    }
   }
 
   // Sanity: an unbuilt/unresolved import would leave the library out of the bundle.

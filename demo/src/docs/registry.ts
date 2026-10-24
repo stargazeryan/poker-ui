@@ -18,6 +18,11 @@ export interface ComponentDoc {
   title: string;
   /** The exported interface in src this page documents. */
   interfaceName: string;
+  /**
+   * Nav page that documents this component. Defaults to `slug`, so only the
+   * components that share a page with another need it.
+   */
+  page?: string;
   summary: string;
   props: ApiRow[];
   /** For interfaces that are mostly slot content. */
@@ -39,6 +44,7 @@ export const NAV = [
       { slug: "card-table", title: "CardTable" },
       { slug: "seat", title: "Seat" },
       { slug: "pot", title: "Pot" },
+      { slug: "chips", title: "Chips" },
       { slug: "playing-card", title: "PlayingCard" },
       { slug: "card-back", title: "CardBack" },
       { slug: "hole-cards", title: "HoleCards" },
@@ -206,6 +212,53 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Formatter for the amount. Defaults to Big-Blind formatting against `BB = 20`.",
       },
       { name: "animate", type: "boolean", default: "true", description: "Count up smoothly when the amount changes." },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "chip-stack",
+    title: "ChipStack",
+    interfaceName: "ChipStackProps",
+    page: "chips",
+    summary:
+      "The chips for an amount, as a real stack with the largest denomination on top. Break the amount down with the greedy set a dealer would use (white 1, red 5, blue 10, green 25, black 100) and draw the result.",
+    props: [
+      { name: "amount", type: "number", description: "Amount in chip units — the smallest chip is 1. See `chipBreakdown`." },
+      { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
+      {
+        name: "denominations",
+        type: "Denomination[]",
+        default: "DEFAULT_DENOMINATIONS",
+        description: "Which chips exist and what they are worth. Blue defaults to 10; swap in 20 if your room does that.",
+      },
+      {
+        name: "maxChips",
+        type: "number",
+        default: "12",
+        description: "Most chips to draw, biggest first — a 10,000 bet would otherwise be 100 black chips. The number left off is shown underneath.",
+      },
+      { name: "label", type: "ReactNode", description: "Content under the stack, usually the formatted amount." },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "chip",
+    title: "Chip",
+    interfaceName: "ChipProps",
+    page: "chips",
+    summary:
+      "A single chip, drawn as SVG: a coloured disc with a darker edge for thickness, eight white edge spots, a rim highlight and a white centre carrying the value.",
+    props: [
+      { name: "value", type: "number | string", description: "Printed on the centre of the face. Omit it for a blank chip." },
+      { name: "color", type: "string", description: "CSS colour for the body. Any CSS colour works, including `var(--color-chip-red)`." },
+      {
+        name: "colorClassName",
+        type: "string",
+        description:
+          "A `fill-*` utility applied over `color`. The default denominations use these so the `--color-chip-*` tokens get emitted and stay themeable; a class wins over the `fill` attribute, so `color` is the fallback.",
+      },
+      { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
+      { name: "label", type: "string", description: 'Accessible name. Defaults to "<value> chip".' },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },

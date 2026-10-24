@@ -10,7 +10,6 @@
     "noUnusedParameters": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "declaration": true,
     "noEmit": true,
     "types": ["react", "node"],
     "paths": {

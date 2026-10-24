@@ -12,14 +12,6 @@
 
 import { ellipsePoint, seatAngle } from "./geometry";
 
-export interface Box {
-  /** Centre of the frame, in design space. */
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export interface LayoutOptions {
   /** Number of seats. */
   count: number;

@@ -9,6 +9,7 @@ an optional center slot, and a small set of built-in **game-feel animations**.
 - 🎯 `CardTable` — responsive, scale-to-fit table with ambient felt, a your-turn edge glow, and winner confetti
 - 💺 `Seat` — a neutral seat frame with slots + animated turn/winner states
 - 🪙 `Pot` — an optional pot pill with a count-up animation
+- 🎰 `ChipStack` / `Chip` — an amount broken into a real stack of chips (white 1, red 5, blue 10, green 25, black 100)
 - 🔁 `nextSeatIndex()` — pure helper for "next seat on the ring"
 
 > Formerly `PokerTable`; kept as a back-compat alias for `CardTable`.
@@ -85,6 +86,8 @@ export function Table() {
 | `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72, and the drawn betting line follows it), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
 | `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName`, `frameStyle` |
 | `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
+| `ChipStack` | `amount` (chip units), `size`, `denominations`, `maxChips` (default 12), `label`, `className` |
+| `Chip` | `value`, `color`, `colorClassName`, `size`, `label`, `className` |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
 | `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true), `dealKey` (change it to replay the deal for an unchanged hand) |
 | `CardBack` | `size`, `className` |
@@ -95,9 +98,24 @@ Also exported: `nextSeatIndex`, `seatAngle`, `ellipsePoint`, `ringPoints`,
 `layoutSeats`, `fitSeatScale`, `minSeatSeparation`, `seatPoint`, `tableRadii`,
 `seatRingRadii`, `SEAT_SHRINK_FLOOR`, the size constants `DESIGN_W`, `DESIGN_H`,
 `DEFAULT_MARGIN_X`, `DEFAULT_MARGIN_Y`, `DEFAULT_FELT_GAP`, `DEFAULT_BET_SCALE`,
-`DEFAULT_SEAT_GAP`, and the types
+`DEFAULT_SEAT_GAP`, the chip helpers `chipBreakdown`, `chipsTotal`, `chipCount`,
+`DEFAULT_DENOMINATIONS`, and the types
 `SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `CardSize`, `Point`,
-`Layout`, `LayoutOptions`, `SeatLayout`.
+`Layout`, `LayoutOptions`, `SeatLayout`, `ChipProps`, `ChipStackProps`,
+`ChipSize`, `Denomination`, `ChipStackEntry`.
+
+### Chips
+
+`ChipStack` turns an amount into a stack of chips, using the greedy breakdown a
+dealer would use: **white 1, red 5, blue 10, green 25, black 100**. Blue is the
+one that varies between houses — plenty of rooms use 20 — so pass
+`denominations` to change the set (and to give the faces dollar labels).
+
+Amounts are in **chip units** (the smallest chip is 1), not big blinds.
+`chipBreakdown` is exported on its own if you want the split without the artwork,
+and anything below the smallest chip is reported by `chipsTotal` rather than
+rounded up. `maxChips` (default 12) keeps a large bet from becoming a hundred
+black chips.
 
 ### Ellipse layout
 
@@ -230,17 +248,19 @@ by the components, so an override actually restyles them:
   --color-card-back-dark: #0b1d36;
   --color-card-back-ink: #9fc0e8;
   --color-card-back-emblem: #ffd98a;
+
+  --color-chip-blue: #1d4ed8;  /* chip denominations */
 }
 ```
 
 Confetti has its own `confettiColors` prop rather than a token, because the
 colours go into inline styles that Tailwind's tree-shaking cannot see.
 
-There is also a `--color-chip-red|blue|green|black|white` palette for you to
-build your own chips on. Tokens nothing references — e.g. the chip palette and
-any animation you don't use — are not emitted, because Tailwind v4 only outputs
-theme variables that are used. Use a matching utility (say `bg-chip-red`) and it
-appears.
+`--color-chip-red|blue|green|black|white` is the chip palette, used by `Chip`
+and `ChipStack` through `fill-*` utilities. Note that Tailwind v4 only emits a
+theme variable that something references, which is why the package ships no
+unused tokens: every one in `styles.css` is drawn with by a component, so
+overriding any of them works.
 
 Individual components also take `className` / `frameClassName`.
 

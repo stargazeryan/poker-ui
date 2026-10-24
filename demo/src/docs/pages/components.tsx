@@ -2,7 +2,10 @@ import { useState } from "react";
 import {
   CardBack,
   CardTable,
+  Chip,
+  ChipStack,
   CommunityCards,
+  DEFAULT_DENOMINATIONS,
   DEFAULT_FELT_GAP,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
@@ -12,10 +15,14 @@ import {
   PlayingCard,
   Pot,
   Seat,
+  chipBreakdown,
+  chipCount,
+  chipsTotal,
   formatBB,
   layoutSeats,
   minSeatSeparation,
   seatAngle,
+  type Denomination,
 } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Callout, Demo, Field, H2, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
@@ -41,27 +48,6 @@ function Api({ slug }: { slug: string }) {
   );
 }
 
-/** A tiny chip stack, to show the bets layer. */
-function ChipStack({ amount }: { amount: number }) {
-  const stack = Math.max(2, Math.min(4, Math.round(amount / 20) + 1));
-  return (
-    <div className="flex flex-col items-center gap-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-      <div className="relative" style={{ width: 34, height: 12 + (stack - 1) * 6 }}>
-        {Array.from({ length: stack }).map((_, i) => (
-          <span
-            key={i}
-            className="absolute left-1/2 h-[12px] w-[32px] -translate-x-1/2 rounded-full border border-gold-light/80 bg-gradient-to-b from-gold-light via-gold to-rail-deep"
-            style={{ bottom: i * 6 }}
-          />
-        ))}
-      </div>
-      <span className="rounded-full border border-gold/70 bg-neutral-900/85 px-2 py-0.5 font-mono text-[11px] font-bold leading-none text-gold-light">
-        {amount} BB
-      </span>
-    </div>
-  );
-}
-
 function Player({ i, isYou, width, height, active, winner }: { i: number; isYou: boolean; width: number; height: number; active?: boolean; winner?: boolean }) {
   return (
     <Seat
@@ -70,10 +56,190 @@ function Player({ i, isYou, width, height, active, winner }: { i: number; isYou:
       isActive={active}
       isWinner={winner}
       header={<span className="w-full truncate text-center font-semibold">{isYou ? "You" : `Seat ${i}`}</span>}
-      footer={<span className="w-full text-center font-mono text-gold-light">{100 - i * 7} BB</span>}
+      footer={<span className="w-full text-center font-mono text-gold-light">{500 - i * 40}</span>}
     >
       {i % 2 === 0 ? <HoleCards cards={["As", "Kh"]} size="sm" /> : <HoleCards cards={[null, null]} size="sm" />}
     </Seat>
+  );
+}
+
+/* ----------------------------------------------------------------- Chips -- */
+
+/** Bets for the table demo, in chip units, picked to need several colours. */
+const CHIP_BETS = [35, 0, 60, 115, 0, 240];
+
+export function ChipsPage() {
+  const [amount, setAmount] = useState(487);
+  const [cap, setCap] = useState(12);
+
+  const entries = chipBreakdown(amount);
+  const count = chipCount(entries);
+  const total = chipsTotal(entries);
+
+  const dollars: Denomination[] = [
+    { value: 100, label: "$100", color: "#1a1a2e", className: "fill-chip-black" },
+    { value: 20, label: "$20", color: "#2980b9", className: "fill-chip-blue" },
+    { value: 5, label: "$5", color: "#c0392b", className: "fill-chip-red" },
+    { value: 1, label: "$1", color: "#ecf0f1", className: "fill-chip-white" },
+  ];
+
+  return (
+    <>
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Chips</h1>
+      <Sec slug="chip-stack" />
+
+      <Demo
+        title="An amount becomes chips"
+        description={
+          <>
+            The split runs in <Prop>chipBreakdown</Prop>, exported on its own so you can show the breakdown without
+            drawing it. Amounts are in <strong>chip units</strong> — the smallest chip is 1 — not big blinds, and
+            whatever is left below the smallest chip is reported rather than rounded up.
+          </>
+        }
+        code={`const entries = chipBreakdown(487);
+// [{ value: 100, count: 4 }, { value: 25, count: 3 },
+//  { value: 10, count: 1 }, { value: 1, count: 2 }]
+
+<ChipStack amount={487} size="lg" label="487" />`}
+      >
+        <div className="flex flex-col items-center gap-6">
+          <Stepper label="amount" value={amount} min={0} max={1500} onChange={setAmount} />
+          <ChipStack
+            amount={amount}
+            size="lg"
+            label={<span className="font-mono text-xs text-gold-light">{amount}</span>}
+          />
+          <div className="overflow-hidden rounded-lg border border-white/10">
+            <table className="text-left text-sm">
+              <thead>
+                <tr className="bg-white/[0.03] text-[10px] uppercase tracking-wider text-neutral-500">
+                  <th className="px-3 py-2 font-semibold">Chip</th>
+                  <th className="px-3 py-2 font-semibold">Value</th>
+                  <th className="px-3 py-2 font-semibold">How many</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-2 text-neutral-500" colSpan={3}>
+                      nothing to stack
+                    </td>
+                  </tr>
+                )}
+                {entries.map((entry) => (
+                  <tr key={entry.value} className="border-t border-white/[0.06]">
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="inline-block h-3 w-3 rounded-full border border-white/20"
+                          style={{ background: entry.color }}
+                        />
+                        <span className="font-mono text-[12px] text-neutral-300">{entry.label ?? entry.value}</span>
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[12px] text-neutral-300">{entry.value}</td>
+                    <td className="px-3 py-2 font-mono text-[12px] text-gold">{entry.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Row className="justify-center">
+            <Field label="physical chips:" value={count} />
+            <Field label="adds up to:" value={total} />
+            {total !== amount && <Field label="below the smallest chip:" value={amount - total} />}
+          </Row>
+        </div>
+      </Demo>
+
+      <Demo
+        title="Denominations are yours"
+        description={
+          <>
+            Blue is 10 by default, because plenty of rooms use 10 and plenty use 20. Swap the set and both the
+            breakdown and the faces follow. Here blue is 20 and the labels read as dollars.
+          </>
+        }
+        code={`const dollars = [
+  { value: 100, label: "$100", color: "#1a1a2e", className: "fill-chip-black" },
+  { value: 20,  label: "$20",  color: "#2980b9", className: "fill-chip-blue"  },
+  { value: 5,   label: "$5",   color: "#c0392b", className: "fill-chip-red"   },
+  { value: 1,   label: "$1",   color: "#ecf0f1", className: "fill-chip-white" },
+];
+
+<ChipStack amount={141} denominations={dollars} />`}
+      >
+        <div className="flex flex-wrap items-end justify-center gap-10">
+          <div className="flex flex-col items-center gap-2">
+            <ChipStack amount={141} size="lg" />
+            <Field label="default set (blue=10):" value="141" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <ChipStack amount={141} size="lg" denominations={dollars} />
+            <Field label="blue=20, dollars:" value="141" />
+          </div>
+        </div>
+      </Demo>
+
+      <Demo
+        title="maxChips keeps a big bet readable"
+        description={
+          <>
+            A 10,000 bet is a hundred black chips. The stack keeps the biggest denominations and says how many it left
+            off. The accessible name always describes the whole amount, not just the chips drawn.
+          </>
+        }
+        code={`<ChipStack amount={10000} maxChips={12} />`}
+      >
+        <div className="flex flex-col items-center gap-5">
+          <Stepper label="maxChips" value={cap} min={1} max={30} onChange={setCap} />
+          <ChipStack amount={10000} size="md" maxChips={cap} />
+        </div>
+      </Demo>
+
+      <Demo
+        title="Sizes"
+        description="22 / 30 / 42px wide; the stack offsets itself in proportion."
+        code={`<ChipStack amount={60} size="sm" />
+<ChipStack amount={60} size="md" />
+<ChipStack amount={60} size="lg" />`}
+      >
+        <div className="flex items-end justify-center gap-10">
+          {(["sm", "md", "lg"] as const).map((size) => (
+            <ChipStack
+              key={size}
+              amount={60}
+              size={size}
+              label={<span className="font-mono text-[10px] text-neutral-400">{size}</span>}
+            />
+          ))}
+        </div>
+      </Demo>
+
+      <Api slug="chip-stack" />
+
+      <H2>Chip</H2>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["chip"].summary}</p>
+      <Demo
+        title="The default set"
+        description={
+          <>
+            Each chip names itself for screen readers, carries eight edge spots clipped to the body, and takes its
+            colour from <Prop>--color-chip-*</Prop> through a <Prop>fill-*</Prop> utility — so the chip palette is
+            themeable exactly like the felt and the gold.
+          </>
+        }
+        code={`<Chip value={100} color="#1a1a2e" colorClassName="fill-chip-black" size="lg" />`}
+      >
+        <div className="flex items-end justify-center gap-4">
+          {DEFAULT_DENOMINATIONS.map((d) => (
+            <Chip key={d.value} value={d.value} color={d.color} colorClassName={d.className} size="lg" />
+          ))}
+        </div>
+      </Demo>
+      <Api slug="chip" />
+    </>
   );
 }
 
@@ -116,7 +282,7 @@ function SeatGapDemo() {
           renderSeat={(i, isYou, box) => (
             <Player i={i} isYou={isYou} width={box.width} height={box.height} active={i === 1} />
           )}
-          center={<Pot label="Main" amount={240} />}
+          center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
         />
       </div>
     </>
@@ -149,7 +315,7 @@ export function CardTablePage() {
       <HoleCards cards={hands[i]} size="sm" />
     </Seat>
   )}
-  center={<Pot label="Main" amount={240} />}
+  center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
 />`}
       >
         <div className="w-full">
@@ -165,7 +331,7 @@ export function CardTablePage() {
               seatCount={count}
               yourSeatIndex={0}
               renderSeat={(i, isYou, box) => <Player i={i} isYou={isYou} width={box.width} height={box.height} />}
-              center={<Pot label="Main" amount={240} />}
+              center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
             />
           </div>
         </div>
@@ -176,7 +342,7 @@ export function CardTablePage() {
         description={<><Prop>bets</Prop> or <Prop>renderBet</Prop> places content on the betting line, auto-positioned toward the middle of the table. The drawn line follows <Prop>betRadiusScale</Prop> — they cannot drift apart.</>}
         previewClassName="p-0 overflow-hidden"
         code={`<CardTable
-  renderBet={(i) => (bets[i] ? <ChipStack amount={bets[i]} /> : null)}
+  renderBet={(i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null)}
   betRadiusScale={0.72}
 />`}
       >
@@ -185,8 +351,10 @@ export function CardTablePage() {
             seatCount={6}
             yourSeatIndex={0}
             renderSeat={(i, isYou, box) => <Player i={i} isYou={isYou} width={box.width} height={box.height} />}
-            renderBet={(i) => (i % 3 === 0 ? <ChipStack amount={(i + 1) * 3} /> : null)}
-            center={<Pot label="Main" amount={240} />}
+            renderBet={(i) =>
+              CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null
+            }
+            center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
           />
         </div>
       </Demo>
@@ -215,7 +383,7 @@ export function CardTablePage() {
               renderSeat={(i, isYou, box) => (
                 <Player i={i} isYou={isYou} width={box.width} height={box.height} winner={winner && i === 0} />
               )}
-              center={<Pot label="Main" amount={240} />}
+              center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
             />
           </div>
         </div>

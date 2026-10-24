@@ -15,7 +15,6 @@ export {
   seatPoint,
   seatRingRadii,
   tableRadii,
-  type Box,
   type Layout,
   type LayoutOptions,
   type SeatLayout,
@@ -34,6 +33,23 @@ export {
   type CommunityCardsProps,
   type CardSize,
 } from "./components/PlayingCard";
+
+export {
+  DEFAULT_DENOMINATIONS,
+  chipBreakdown,
+  chipCount,
+  chipsTotal,
+  type ChipStackEntry,
+  type Denomination,
+} from "./chips";
+
+export {
+  Chip,
+  ChipStack,
+  type ChipProps,
+  type ChipSize,
+  type ChipStackProps,
+} from "./components/Chip";
 
 export { Seat, type SeatProps } from "./components/Seat";
 export { Pot, type PotProps } from "./components/Pot";
