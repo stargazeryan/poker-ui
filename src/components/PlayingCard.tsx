@@ -137,13 +137,13 @@ function CardBackEmblem({ size }: { size: CardSize }) {
   const s = BACK_EMBLEM_SIZE[size];
   return (
     <svg width={s} height={s} viewBox="0 0 40 40" className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" aria-hidden="true">
-      <g fill="#f0c04a" opacity="0.92">
+      <g fill="var(--color-card-back-emblem, #f0c04a)" opacity="0.92">
         <ellipse cx="20" cy="11" rx="4" ry="7" />
         <ellipse cx="20" cy="29" rx="4" ry="7" />
         <ellipse cx="11" cy="20" rx="7" ry="4" />
         <ellipse cx="29" cy="20" rx="7" ry="4" />
       </g>
-      <circle cx="20" cy="20" r="3.2" fill="#5a0c18" />
+      <circle cx="20" cy="20" r="3.2" fill="var(--color-card-back, #5a0c18)" />
     </svg>
   );
 }
@@ -155,8 +155,8 @@ export function CardBack({ size = "md", className }: CardBackProps) {
       className={cn(
         SIZE_CLASSES[size],
         "relative rounded-md p-[3px] overflow-hidden",
-        "bg-gradient-to-br from-[#7a1020] via-[#5a0c18] to-[#3f0810]",
-        "border-2 border-[#c9a24b]/70 shadow-[0_2px_6px_rgba(0,0,0,0.45)]",
+        "bg-gradient-to-br from-card-back-light via-card-back to-card-back-dark",
+        "border-2 border-card-back-ink/70 shadow-[0_2px_6px_rgba(0,0,0,0.45)]",
         className,
       )}
       style={{ aspectRatio: "10/14" }}
@@ -174,14 +174,29 @@ export interface HoleCardsProps {
   className?: string;
   /** Animate the cards dealing in, one after another. Default true. */
   deal?: boolean;
+  /**
+   * Change this to replay the deal animation for an unchanged hand (e.g. a hand
+   * id or a round number). Without it, a card whose value changed re-deals on
+   * its own, but a new hand holding the same two cards looks identical.
+   */
+  dealKey?: string | number;
 }
 
 /** A row of a player's hole cards. */
-export function HoleCards({ cards, size = "lg", className, deal = true }: HoleCardsProps) {
+export function HoleCards({ cards, size = "lg", className, deal = true, dealKey }: HoleCardsProps) {
   return (
     <div className={cn("flex gap-2", className)}>
       {cards.map((card, i) => (
-        <div key={i} className={cn(deal && "animate-deal-in")} style={deal ? { animationDelay: `${i * 100}ms` } : undefined}>
+        /*
+         * Keying on the card rather than the index is what makes the deal
+         * animation replay: React reuses an element whose key is unchanged, and
+         * a reused element never restarts its CSS animation.
+         */
+        <div
+          key={dealKey !== undefined ? `${dealKey}:${i}` : `${i}:${card ?? "back"}`}
+          className={cn(deal && "animate-deal-in")}
+          style={deal ? { animationDelay: `${i * 100}ms` } : undefined}
+        >
           <PlayingCard card={card} size={size} />
         </div>
       ))}
