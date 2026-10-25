@@ -11,6 +11,12 @@ import { cn } from "../cn";
  */
 const defaultFormat = (amount: number): string => amount.toLocaleString();
 
+/** Whether the user has asked for less motion. Guarded: jsdom and SSR have no matchMedia. */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export interface PotProps {
   amount: number;
   /** Optional label, e.g. "Main" / "Side". */
@@ -36,6 +42,13 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
     const from = shownRef.current;
     const to = value;
     if (from === to) return;
+    // The media query in styles.css cannot reach a rAF loop, so the JS animation
+    // has to check for itself. Jump straight to the value instead.
+    if (prefersReducedMotion()) {
+      shownRef.current = to;
+      setShown(to);
+      return;
+    }
     let raf = 0;
     const dur = 500;
     // Time the animation off the rAF timestamps themselves and never against

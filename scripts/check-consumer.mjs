@@ -237,6 +237,37 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     }
   }
 
+  /*
+   * The reduced-motion block must not reach into the host app's animations.
+   * Both the pattern and the brace matching have to tolerate minification:
+   * Lightning CSS turns the query into `@media(prefers-reduced-motion:reduce)`.
+   */
+  const rmAt = css.search(/@media\s*\(\s*prefers-reduced-motion/);
+  if (rmAt === -1) {
+    fail("reduced-motion block is missing from the output entirely");
+  } else {
+    let depth = 0;
+    let end = css.length;
+    for (let i = css.indexOf("{", rmAt); i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    const rmBlock = css.slice(rmAt, end);
+    if (/\*\s*[,{]/.test(rmBlock)) {
+      fail("reduced-motion rule uses a universal selector, which would disable the host app's animations");
+    } else if (!rmBlock.includes(".animate-turn-glow")) {
+      fail("reduced-motion rule does not name this package's own animations");
+    } else {
+      ok("reduced-motion rule is scoped to the library's own animations");
+    }
+  }
+
   // Sanity: an unbuilt/unresolved import would leave the library out of the bundle.
   js.includes("animate-turn-glow") && js.includes("betting-line")
     ? ok("package code is in the consumer bundle")

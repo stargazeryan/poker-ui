@@ -154,12 +154,24 @@
   }
 }
 
+/*
+ * Scoped to this package's own animations on purpose.
+ *
+ * This used to be `*, *::before, *::after { ... !important }`, which reached
+ * outside the library and disabled every animation and transition in the host
+ * application too. A stylesheet shipped by a component library has no business
+ * doing that. Consumers who use these utilities in their own markup are still
+ * covered, because the classes are named here.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .animate-card-flip,
+  .animate-deal-in,
+  .animate-turn-glow,
+  .animate-winner-glow,
+  .animate-felt-shimmer,
+  .animate-spotlight,
+  .animate-confetti {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }

@@ -234,8 +234,8 @@ const GAPS: Array<[string, string]> = [
     'It splits the last character off as the suit, so "xyz" parses as rank "xy" / suit "z" and renders a literal "z". No rank or suit validation, and no case normalisation, so "as" stays lowercase. Card codes are trusted input today.',
   ],
   [
-    "Reduced motion is uneven",
-    "All CSS animations stop under prefers-reduced-motion, but the rule shipped in styles.css uses a global `*` selector with !important, which also disables your own app's animations and transitions. And the Pot count-up is a rAF loop, so the media query cannot reach it at all.",
+    "Reduced motion is per-component, not global",
+    "Each animation checks for itself: the CSS ones through a media query scoped to this package's own animation classes, and the Pot count-up through matchMedia, because a rAF loop is out of reach of any media query. There is no central switch, so a new animation has to remember to opt in.",
   ],
   [
     "Confetti never stops",

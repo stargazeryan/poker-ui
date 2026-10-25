@@ -124,6 +124,30 @@ describe("Pot", () => {
     await waitFor(() => expect(container.textContent).toContain("240"), { timeout: 2000 });
   });
 
+  it("jumps straight to the new amount under prefers-reduced-motion", () => {
+    // the CSS media query cannot reach a rAF loop, so Pot checks for itself
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const { container, rerender } = render(<Pot amount={100} />);
+      rerender(<Pot amount={240} />);
+      // synchronously, with no animation frames in between
+      expect(container.textContent).toContain("240");
+    } finally {
+      if (original) window.matchMedia = original;
+      else delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it("uses the themed gold token", () => {
     expect(render(<Pot amount={10} />).container.innerHTML).toContain("text-gold");
   });
