@@ -7,9 +7,9 @@ import {
   chipCount,
   chipSpotColor,
   chipsTotal,
-  relativeLuminance,
   type Denomination,
 } from "../src/chips";
+import { relativeLuminance } from "../src/color";
 
 const pairs = (amount: number, denominations?: Denomination[]) =>
   chipBreakdown(amount, denominations).map((e) => [e.value, e.count]);

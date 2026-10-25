@@ -200,7 +200,7 @@ export function Theming() {
                 <div className="flex flex-col items-center gap-3">
                   <CommunityCards cards={["Ah", "Kd", "7c"]} size="lg" />
                   <div className="flex items-center gap-3">
-                    <Pot label="Main" amount={240} format={(n) => n.toLocaleString()} />
+                    <Pot label="Main" amount={240} />
                     <ChipStack amount={65} size="sm" />
                   </div>
                 </div>
@@ -254,8 +254,8 @@ const GAPS: Array<[string, string]> = [
     "PlayingCard has no accessible name (a screen reader reads the fragments \"A\" and \"♠\"), CardBack has none either, and Pot has no aria-live, so the count-up is silent. Suit colour is also the main cue at small sizes.",
   ],
   [
-    "BB is a fixed constant",
-    "formatBB divides by BB = 20, and it is the default Pot formatter. There is no way to set the big blind per table, which is a poker assumption inside a game-agnostic library.",
+    "Units are yours, and nothing checks them",
+    "Pot renders a plain number by default and formatBB(amount, bb) is an opt-in poker helper, because a big blind is a game rule and this is generic UI. The cost is that nothing stops you showing big-blind amounts in one place and chip amounts in another on the same table: the library has no unit concept, deliberately, so it cannot catch that for you.",
   ],
   [
     "The seats array isn't auto-shrunk",

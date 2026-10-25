@@ -146,7 +146,10 @@ export function LayoutPage() {
 
       <H2>Seat crowding</H2>
       <P>
-        Measured on the layout helpers, with the default 160×176 frames and no shrink:
+        Measured on the layout helpers, with the default 160×176 frames. The seat count is not clamped: the ring
+        shrinks frames until <Prop>seatGap</Prop> is honoured, which is what carries 11–16 seats. Past ~16 the frames
+        reach the 50% floor and genuinely overlap, and this table says so rather than the component quietly rendering a
+        different number of seats than you asked for.
       </P>
       <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
         <table className="w-full border-collapse text-left text-sm">
@@ -159,7 +162,7 @@ export function LayoutPage() {
             </tr>
           </thead>
           <tbody>
-            {[2, 3, 4, 6, 8, 9, 10].map((n) => {
+            {[2, 4, 6, 8, 10, 11, 12, 14, 16, 20].map((n) => {
               const opts = {
                 count: n,
                 designWidth: DESIGN_W,
@@ -178,7 +181,9 @@ export function LayoutPage() {
                 <tr key={n} className="border-t border-white/[0.06]">
                   <td className="px-4 py-2.5 font-mono text-[12px] text-neutral-200">{n}</td>
                   <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">{raw.toFixed(1)}px</td>
-                  <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">{gap.toFixed(1)}px</td>
+                  <td className={"px-4 py-3 font-mono text-[12px] " + (gap < 0 ? "text-amber-400" : "text-neutral-300")}>
+                    {gap.toFixed(1)}px{gap < 0 ? " — overlapping" : ""}
+                  </td>
                   <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">
                     {fitted.seatW}×{fitted.seatH}
                     {fitted.seatW < 160 && <span className="ml-2 text-amber-400">shrunk</span>}

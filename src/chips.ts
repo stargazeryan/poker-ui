@@ -5,6 +5,8 @@
  * Amounts are in **chip units** (the smallest chip is 1), not in big blinds.
  */
 
+import { mostVisible } from "./color";
+
 export interface Denomination {
   /** Face value of the chip. */
   value: number;
@@ -49,44 +51,21 @@ export const DEFAULT_DENOMINATIONS: Denomination[] = [
   { value: 1, color: "#ecf0f1", className: "fill-chip-white" },
 ];
 
-/** White edge spots, and the darker variant used on light chips. */
-const SPOT_ON_DARK_BODY = "rgba(255,255,255,0.9)";
-const SPOT_ON_LIGHT_BODY = "rgba(0,0,0,0.45)";
+/** The two inks a chip's edge spots can be drawn in. */
+const SPOT_CANDIDATES = ["rgba(255,255,255,0.9)", "rgba(0,0,0,0.45)"] as const;
 
 /**
- * Relative luminance of a `#rgb` / `#rrggbb` / `rgb()` colour, or `null` when it
- * is something we cannot read (a `var(...)`, a named colour).
- */
-export function relativeLuminance(color: string): number | null {
-  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  let rgb: [number, number, number];
-  if (hex) {
-    const h = hex[1].length === 3 ? hex[1].replace(/./g, (c) => c + c) : hex[1];
-    rgb = [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-  } else {
-    const parts = color.trim().match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
-    if (!parts) return null;
-    rgb = [Number(parts[1]), Number(parts[2]), Number(parts[3])];
-  }
-  const channel = (c: number) => {
-    const s = c / 255;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
-}
-
-/**
- * Spot colour for a chip body.
+ * Spot colour for a chip body: whichever of the two inks is measurably more
+ * visible on it.
  *
- * White spots on a light body are invisible: over `--color-chip-white` (#ecf0f1)
- * they land at a 1.1:1 contrast ratio, so the white chip reads as a blank oval
- * with no edge at all. Anything light enough to have that problem gets dark spots
- * instead (3.3:1). Colours we cannot measure — a `var(...)` or a named colour —
- * keep white spots.
+ * Derived from contrast rather than a luminance threshold, because the obvious
+ * implementation — always white spots — puts the white chip
+ * (`--color-chip-white`, #ecf0f1) at a 1.13:1 contrast ratio against its own
+ * body, so it renders as a blank oval with no edge at all. Colours we cannot
+ * measure keep white spots.
  */
 export function chipSpotColor(bodyColor: string): string {
-  const luminance = relativeLuminance(bodyColor);
-  return luminance !== null && luminance > 0.55 ? SPOT_ON_LIGHT_BODY : SPOT_ON_DARK_BODY;
+  return mostVisible(SPOT_CANDIDATES, bodyColor);
 }
 
 export interface ChipStackEntry extends Denomination {

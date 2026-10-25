@@ -1,5 +1,13 @@
 export { cn } from "./cn";
 export { BB, formatBB } from "./format";
+export {
+  contrastRatio,
+  flatten,
+  mostVisible,
+  parseColor,
+  relativeLuminance,
+  type Rgba,
+} from "./color";
 export { nextSeatIndex, type NextSeatOptions } from "./seat";
 export {
   seatAngle,
@@ -40,7 +48,6 @@ export {
   chipCount,
   chipSpotColor,
   chipsTotal,
-  relativeLuminance,
   type ChipStackEntry,
   type Denomination,
 } from "./chips";

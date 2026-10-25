@@ -16,7 +16,14 @@ export interface SeatBox {
 }
 
 export interface CardTableProps {
-  /** Number of seats (2–10). Default 6. */
+    /**
+   * Number of seats. Default 6.
+   *
+   * There is no upper limit. The seat ring shrinks the frames until `seatGap` is
+   * honoured, so 11–16 seats lay out fine (measured: 11 -> 126x139 frames,
+   * 16 -> 80x88). Past roughly 16 the frames hit the 50% shrink floor and start
+   * to overlap — that is the caller's call, not something to clamp silently.
+   */
   seatCount?: number;
   /** Optional per-seat content. Length should equal `seatCount`. */
   seats?: (ReactNode | null)[];
@@ -69,8 +76,9 @@ export interface CardTableProps {
   seatHeight?: number;
   /**
    * Minimum clearance to keep between neighbouring seat frames, in design-space
-   * px. Frames shrink uniformly (down to 50%) until it is honoured, which is
-   * what keeps 9–10 seat tables from looking cramped. `0` disables it.
+   * px. Frames shrink uniformly (down to 50%) until it is honoured, which is what
+   * keeps 9–10 seat tables from looking cramped and what lets 11–16 seat tables
+   * lay out at all. `0` disables it.
    * Only applies when `renderSeat` is used (it is the only form that can size
    * the frames); the `seats` array keeps the size you were given.
    * Default 24.
@@ -151,7 +159,8 @@ export function CardTable({
   fit = "design",
   className,
 }: CardTableProps) {
-  const count = Math.max(2, Math.min(10, Math.floor(seatCount)));
+  const requested = Math.floor(seatCount);
+  const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
   const outerRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
 

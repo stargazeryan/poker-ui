@@ -267,7 +267,7 @@ function SeatGapDemo() {
   return (
     <>
       <Row className="mb-3 justify-center">
-        <Stepper label="seats" value={count} min={2} max={10} onChange={setCount} />
+        <Stepper label="seats" value={count} min={2} max={20} onChange={setCount} />
         <Stepper label="seatGap" value={gap} min={0} max={80} step={4} onChange={setGap} />
       </Row>
       <Row className="mb-3 justify-center">
@@ -283,7 +283,7 @@ function SeatGapDemo() {
           renderSeat={(i, isYou, box) => (
             <Player i={i} isYou={isYou} width={box.width} height={box.height} active={i === 1} />
           )}
-          center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
+          center={<Pot label="Main" amount={487} />}
         />
       </div>
     </>
@@ -316,12 +316,12 @@ export function CardTablePage() {
       <HoleCards cards={hands[i]} size="sm" />
     </Seat>
   )}
-  center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
+  center={<Pot label="Main" amount={487} />}
 />`}
       >
         <div className="w-full">
           <Row className="justify-center border-b border-white/10 py-3">
-            {[2, 3, 4, 6, 9, 10].map((n) => (
+            {[2, 3, 4, 6, 9, 10, 12, 16].map((n) => (
               <Btn key={n} onClick={() => setCount(n)} active={count === n}>
                 {n}
               </Btn>
@@ -332,7 +332,7 @@ export function CardTablePage() {
               seatCount={count}
               yourSeatIndex={0}
               renderSeat={(i, isYou, box) => <Player i={i} isYou={isYou} width={box.width} height={box.height} />}
-              center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
+              center={<Pot label="Main" amount={487} />}
             />
           </div>
         </div>
@@ -355,7 +355,7 @@ export function CardTablePage() {
             renderBet={(i) =>
               CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null
             }
-            center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
+            center={<Pot label="Main" amount={487} />}
           />
         </div>
       </Demo>
@@ -384,7 +384,7 @@ export function CardTablePage() {
               renderSeat={(i, isYou, box) => (
                 <Player i={i} isYou={isYou} width={box.width} height={box.height} winner={winner && i === 0} />
               )}
-              center={<Pot label="Main" amount={487} format={(n) => n.toLocaleString()} />}
+              center={<Pot label="Main" amount={487} />}
             />
           </div>
         </div>
@@ -441,7 +441,8 @@ export function CardTablePage() {
             Measured on the real layout helpers (<Prop>layoutSeats</Prop>, <Prop>minSeatSeparation</Prop> — both
             exported). At 160×176 a 6-seat ring leaves 161px between neighbours, but a 10-seat ring leaves only 25.6px.
             Frames shrink uniformly (never below 50%) until <Prop>seatGap</Prop> is honoured, and{" "}
-            <Prop>renderSeat</Prop> receives the size it settled on.
+            <Prop>renderSeat</Prop> receives the size it settled on. The same mechanism is why 11–16 seats work at all;
+            past ~16 the frames sit on the shrink floor and overlap.
           </>
         }
         previewClassName="p-4"
@@ -572,7 +573,7 @@ export function PotPage() {
 
       <Demo
         title="Count-up"
-        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. Default amount is ${formatBB(amount)}.`}
+        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. The default rendering is the plain number ${amount.toLocaleString()}: no unit is invented, because the library does not know what your numbers mean.`}
         code={`<Pot label="Main" amount={amount} />`}
       >
         <div className="flex flex-col items-center gap-4">
@@ -590,12 +591,21 @@ export function PotPage() {
 
       <Demo
         title="Custom formatting"
-        description="The default formatter is Big-Blind based. Pass your own to show chips, dollars, whatever."
-        code={`<Pot amount={1234} format={(n) => n.toLocaleString()} />`}
+        description={
+          <>
+            The default is a plain number. Pass <Prop>format</Prop> for anything else — including{" "}
+            <Prop>formatBB</Prop>, which takes the big blind as an argument because 20 is rarely the right
+            one for your table.
+          </>
+        }
+        code={`<Pot amount={1234} format={(n) => "$" + n.toLocaleString()} />
+<Pot amount={1234} format={formatBB} />                 // 61.7 BB
+<Pot amount={1234} format={(n) => formatBB(n, 100)} />  // 12.3 BB`}
       >
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Pot amount={1234} format={(n) => n.toLocaleString()} />
-          <Pot amount={1234} format={(n) => `$${(n / 20).toFixed(1)}`} />
+          <Pot amount={1234} format={(n) => "$" + n.toLocaleString()} />
+          <Pot amount={1234} format={formatBB} />
+          <Pot amount={1234} format={(n) => formatBB(n, 100)} />
           <Pot amount={1234} label="Main" format={(n) => `${n} chips`} />
         </div>
       </Demo>

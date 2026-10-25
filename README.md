@@ -83,9 +83,9 @@ export function Table() {
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72, and the drawn betting line follows it), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
+| `CardTable` | `seatCount` (no upper limit), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72, and the drawn betting line follows it), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
 | `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName`, `frameStyle` |
-| `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
+| `Pot` | `amount`, `label`, `format` (defaults to a plain number), `animate` (count-up, default true) |
 | `ChipStack` | `amount` (chip units), `size`, `denominations`, `maxChips` (default 12), `label`, `className` |
 | `Chip` | `value`, `color`, `colorClassName`, `size`, `label`, `className` |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
@@ -103,6 +103,23 @@ Also exported: `nextSeatIndex`, `seatAngle`, `ellipsePoint`, `ringPoints`,
 `SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `CardSize`, `Point`,
 `Layout`, `LayoutOptions`, `SeatLayout`, `ChipProps`, `ChipStackProps`,
 `ChipSize`, `Denomination`, `ChipStackEntry`.
+
+### Amounts and units
+
+Nothing here attaches a unit for you. `Pot` renders a plain, locale-grouped
+number and `ChipStack` breaks an amount into chips; neither decides that your
+numbers are big blinds, dollars or points, because that is a game rule and this
+is generic UI.
+
+`formatBB(amount, bb)` is an opt-in poker helper. Pass the big blind — the
+exported `BB = 20` is that helper's own default, not something a component
+applies behind your back:
+
+```tsx
+<Pot amount={1234} />                                  {/* 1,234      */}
+<Pot amount={1234} format={formatBB} />                {/* 61.7 BB    */}
+<Pot amount={1234} format={(n) => formatBB(n, 100)} /> {/* 12.3 BB    */}
+```
 
 ### Chips
 
@@ -169,7 +186,10 @@ Two things to know:
   the ring and shrinks the frames uniformly (never below 50%) until `seatGap` is
   honoured, so 9–10 seat tables never crowd. That needs `renderSeat`, because it
   is the only form that can size the frames — `renderSeat` receives the laid-out
-  box as its third argument:
+  box as its third argument. The same mechanism is why 11–16 seats lay out at all
+  (measured: 11 → 126×139 frames, 16 → 80×88); past roughly 16 the frames sit on
+  the 50% floor and overlap, so `seatCount` is not clamped above but it is not
+  magic either:
 
   ```tsx
   <CardTable

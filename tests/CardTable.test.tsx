@@ -21,13 +21,21 @@ describe("CardTable — seats", () => {
     }
   });
 
-  it("clamps seatCount to 2–10", () => {
-    expect(render(<CardTable seatCount={1} renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(
-      '[data-part="seat"]',
-    )).toHaveLength(2);
-    expect(render(<CardTable seatCount={40} renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(
-      '[data-part="seat"]',
-    )).toHaveLength(10);
+  it("renders the seat count it was given, without clamping the top end", () => {
+    // 12 used to be silently rendered as 10, even though the ring lays it out fine
+    for (const n of [11, 12, 16]) {
+      const { container, unmount } = render(<CardTable seatCount={n} renderSeat={(i) => <div>{i}</div>} />);
+      expect(container.querySelectorAll('[data-part="seat"]'), `${n} seats`).toHaveLength(n);
+      unmount();
+    }
+  });
+
+  it("still guards the bottom end, where there is no sensible layout", () => {
+    for (const n of [0, -3, NaN]) {
+      const { container, unmount } = render(<CardTable seatCount={n} renderSeat={(i) => <div>{i}</div>} />);
+      expect(container.querySelectorAll('[data-part="seat"]'), `seatCount=${String(n)}`).toHaveLength(1);
+      unmount();
+    }
   });
 
   it("skips null entries in the `seats` array but keeps the other indices in place", () => {

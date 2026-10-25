@@ -78,7 +78,7 @@ describe("minSeatSeparation", () => {
   });
 });
 
-describe("seat crowding across 2–10 seats", () => {
+describe("seat crowding across the seat counts", () => {
   it("never overlaps at the default frame size, and stays above DEFAULT_SEAT_GAP", () => {
     const measured: Record<number, number> = {};
     for (const count of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -125,6 +125,24 @@ describe("seat crowding across 2–10 seats", () => {
     expect(minSeatSeparation(roomy.seats)).toBeGreaterThanOrEqual(48);
     expect(roomy.seatW).toBeLessThan(tight.seatW);
     expect(roomy.seatH).toBeLessThan(tight.seatH);
+  });
+
+  it("lays out 11–16 seats without overlapping, and says where it gives up", () => {
+    // The auto-shrink is what makes these possible, so the seatGap has to be the
+    // real one - seatGap: 0 would disable the shrink and leave 160px frames.
+    for (const count of [11, 12, 14, 16]) {
+      const l = layoutSeats({ ...base, count, seatGap: DEFAULT_SEAT_GAP });
+      expect(l.seatW, `${count} seats`).toBeLessThan(160);
+      expect(l.seatW, `${count} seats`).toBeGreaterThanOrEqual(Math.round(160 * 0.5));
+      expect(minSeatSeparation(l.seats), `${count} seats`).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not pretend it can fit an unbounded number of seats", () => {
+    // the documented limit: past ~16 the frames sit on the 50% floor and overlap
+    const huge = layoutSeats({ ...base, count: 20, seatGap: DEFAULT_SEAT_GAP });
+    expect(huge.seatW).toBe(Math.round(160 * 0.5));
+    expect(minSeatSeparation(huge.seats)).toBeLessThan(0);
   });
 
   it("treats seatGap <= 0 as disabled", () => {

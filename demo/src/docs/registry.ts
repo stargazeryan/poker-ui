@@ -70,7 +70,7 @@ export const COMPONENTS: ComponentDoc[] = [
     summary:
       "A responsive, game-agnostic table. It lays seats, bets and the felt out on one ellipse inside a fixed design box, then scales that box to fit the container.",
     props: [
-      { name: "seatCount", type: "number", default: "6", description: "Number of seats, clamped to 2–10." },
+      { name: "seatCount", type: "number", default: "6", description: "Number of seats. No upper limit: the ring shrinks the frames to fit, so 11–16 lay out fine and past ~16 they overlap." },
       {
         name: "seats",
         type: "(ReactNode | null)[]",
@@ -208,8 +208,9 @@ export const COMPONENTS: ComponentDoc[] = [
       {
         name: "format",
         type: "(amount: number) => string",
-        default: "formatBB",
-        description: "Formatter for the amount. Defaults to Big-Blind formatting against `BB = 20`.",
+        default: "plain number",
+        description:
+          "Formatter for the amount. Defaults to a locale-grouped plain number: the library does not know whether your numbers are chips, dollars, big blinds or points, so it does not attach a unit. `formatBB(amount, bb)` is the opt-in poker helper.",
       },
       { name: "animate", type: "boolean", default: "true", description: "Count up smoothly when the amount changes." },
       { name: "className", type: "string", description: "Extra classes." },

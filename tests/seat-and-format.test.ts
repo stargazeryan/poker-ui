@@ -62,4 +62,11 @@ describe("formatBB", () => {
   it("keeps the sign", () => {
     expect(formatBB(-BB * 3)).toBe("-3 BB");
   });
+
+  it("takes the big blind as an argument, because 20 is rarely right", () => {
+    expect(formatBB(240, 100)).toBe("2.4 BB");
+    expect(formatBB(200, 100)).toBe("2 BB");
+    expect(formatBB(240, 1)).toBe("240 BB");
+    expect(formatBB(240)).toBe(formatBB(240, BB));
+  });
 });
