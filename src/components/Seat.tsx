@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../cn";
+import { DEFAULT_SEAT_H, DEFAULT_SEAT_W } from "../layout";
+import { useSeatSize } from "./seatSize";
 
 export interface SeatProps {
   /** Turn/active highlight (generic). Animated by default. */
@@ -37,7 +39,13 @@ export interface SeatProps {
   /** Slot: floating content centered above the top edge (e.g. D/SB/BB badges). */
   topCenter?: ReactNode;
 
+  /**
+   * Frame width. Defaults to the size the surrounding `CardTable` laid out for
+   * this seat, or 160 outside a table — the table is the one that knows how much
+   * room the ring has.
+   */
   width?: number;
+  /** Frame height. Defaults to the laid-out size, or 176 outside a table. */
   height?: number;
   className?: string;
   /** Extra classes for the inner frame, to override visuals. */
@@ -69,12 +77,16 @@ export function Seat({
   topLeft,
   topRight,
   topCenter,
-  width = 160,
-  height = 176,
+  width,
+  height,
   className,
   frameClassName,
   frameStyle,
 }: SeatProps) {
+  const laidOut = useSeatSize();
+  const frameWidth = width ?? laidOut?.width ?? DEFAULT_SEAT_W;
+  const frameHeight = height ?? laidOut?.height ?? DEFAULT_SEAT_H;
+
   const activeClass = animated
     ? "border-gold animate-turn-glow"
     : "border-gold shadow-[0_0_18px_color-mix(in_oklab,var(--color-gold)_50%,transparent)]";
@@ -90,7 +102,7 @@ export function Seat({
         : undefined;
 
   return (
-    <div className={cn("relative flex flex-col items-center", className)} style={{ width }}>
+    <div className={cn("relative flex flex-col items-center", className)} style={{ width: frameWidth }}>
       {topCenter !== undefined && (
         <div className="absolute -top-2 left-1/2 z-20 flex -translate-x-1/2 gap-1">{topCenter}</div>
       )}
@@ -111,7 +123,7 @@ export function Seat({
               }
             : undefined
         }
-        style={{ width, height, ...frameStyle }}
+        style={{ width: frameWidth, height: frameHeight, ...frameStyle }}
         className={cn(
           "relative flex flex-col items-center justify-between gap-1 rounded-2xl border bg-neutral-900/80 p-2 text-neutral-100 transition",
           "border-neutral-700",

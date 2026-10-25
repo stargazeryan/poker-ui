@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { CardTable } from "../src/components/CardTable";
+import {
+  CardTable,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DESIGN_H,
+  DESIGN_W,
+} from "../src/components/CardTable";
+import { Seat } from "../src/components/Seat";
+import { layoutSeats } from "../src/layout";
 import { setElementSize } from "./setup";
 
 const insetPx = (el: HTMLElement): { top: number; right: number; bottom: number; left: number } => ({
@@ -91,6 +101,66 @@ describe("CardTable — seats", () => {
     expect(new Set(sizes).size).toBe(1);
     expect(sizes[0]).toBeLessThan(200);
     expect(sizes[0]).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe("the seat frame size has one source", () => {
+  it("tells a bare Seat the size it laid out, with no props threaded through", () => {
+    const { container } = render(
+      <CardTable seatCount={10} seatWidth={200} seatHeight={220} renderSeat={() => <Seat />} />,
+    );
+    // what the ring actually computed
+    const expected = layoutSeats({
+      count: 10,
+      designWidth: DESIGN_W,
+      designHeight: DESIGN_H,
+      marginX: DEFAULT_MARGIN_X,
+      marginY: DEFAULT_MARGIN_Y,
+      feltGap: DEFAULT_FELT_GAP,
+      seatWidth: 200,
+      seatHeight: 220,
+      seatGap: DEFAULT_SEAT_GAP,
+      startAngle: 90,
+    });
+
+    // Seat's root carries the width; the inner frame carries the height.
+    const wrapper = container.querySelector('[data-seat="0"]') as HTMLElement;
+    const root = wrapper.firstElementChild as HTMLElement;
+    const frame = [...wrapper.querySelectorAll("div")].find(
+      (el) => (el as HTMLElement).style.height !== "",
+    ) as HTMLElement;
+
+    expect(parseFloat(root.style.width)).toBe(expected.seatW);
+    expect(parseFloat(frame.style.height)).toBe(expected.seatH);
+    expect(expected.seatW).toBeLessThan(200);
+  });
+
+  it("shrinks the ring for a seats array too, now that the size is shared", () => {
+    const { container } = render(
+      <CardTable
+        seatCount={10}
+        seatWidth={200}
+        seatHeight={220}
+        seats={Array.from({ length: 10 }, (_, i) => <div key={i}>{i}</div>)}
+      />,
+    );
+    // seat 0 sits directly below the centre, so left = cx - seatW / 2
+    const left = parseFloat((container.querySelector('[data-seat="0"]') as HTMLElement).style.left);
+    expect(2 * (DESIGN_W / 2 - left)).toBeLessThan(200);
+  });
+
+  it("still lets an explicit width win", () => {
+    const { container } = render(
+      <CardTable seatCount={10} renderSeat={() => <Seat width={123} height={45} />} />,
+    );
+    const wrapper = container.querySelector('[data-seat="0"]') as HTMLElement;
+    const root = wrapper.firstElementChild as HTMLElement;
+    const frame = [...wrapper.querySelectorAll("div")].find(
+      (el) => (el as HTMLElement).style.height !== "",
+    ) as HTMLElement;
+
+    expect(root.style.width).toBe("123px");
+    expect(frame.style.height).toBe("45px");
   });
 });
 

@@ -68,6 +68,40 @@ describe("PlayingCard", () => {
   });
 });
 
+describe("cards announce themselves", () => {
+  it("names the card instead of reading out its fragments", () => {
+    const face = render(<PlayingCard card="As" size="md" />);
+    expect(face.container.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("Ace of spades");
+    const small = render(<PlayingCard card="10h" size="sm" />);
+    expect(small.container.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("Ten of hearts");
+  });
+
+  it("lets the caller override the name, and forwards it to the back", () => {
+    expect(
+      render(<PlayingCard card="As" label="the river card" />).container
+        .querySelector('[role="img"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("the river card");
+    expect(
+      render(<PlayingCard card={null} label="opponent 1" />).container
+        .querySelector('[role="img"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("opponent 1");
+  });
+
+  it("names a face-down card by default", () => {
+    expect(render(<CardBack />).container.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe(
+      "face-down card",
+    );
+  });
+
+  it("does not pretend to know a card code it cannot read", () => {
+    expect(
+      render(<PlayingCard card="xyz" />).container.querySelector('[role="img"]')?.getAttribute("aria-label"),
+    ).toBe("xyz");
+  });
+});
+
 describe("HoleCards", () => {
   it("renders one wrapper per card and staggers the deal animation", () => {
     const { container } = render(<HoleCards cards={["As", "Kh"]} size="sm" />);

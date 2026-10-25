@@ -138,7 +138,7 @@ export const COMPONENTS: ComponentDoc[] = [
         type: "number",
         default: "24",
         description:
-          "Minimum clearance between neighbouring frames. Seats shrink uniformly (never below 50%) until it is honoured; `0` disables it. Only applies when `renderSeat` is used.",
+          "Minimum clearance between neighbouring frames. Seats shrink uniformly (never below 50%) until it is honoured; `0` disables it. It applies to every seat inside the table now: CardTable hands each Seat its frame size through context, so the `seats` array form shrinks too.",
       },
       { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
       { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
@@ -178,8 +178,14 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Render a default 👑 in the top-left corner when `isWinner` (an explicit `topLeft` wins).",
       },
       { name: "onClick", type: "() => void", description: "Makes the frame a keyboard-accessible button." },
-      { name: "width", type: "number", default: "160", description: "Frame width. CardTable hands you the laid-out size in `box`." },
-      { name: "height", type: "number", default: "176", description: "Frame height." },
+      {
+        name: "width",
+        type: "number",
+        default: "laid-out size",
+        description:
+          "Frame width. Defaults to what the surrounding CardTable laid out — it knows how much room the ring has — or 160 outside a table.",
+      },
+      { name: "height", type: "number", default: "laid-out size", description: "Frame height. Same default as `width`." },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
       { name: "frameClassName", type: "string", description: "Extra classes on the inner frame, to override visuals." },
       { name: "frameStyle", type: "CSSProperties", description: "Inline styles for the inner frame." },
@@ -283,6 +289,12 @@ export const COMPONENTS: ComponentDoc[] = [
         default: '"md"',
         description: "`xs`/`sm` show a single larger centred index; `md`/`lg` add the rotated corner index and centre suit.",
       },
+      {
+        name: "label",
+        type: "string",
+        description:
+          'Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather than the fragments "A" and "♠" a screen reader would otherwise read out. A null card forwards it to CardBack.',
+      },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -294,6 +306,7 @@ export const COMPONENTS: ComponentDoc[] = [
       "The face-down card: a dark red gradient, a gold rosette drawn as inline SVG, and a themed border. This is what PlayingCard renders for a null card.",
     props: [
       { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
+      { name: "label", type: "string", default: '"face-down card"', description: "Accessible name." },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },

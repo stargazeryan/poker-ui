@@ -93,16 +93,25 @@ export function Table() {
 | `CardBack` | `size`, `className` |
 | `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true), `slots` (fixed slot count) |
 
-Also exported: `nextSeatIndex`, `seatAngle`, `ellipsePoint`, `ringPoints`,
-`cn`, `formatBB`, `BB`, `parseCard`, `getSuitSymbol`, the layout helpers
-`layoutSeats`, `fitSeatScale`, `minSeatSeparation`, `seatPoint`, `tableRadii`,
-`seatRingRadii`, `SEAT_SHRINK_FLOOR`, the size constants `DESIGN_W`, `DESIGN_H`,
-`DEFAULT_MARGIN_X`, `DEFAULT_MARGIN_Y`, `DEFAULT_FELT_GAP`, `DEFAULT_BET_SCALE`,
-`DEFAULT_SEAT_GAP`, the chip helpers `chipBreakdown`, `chipsTotal`, `chipCount`,
-`DEFAULT_DENOMINATIONS`, and the types
-`SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `CardSize`, `Point`,
-`Layout`, `LayoutOptions`, `SeatLayout`, `ChipProps`, `ChipStackProps`,
-`ChipSize`, `Denomination`, `ChipStackEntry`.
+Everything the components do is also available as a pure function, one module per
+concern:
+
+| Module | Exports |
+| --- | --- |
+| `geometry` | `seatAngle`, `ellipsePoint`, `ringPoints` |
+| `layout` | `layoutSeats`, `fitSeatScale`, `minSeatSeparation`, `seatPoint`, `tableRadii`, `seatRingRadii`, `ellipseBox`, `SEAT_SHRINK_FLOOR`, `RIM_GAP`, `GLOW_GAP`, `DESIGN_W`, `DESIGN_H`, `DEFAULT_MARGIN_X`, `DEFAULT_MARGIN_Y`, `DEFAULT_FELT_GAP`, `DEFAULT_BET_SCALE`, `DEFAULT_SEAT_GAP`, `DEFAULT_SEAT_W`, `DEFAULT_SEAT_H` |
+| `cards` | `parseCard`, `describeCard`, `getRankName`, `getSuitName`, `getSuitSymbol`, `isRedSuit`, `isKnownSuit` |
+| `chips` | `chipBreakdown`, `chipsTotal`, `chipCount`, `chipSpotColor`, `DEFAULT_DENOMINATIONS` |
+| `color` | `parseColor`, `relativeLuminance`, `flatten`, `contrastRatio`, `mostVisible` |
+| `sizes` | `SIZES` |
+| `motion` | `COUNT_UP_MS`, `DEAL_STAGGER_MS`, `FLIP_STAGGER_MS` |
+| misc | `cn`, `nextSeatIndex`, `formatBB`, `BB` |
+
+Types: `SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `PlayingCardProps`,
+`CardBackProps`, `HoleCardsProps`, `CommunityCardsProps`, `ChipProps`,
+`ChipStackProps`, `CardSize`, `ChipSize`, `Size`, `Point`, `Layout`,
+`LayoutOptions`, `SeatLayout`, `EllipseBox`, `Rgba`, `ParsedCard`,
+`Denomination`, `ChipStackEntry`.
 
 ### Amounts and units
 
@@ -184,9 +193,10 @@ Two things to know:
 - **Seats shrink to keep their distance.** At 160×176, a 6-seat ring leaves
   161px between neighbours but a 10-seat ring only 25.6px. `CardTable` measures
   the ring and shrinks the frames uniformly (never below 50%) until `seatGap` is
-  honoured, so 9–10 seat tables never crowd. That needs `renderSeat`, because it
-  is the only form that can size the frames — `renderSeat` receives the laid-out
-  box as its third argument. The same mechanism is why 11–16 seats lay out at all
+  honoured, so 9–10 seat tables never crowd. Every `Seat` inside the table is
+  told the laid-out size through context, so this works whether you pass
+  `renderSeat` or a `seats` array; `renderSeat` also receives the box as its third
+  argument if you want it. The same mechanism is why 11–16 seats lay out at all
   (measured: 11 → 126×139 frames, 16 → 80×88); past roughly 16 the frames sit on
   the 50% floor and overlap, so `seatCount` is not clamped above but it is not
   magic either:

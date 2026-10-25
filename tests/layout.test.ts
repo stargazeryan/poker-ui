@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_BET_SCALE,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
 } from "../src/components/CardTable";
+import { GLOW_GAP, RIM_GAP } from "../src/layout";
 import { minSeatSeparation, layoutSeats, type LayoutOptions } from "../src/layout";
 
 const base: LayoutOptions = {
@@ -55,6 +57,41 @@ describe("tableRadii / layoutSeats — design box", () => {
         }
       }
     }
+  });
+});
+
+describe("every drawn ellipse comes from one place", () => {
+  it("derives the boxes from the same centre and radii", () => {
+    const l = layoutSeats(base);
+    const cx = base.designWidth / 2;
+    const cy = base.designHeight / 2;
+
+    expect(l.boxes.table.top).toBeCloseTo(cy - l.tableRy, 6);
+    expect(l.boxes.table.left).toBeCloseTo(cx - l.tableRx, 6);
+    // symmetric
+    expect(l.boxes.table.right).toBeCloseTo(l.boxes.table.left, 6);
+    expect(l.boxes.table.bottom).toBeCloseTo(l.boxes.table.top, 6);
+    // felt, rim and glow are the table inset by their own gap
+    expect(l.boxes.felt.top).toBeCloseTo(l.boxes.table.top + base.feltGap, 6);
+    expect(l.boxes.felt.left).toBeCloseTo(l.boxes.table.left + base.feltGap, 6);
+    expect(l.boxes.rim.top).toBeCloseTo(l.boxes.table.top + RIM_GAP, 6);
+    expect(l.boxes.glow.top).toBeCloseTo(l.boxes.table.top + GLOW_GAP, 6);
+  });
+
+  it("keeps the betting line and the bet radii telling the same story", () => {
+    // the bug this replaced: the line was drawn from a constant while the chips
+    // were placed from a prop, so they drifted apart
+    const l = layoutSeats({ ...base, betRadiusScale: 0.85 });
+    expect(l.betRx).toBeCloseTo(l.tableRx * 0.85, 6);
+    expect(l.betRy).toBeCloseTo(l.tableRy * 0.85, 6);
+    expect(l.boxes.bettingLine.top).toBeCloseTo(base.designHeight / 2 - l.betRy, 6);
+    expect(l.boxes.bettingLine.left).toBeCloseTo(base.designWidth / 2 - l.betRx, 6);
+  });
+
+  it("defaults and clamps betRadiusScale in the layout, not in the component", () => {
+    expect(layoutSeats(base).betRx).toBeCloseTo(layoutSeats(base).tableRx * DEFAULT_BET_SCALE, 6);
+    expect(layoutSeats({ ...base, betRadiusScale: 9 }).betRx).toBeCloseTo(layoutSeats(base).tableRx, 6);
+    expect(layoutSeats({ ...base, betRadiusScale: 0 }).betRx).toBeCloseTo(layoutSeats(base).tableRx * 0.2, 6);
   });
 });
 

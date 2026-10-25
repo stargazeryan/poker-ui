@@ -27,13 +27,18 @@ const LAYOUT_EXPORTS = [
   { name: "seatAngle(index, seatCount, startAngle?)", type: "number", description: "Ring angle of a seat, in degrees. Seat 0 sits at startAngle (default 90°, directly below the centre)." },
   { name: "ellipsePoint(cx, cy, rx, ry, angleDeg)", type: "Point", description: "Point on an ellipse at an angle. Screen coordinates, so 90° is below the centre." },
   { name: "ringPoints(count, cx, cy, rx, ry, startAngle?)", type: "Point[]", description: "`count` evenly spaced points on an ellipse — handy for any ring, not just seats." },
-  { name: "layoutSeats(options)", type: "Layout", description: "The full seat layout for a design box: table radii, seat ring, the frame size after auto-shrink, and every seat centre." },
+  { name: "layoutSeats(options)", type: "Layout", description: "Everything the table draws for one configuration: every radius, the frame size after auto-shrink, every seat centre, and `boxes` (table / felt / rim / glow / bettingLine) ready to spread onto an absolutely-positioned element. The component computes no geometry of its own." },
+  { name: "ellipseBox(dw, dh, rx, ry)", type: "EllipseBox", description: "Turn radii into the inset box of an absolutely-positioned ellipse — the one place that conversion happens." },
   { name: "minSeatSeparation(seats)", type: "number", description: "Smallest gap between any two seat frames. Negative means they overlap." },
   { name: "fitSeatScale(options)", type: "number", description: "The uniform scale the auto-shrink settles on for a given configuration." },
   { name: "tableRadii(dw, dh, marginX, marginY)", type: "{ rx, ry }", description: "Radii of the table ellipse for a design box and rail inset." },
   { name: "seatRingRadii(dw, dh, tableRx, tableRy, seatW, seatH, feltGap)", type: "{ rx, ry }", description: "Radii of the seat ring, clamped so frames stay inside the design box." },
   { name: "seatPoint(index, count, cx, cy, ringRx, ringRy, startAngle?)", type: "Point", description: "Centre of a seat on the ring." },
   { name: "SEAT_SHRINK_FLOOR", type: "0.5", description: "How far the auto-shrink will go before it gives up." },
+  { name: "RIM_GAP / GLOW_GAP", type: "6 / 2", description: "How far inside the rail the rim highlight and the your-turn glow sit, in design-space px." },
+  { name: "DEFAULT_SEAT_W / DEFAULT_SEAT_H", type: "160 / 176", description: "The default preferred seat frame size, and the fallback a Seat uses outside a table." },
+  { name: "describeCard(card)", type: "string", description: 'The shared way to say a card out loud: "As" → "Ace of spades", null → "face-down card", and an unreadable code is returned as-is rather than invented. PlayingCard and CardBack use it for their accessible name.' },
+  { name: "getRankName / getSuitName / getSuitSymbol / isRedSuit / isKnownSuit", type: "string | boolean", description: "The rest of the card vocabulary, shared so no call site has to invent its own." },
 ];
 
 function GeometryPlayground() {

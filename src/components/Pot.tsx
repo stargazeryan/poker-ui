@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
+import { COUNT_UP_MS } from "../motion";
 
 /**
  * The default rendering of an amount: the number, grouped by the locale, with no
@@ -50,7 +51,7 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
       return;
     }
     let raf = 0;
-    const dur = 500;
+    const dur = COUNT_UP_MS;
     // Time the animation off the rAF timestamps themselves and never against
     // `performance.now()`: that is a second clock with a different origin, and
     // its skew against the rAF clock is unbounded. Mixing them made `t`

@@ -1,7 +1,34 @@
 import { useRef, useLayoutEffect, useState, useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
 import { ellipsePoint, seatAngle } from "../geometry";
-import { layoutSeats } from "../layout";
+import {
+  DEFAULT_BET_SCALE,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DEFAULT_SEAT_H,
+  DEFAULT_SEAT_W,
+  DESIGN_H,
+  DESIGN_W,
+  layoutSeats,
+  type EllipseBox,
+} from "../layout";
+import { SeatSizeContext } from "./seatSize";
+
+/*
+ * The design constants live in `layout.ts` with the rest of the geometry. They
+ * are re-exported here so imports from this module keep working.
+ */
+export {
+  DEFAULT_BET_SCALE,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DESIGN_H,
+  DESIGN_W,
+} from "../layout";
 
 /** Geometry CardTable laid a seat frame out for, handed to `renderSeat`. */
 export interface SeatBox {
@@ -110,18 +137,6 @@ export interface CardTableProps {
   className?: string;
 }
 
-/** Default design space. */
-export const DESIGN_W = 1200;
-export const DESIGN_H = 900;
-/** Rail inset as a fraction of the design box (164/1200, 196/900). */
-export const DEFAULT_MARGIN_X = 164 / DESIGN_W;
-export const DEFAULT_MARGIN_Y = 196 / DESIGN_H;
-/** Gap between the rail and the felt, in design-space px. */
-export const DEFAULT_FELT_GAP = 11;
-/** Default radius of the bet ring, as a fraction of the table radius. */
-export const DEFAULT_BET_SCALE = 0.72;
-/** Default minimum clearance between neighbouring seat frames. */
-export const DEFAULT_SEAT_GAP = 24;
 /** Aspect range `fit="container"` will not go outside of. */
 const MIN_FIT_ASPECT = 0.5;
 const MAX_FIT_ASPECT = 2.5;
@@ -148,8 +163,8 @@ export function CardTable({
   winnerSeats = [],
   confetti = true,
   confettiColors = DEFAULT_CONFETTI_COLORS,
-  seatWidth = 160,
-  seatHeight = 176,
+  seatWidth = DEFAULT_SEAT_W,
+  seatHeight = DEFAULT_SEAT_H,
   seatGap = DEFAULT_SEAT_GAP,
   designWidth = DESIGN_W,
   designHeight = DESIGN_H,
@@ -179,9 +194,6 @@ export function CardTable({
     return () => ro.disconnect();
   }, []);
 
-  // The seat frames can only be sized when the caller renders them for us.
-  const canShrinkSeats = renderSeat !== undefined;
-
   const geo = useMemo(() => {
     const dh = designHeight;
     const dw =
@@ -198,8 +210,11 @@ export function CardTable({
       feltGap,
       seatWidth,
       seatHeight,
-      seatGap: canShrinkSeats ? seatGap : 0,
+      // Always applied. Every Seat inside the table is told its frame size
+      // through context, so the shrink is no longer limited to `renderSeat`.
+      seatGap,
       startAngle,
+      betRadiusScale,
     });
 
     const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh) : 1;
@@ -216,33 +231,35 @@ export function CardTable({
     seatGap,
     startAngle,
     fit,
-    canShrinkSeats,
+    betRadiusScale,
     box.w,
     box.h,
   ]);
 
   const { designW, designH, scale, layout } = geo;
-  const { tableRx, tableRy, cx, cy, seatW, seatH } = layout;
-
-  const betScale = Math.min(1, Math.max(0.2, betRadiusScale));
-  const betRx = tableRx * betScale;
-  const betRy = tableRy * betScale;
+  const { cx, cy, seatW, seatH, betRx, betRy, boxes } = layout;
   const hasBets = bets !== undefined || renderBet !== undefined;
 
-  // Explicit top/right/bottom/left rather than the `inset` shorthand: it is
-  // what every browser and CSSOM implementation (incl. jsdom) agrees on.
-  const insetOf = (dy: number, dx: number) => ({
-    top: `${dy.toFixed(2)}px`,
-    right: `${dx.toFixed(2)}px`,
-    bottom: `${dy.toFixed(2)}px`,
-    left: `${dx.toFixed(2)}px`,
+  /*
+   * Every ellipse comes from `layoutSeats` as an inset box, so this component
+   * computes no geometry of its own. The betting line in particular used to be
+   * derived here from a module constant while the chips were positioned from the
+   * `betRadiusScale` prop, which is how the two drifted apart.
+   *
+   * Explicit top/right/bottom/left rather than the `inset` shorthand: it is what
+   * every browser and CSSOM implementation (incl. jsdom) agrees on.
+   */
+  const px = (b: EllipseBox) => ({
+    top: `${b.top}px`,
+    right: `${b.right}px`,
+    bottom: `${b.bottom}px`,
+    left: `${b.left}px`,
   });
-  const tableFrameInset = insetOf(designH / 2 - tableRy, designW / 2 - tableRx);
-  const feltInset = insetOf(designH / 2 - tableRy + feltGap, designW / 2 - tableRx + feltGap);
-  const rimInset = insetOf(designH / 2 - tableRy + 6, designW / 2 - tableRx + 6);
-  const ringInset = insetOf(designH / 2 - tableRy + 2, designW / 2 - tableRx + 2);
-  // Follows `betRadiusScale`, so the chips always land on the drawn line.
-  const betLineInset = insetOf(designH / 2 - betRy, designW / 2 - betRx);
+  const tableFrameInset = px(boxes.table);
+  const feltInset = px(boxes.felt);
+  const rimInset = px(boxes.rim);
+  const ringInset = px(boxes.glow);
+  const betLineInset = px(boxes.bettingLine);
 
   return (
     <div
@@ -320,24 +337,32 @@ export function CardTable({
 
           {/* seats */}
           <div className="absolute inset-0 z-20">
-            {layout.seats.map((seat) => {
-              const { index, x, y } = seat;
-              const isYou = index === yourSeatIndex;
-              const box: SeatBox = { index, isYou, x, y, width: seatW, height: seatH };
-              const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou, box) : null;
-              if (content === null) return null;
-              return (
-                <div
-                  key={index}
-                  data-part="seat"
-                  data-seat={index}
-                  className="absolute"
-                  style={{ left: `${x - seatW / 2}px`, top: `${y - seatH / 2}px` }}
-                >
-                  {content}
-                </div>
-              );
-            })}
+            {/*
+             * The context is what gives every `Seat` its frame size: one source
+             * for it (the ring this table computed) instead of CardTable's
+             * seatWidth and Seat's own width being two unrelated numbers that
+             * happen to share a default.
+             */}
+            <SeatSizeContext.Provider value={{ width: seatW, height: seatH }}>
+              {layout.seats.map((seat) => {
+                const { index, x, y } = seat;
+                const isYou = index === yourSeatIndex;
+                const box: SeatBox = { index, isYou, x, y, width: seatW, height: seatH };
+                const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou, box) : null;
+                if (content === null) return null;
+                return (
+                  <div
+                    key={index}
+                    data-part="seat"
+                    data-seat={index}
+                    className="absolute"
+                    style={{ left: `${x - seatW / 2}px`, top: `${y - seatH / 2}px` }}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
+            </SeatSizeContext.Provider>
           </div>
 
           {/* bets on the betting line (positioned toward the table center) */}

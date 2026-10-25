@@ -1,8 +1,13 @@
 import { useId, type ReactNode } from "react";
 import { cn } from "../cn";
 import { chipBreakdown, chipCount, chipSpotColor, DEFAULT_DENOMINATIONS, type Denomination } from "../chips";
+import { type ChipSize } from "../sizes";
 
-export type ChipSize = "sm" | "md" | "lg";
+/*
+ * Shares the package's size vocabulary, so a size added to `sizes.ts` is a
+ * compile error here until it is given a width.
+ */
+export type { ChipSize } from "../sizes";
 
 /** Chip width in px. Height is 0.625x that, so a chip sits on a table like a disc. */
 const CHIP_WIDTH: Record<ChipSize, number> = { sm: 22, md: 30, lg: 42 };

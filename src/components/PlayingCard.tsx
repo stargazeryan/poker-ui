@@ -1,6 +1,15 @@
 import { cn } from "../cn";
+import { describeCard, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "../cards";
+import { DEAL_STAGGER_MS, FLIP_STAGGER_MS } from "../motion";
+import { type CardSize } from "../sizes";
 
-export type CardSize = "xs" | "sm" | "md" | "lg";
+/*
+ * Card helpers are re-exported from here so imports from this module keep
+ * working; they live in `cards.ts` now, next to the naming they belong with.
+ */
+export { describeCard, getRankName, getSuitName, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "../cards";
+export type { ParsedCard } from "../cards";
+export type { CardSize } from "../sizes";
 
 const SIZE_CLASSES: Record<CardSize, string> = {
   xs: "w-8 h-11",
@@ -43,33 +52,9 @@ const BACK_EMBLEM_SIZE: Record<CardSize, number> = {
   lg: 42,
 };
 
-/** Parse a compact card code like "As", "10h", "kd" into rank + suit. */
-export function parseCard(card: string): { rank: string; suit: string } {
-  if (!card || card.length < 2) return { rank: "", suit: "" };
-  return { rank: card.slice(0, -1), suit: card.slice(-1) };
-}
-
-export function getSuitSymbol(suit: string): string {
-  switch (suit) {
-    case "s": return "♠";
-    case "h": return "♥";
-    case "d": return "♦";
-    case "c": return "♣";
-    default: return suit;
-  }
-}
-
 function getSuitClass(suit: string): string {
-  switch (suit) {
-    case "s":
-    case "c":
-      return "text-neutral-900";
-    case "h":
-    case "d":
-      return "text-red-600";
-    default:
-      return "";
-  }
+  if (isRedSuit(suit)) return "text-red-600";
+  return isKnownSuit(suit) ? "text-neutral-900" : "";
 }
 
 export interface PlayingCardProps {
@@ -77,6 +62,11 @@ export interface PlayingCardProps {
   card: string | null;
   /** xs / sm show a single, larger, centered index; md / lg show corner + center. */
   size?: CardSize;
+  /**
+   * Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather
+   * than the fragments "A" and "♠" a screen reader would otherwise read out.
+   */
+  label?: string;
   className?: string;
 }
 
@@ -87,8 +77,10 @@ const CARD_FACE = "relative bg-gradient-to-br from-white via-white to-neutral-10
  * breakpoints) so cards scale predictably inside any container. Small sizes
  * (xs / sm) show only a larger upright index, centered in the card.
  */
-export function PlayingCard({ card, size = "md", className }: PlayingCardProps) {
-  if (!card) return <CardBack size={size} className={className} />;
+export function PlayingCard({ card, size = "md", label, className }: PlayingCardProps) {
+  if (!card) return <CardBack size={size} className={className} label={label} />;
+
+  const name = label ?? describeCard(card);
 
   const { rank, suit } = parseCard(card);
   const suitSymbol = getSuitSymbol(suit);
@@ -98,7 +90,12 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
   // Small cards: rank centered in the top half, suit centered in the bottom half.
   if (!large) {
     return (
-      <div className={cn(SIZE_CLASSES[size], CARD_FACE, className)} style={{ aspectRatio: "10/14" }}>
+      <div
+        role="img"
+        aria-label={name}
+        className={cn(SIZE_CLASSES[size], CARD_FACE, className)}
+        style={{ aspectRatio: "10/14" }}
+      >
         <div className={cn("absolute inset-0 flex flex-col leading-none", suitClass)}>
           <div className="flex flex-1 items-center justify-center">
             <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
@@ -112,7 +109,12 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
   }
 
   return (
-    <div className={cn(SIZE_CLASSES[size], CARD_FACE, className)} style={{ aspectRatio: "10/14" }}>
+    <div
+      role="img"
+      aria-label={name}
+      className={cn(SIZE_CLASSES[size], CARD_FACE, className)}
+      style={{ aspectRatio: "10/14" }}
+    >
       <div className={cn("absolute top-[3px] left-[5px] flex flex-col items-center leading-none", suitClass)}>
         <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
         <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
@@ -130,6 +132,8 @@ export function PlayingCard({ card, size = "md", className }: PlayingCardProps) 
 
 export interface CardBackProps {
   size?: CardSize;
+  /** Accessible name. Defaults to "face-down card". */
+  label?: string;
   className?: string;
 }
 
@@ -149,9 +153,11 @@ function CardBackEmblem({ size }: { size: CardSize }) {
 }
 
 /** The face-down card back (dark red + gold rosette). */
-export function CardBack({ size = "md", className }: CardBackProps) {
+export function CardBack({ size = "md", label = "face-down card", className }: CardBackProps) {
   return (
     <div
+      role="img"
+      aria-label={label}
       className={cn(
         SIZE_CLASSES[size],
         "relative rounded-md p-[3px] overflow-hidden",
@@ -195,7 +201,7 @@ export function HoleCards({ cards, size = "lg", className, deal = true, dealKey 
         <div
           key={dealKey !== undefined ? `${dealKey}:${i}` : `${i}:${card ?? "back"}`}
           className={cn(deal && "animate-deal-in")}
-          style={deal ? { animationDelay: `${i * 100}ms` } : undefined}
+          style={deal ? { animationDelay: `${i * DEAL_STAGGER_MS}ms` } : undefined}
         >
           <PlayingCard card={card} size={size} />
         </div>
@@ -225,7 +231,7 @@ export function CommunityCards({ cards, size = "md", className, animated = true,
           {card ? (
             <div
               className={cn("h-full w-full", animated && "animate-card-flip")}
-              style={animated ? { animationDelay: `${i * 70}ms` } : undefined}
+              style={animated ? { animationDelay: `${i * FLIP_STAGGER_MS}ms` } : undefined}
             >
               <PlayingCard card={card} size={size} />
             </div>

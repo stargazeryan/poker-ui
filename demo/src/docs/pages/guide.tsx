@@ -250,16 +250,12 @@ const GAPS: Array<[string, string]> = [
     "A seat frame is a fixed size with no overflow handling. HoleCards at size=\"lg\" is 200px wide, wider than the default 160px frame, so it spills out.",
   ],
   [
-    "Accessibility is incomplete",
-    "PlayingCard has no accessible name (a screen reader reads the fragments \"A\" and \"♠\"), CardBack has none either, and Pot has no aria-live, so the count-up is silent. Suit colour is also the main cue at small sizes.",
+    "Accessibility is still incomplete",
+    "Cards and chips name themselves now (describeCard for the artwork, and the chip breakdown), but Pot has no aria-live so the count-up is silent to a screen reader, Seat's slots leave naming entirely to you, and the confetti is a purely visual reward. Suit colour is also the main cue at the small sizes, where there is no room for the suit letter.",
   ],
   [
     "Units are yours, and nothing checks them",
     "Pot renders a plain number by default and formatBB(amount, bb) is an opt-in poker helper, because a big blind is a game rule and this is generic UI. The cost is that nothing stops you showing big-blind amounts in one place and chip amounts in another on the same table: the library has no unit concept, deliberately, so it cannot catch that for you.",
-  ],
-  [
-    "The seats array isn't auto-shrunk",
-    "seatGap needs renderSeat, because that is the only form where the table can size the frames. If you build a seats array by hand, match Seat's width/height to CardTable's seatWidth/seatHeight yourself.",
   ],
   [
     "CardTable uses useLayoutEffect unconditionally",
@@ -296,7 +292,10 @@ export function KnownGaps() {
         ))}
       </div>
       <Row className="mt-4">
-        <Field label="fixed in this branch:" value="betting-line desync, dead theme tokens, +/- counter overshoot, deal replay" />
+        <Field
+          label="fixed in this branch:"
+          value="betting-line desync · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size"
+        />
       </Row>
     </>
   );
