@@ -1,0 +1,60 @@
+name: Release
+
+# Publishes on a version tag, using npm's OIDC "trusted publishing": GitHub mints
+# a short-lived token for this exact repo + workflow, so there is no npm token to
+# store, leak or rotate. `prepublishOnly` and check-release.mjs also run, so a
+# broken or mismatched package is refused before it reaches the registry.
+#
+# One-time setup on npmjs.com, under the package's Settings → Trusted Publisher:
+#   repository  stargazeryan/poker-ui
+#   workflow    release.yml
+# (I could not open npm's docs from this sandbox to re-check the exact fields —
+#  confirm them at docs.npmjs.com/trusted-publishers before the first release.)
+
+on:
+  push:
+    tags: ["v*"]
+  # A dress rehearsal: build and gate everything, publish nothing.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for trusted publishing + provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # npm >= 11.5.1 is what knows how to do the OIDC exchange; Node 24 ships it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci --include=dev
+
+      - name: Gate — nothing gets published from a red tree
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+          npm run test:consumer
+
+      - name: Tag and package.json must agree, and the tarball must be right
+        run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
+
+      # No NODE_AUTH_TOKEN: that is the point of trusted publishing.
+      - name: Publish with provenance
+        if: github.event_name == 'push'
+        run: npm publish --provenance --access public
+
+      - name: What just happened
+        run: |
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "manual run: everything was gated and the tarball checked, but nothing was published"
+          else
+            echo "published $(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          fi
