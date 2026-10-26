@@ -25,7 +25,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --include=dev
-      - run: npm run demo:build
+      # Don't publish a demo for a red build.
+      - run: npm run typecheck
+      - run: npm test
+      # docs:build compiles the package first, then builds the docs against
+      # dist/ rather than src/, so the deployed site exercises the real artefact.
+      - run: npm run docs:build
         env:
           PAGES_BASE: /poker-ui/
       - uses: actions/upload-pages-artifact@v3

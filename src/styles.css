@@ -9,22 +9,56 @@
  *   @source "../node_modules/@stargazeryan/poker-ui";
  *   @import "@stargazeryan/poker-ui/styles.css";
  *
- * The directives below add theme tokens and the keyframe animations the
- * components rely on.
+ * The `@theme` block below defines the design tokens the components actually
+ * consume, plus the keyframe animations they rely on.
+ *
+ * Theming: every visual token is referenced by the components, so overriding
+ * one in your own `@theme` block really does restyle the table:
+ *
+ *   @theme {
+ *     --color-felt: #0b3d2e;
+ *     --color-gold: #ffcc33;
+ *   }
+ *
+ * Note that Tailwind v4 only emits a theme variable when something references
+ * it, so tokens nothing uses (e.g. the `--color-chip-*` palette) only appear in
+ * your CSS once you use a matching utility such as `bg-chip-red`.
  */
 
 @theme {
+  /* ---- table ---- */
   --color-felt: #0f4d2e;
-  --color-felt-light: #1a6b3d;
-  --color-wood: #8b5e3c;
-  --color-wood-dark: #5d3f1f;
+  --color-felt-light: #23804b;
+  --color-felt-dark: #093b22;
+
+  --color-rail: #a5744a;
+  --color-rail-dark: #6b3f22;
+  --color-rail-deep: #38200f;
+
+  /* ---- accents ---- */
+  --color-gold: #f39c12;
+  --color-gold-light: #f0c04a;
+  --color-gold-glow: #ffd678;
+
+  /* ---- card back ---- */
+  --color-card-back: #5a0c18;
+  --color-card-back-light: #7a1020;
+  --color-card-back-dark: #3f0810;
+  --color-card-back-ink: #c9a24b;
+  --color-card-back-emblem: #f0c04a;
+
+  /* ---- chip palette (for consumers to build on) ---- */
   --color-chip-red: #c0392b;
   --color-chip-blue: #2980b9;
   --color-chip-green: #27ae60;
   --color-chip-black: #1a1a2e;
   --color-chip-white: #ecf0f1;
-  --color-gold: #f39c12;
 
+  /* ---- back-compat aliases (0.5.0 token names) ---- */
+  --color-wood: #a5744a;
+  --color-wood-dark: #6b3f22;
+
+  /* ---- animations ---- */
   --animate-card-deal: card-deal 0.35s ease-out both;
   --animate-card-flip: card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-deal-in: deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -34,102 +68,115 @@
   --animate-felt-shimmer: felt-shimmer 22s linear infinite;
   --animate-spotlight: spotlight-breathe 7s ease-in-out infinite;
   --animate-confetti: confetti 2s ease-in forwards;
-}
 
-@keyframes card-deal {
-  0% {
-    opacity: 0;
-    transform: translateY(-14px) rotateY(90deg) scale(0.8);
+  /*
+   * Keyframes live inside `@theme` so Tailwind emits each one only when the
+   * matching `--animate-*` token is actually used. Keeping them outside
+   * shipped all of them to every consumer.
+   */
+  @keyframes card-deal {
+    0% {
+      opacity: 0;
+      transform: translateY(-14px) rotateY(90deg) scale(0.8);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) rotateY(0) scale(1);
+    }
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0) rotateY(0) scale(1);
-  }
-}
 
-@keyframes card-flip {
-  0% {
-    opacity: 0;
-    transform: rotateY(90deg) scale(0.9);
+  @keyframes card-flip {
+    0% {
+      opacity: 0;
+      transform: rotateY(90deg) scale(0.9);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: rotateY(0deg) scale(1);
+    }
   }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: rotateY(0deg) scale(1);
-  }
-}
 
-@keyframes deal-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-18px) scale(0.85) rotate(-6deg);
+  @keyframes deal-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-18px) scale(0.85) rotate(-6deg);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1) rotate(0deg);
+    }
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1) rotate(0deg);
-  }
-}
 
-@keyframes bubble-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.6);
+  @keyframes bubble-pop {
+    0% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.6);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
-@keyframes turn-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.5), 0 0 16px rgba(243, 156, 18, 0.3);
+  @keyframes turn-glow {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 3px color-mix(in oklab, var(--color-gold) 50%, transparent),
+        0 0 16px color-mix(in oklab, var(--color-gold) 30%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 4px color-mix(in oklab, var(--color-gold) 95%, transparent),
+        0 0 34px color-mix(in oklab, var(--color-gold) 70%, transparent);
+    }
   }
-  50% {
-    box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.95), 0 0 34px rgba(243, 156, 18, 0.7);
-  }
-}
 
-@keyframes winner-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.9), 0 0 22px rgba(243, 156, 18, 0.5);
+  @keyframes winner-glow {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 3px color-mix(in oklab, var(--color-gold) 90%, transparent),
+        0 0 22px color-mix(in oklab, var(--color-gold) 50%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 4px var(--color-gold),
+        0 0 40px color-mix(in oklab, var(--color-gold) 85%, transparent);
+    }
   }
-  50% {
-    box-shadow: 0 0 0 4px rgba(243, 156, 18, 1), 0 0 40px rgba(243, 156, 18, 0.85);
-  }
-}
 
-@keyframes felt-shimmer {
-  0% {
-    background-position: -60% 50%;
+  @keyframes felt-shimmer {
+    0% {
+      background-position: -60% 50%;
+    }
+    100% {
+      background-position: 160% 50%;
+    }
   }
-  100% {
-    background-position: 160% 50%;
-  }
-}
 
-@keyframes spotlight-breathe {
-  0%,
-  100% {
-    opacity: 0.7;
+  @keyframes spotlight-breathe {
+    0%,
+    100% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 1;
+    }
   }
-  50% {
-    opacity: 1;
-  }
-}
 
-@keyframes confetti {
-  0% {
-    opacity: 1;
-    transform: translateY(-8px) rotate(0deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(280px) rotate(560deg);
+  @keyframes confetti {
+    0% {
+      opacity: 1;
+      transform: translateY(-8px) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(280px) rotate(560deg);
+    }
   }
 }
 

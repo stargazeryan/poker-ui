@@ -76,11 +76,11 @@ export function Seat({
   frameStyle,
 }: SeatProps) {
   const activeClass = animated
-    ? "border-amber-400 animate-turn-glow"
-    : "border-amber-400 shadow-[0_0_18px_rgba(243,156,18,0.5)]";
+    ? "border-gold animate-turn-glow"
+    : "border-gold shadow-[0_0_18px_color-mix(in_oklab,var(--color-gold)_50%,transparent)]";
   const winnerClass = animated
-    ? "border-amber-400 animate-winner-glow"
-    : "border-amber-400 shadow-[0_0_0_3px_rgba(243,156,18,0.9)]";
+    ? "border-gold animate-winner-glow"
+    : "border-gold shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)]";
 
   const effTopLeft =
     topLeft !== undefined
@@ -118,7 +118,7 @@ export function Seat({
           isActive && activeClass,
           isWinner && winnerClass,
           isDimmed && "opacity-50",
-          onClick && "cursor-pointer hover:border-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400",
+          onClick && "cursor-pointer hover:border-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
           frameClassName,
         )}
       >

@@ -37,6 +37,10 @@ theme CSS:
 
 > Without the `@source` line, the components render unstyled. Adjust the path to
 > wherever your `node_modules` lives.
+>
+> `npm run test:consumer` in this repo packs the package and builds a throwaway
+> app that follows these three lines literally, then asserts the utilities,
+> tokens and keyframes all made it into the output CSS.
 
 ## Usage
 
@@ -78,16 +82,22 @@ export function Table() {
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `seatWidth`, `seatHeight` |
-| `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName` |
+| `CardTable` | `seatCount` (2–10), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72, and the drawn betting line follows it), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
+| `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName`, `frameStyle` |
 | `Pot` | `amount`, `label`, `format`, `animate` (count-up, default true) |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
-| `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true) |
+| `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true), `dealKey` (change it to replay the deal for an unchanged hand) |
+| `CardBack` | `size`, `className` |
 | `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true), `slots` (fixed slot count) |
 
 Also exported: `nextSeatIndex`, `seatAngle`, `ellipsePoint`, `ringPoints`,
-`cn`, `formatBB`, `BB`, `parseCard`, `getSuitSymbol`, and the types
-`SeatProps`, `CardTableProps`, `PotProps`, `CardSize`, `Point`.
+`cn`, `formatBB`, `BB`, `parseCard`, `getSuitSymbol`, the layout helpers
+`layoutSeats`, `fitSeatScale`, `minSeatSeparation`, `seatPoint`, `tableRadii`,
+`seatRingRadii`, `SEAT_SHRINK_FLOOR`, the size constants `DESIGN_W`, `DESIGN_H`,
+`DEFAULT_MARGIN_X`, `DEFAULT_MARGIN_Y`, `DEFAULT_FELT_GAP`, `DEFAULT_BET_SCALE`,
+`DEFAULT_SEAT_GAP`, and the types
+`SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `CardSize`, `Point`,
+`Layout`, `LayoutOptions`, `SeatLayout`.
 
 ### Ellipse layout
 
@@ -112,6 +122,52 @@ ellipsePoint(300, 200, 120, 80, 90);    // { x: 300, y: 280 }
 ringPoints(4, 300, 200, 120, 80);       // 4 points, first directly below
 ```
 
+### Layout, seat size and responsiveness
+
+Everything is laid out in a fixed **design box** (1200×900 by default) which is
+then scaled to fit the container.
+
+| Prop | Default | Meaning |
+| --- | --- | --- |
+| `designWidth` / `designHeight` | `1200` / `900` | the design box |
+| `marginX` / `marginY` | `164/1200`, `196/900` | rail inset, as a **fraction** of the design box |
+| `feltGap` | `11` | felt inset from the rail, design-space px |
+| `seatWidth` / `seatHeight` | `160` / `176` | **preferred** seat frame size |
+| `seatGap` | `24` | minimum clearance between neighbouring frames |
+| `fit` | `"design"` | `"container"` derives the width from the container |
+
+Margins are proportional, so a custom design box stays in proportion, and the
+seat ring is clamped so frames are never clipped by the design box.
+
+Two things to know:
+
+- **`fit="container"` removes letterboxing.** With the default fit, a
+  phone-portrait container (e.g. 390×700) scales the 4:3 design box down and
+  wastes ~58% of the box — the table ends up tiny. `fit="container"` derives the
+  design width from the container's aspect ratio (clamped to 0.5–2.5) so the
+  table fills the box and the seats render much larger.
+- **Seats shrink to keep their distance.** At 160×176, a 6-seat ring leaves
+  161px between neighbours but a 10-seat ring only 25.6px. `CardTable` measures
+  the ring and shrinks the frames uniformly (never below 50%) until `seatGap` is
+  honoured, so 9–10 seat tables never crowd. That needs `renderSeat`, because it
+  is the only form that can size the frames — `renderSeat` receives the laid-out
+  box as its third argument:
+
+  ```tsx
+  <CardTable
+    seatCount={10}
+    seatGap={48}   // roomier; 0 disables the auto-shrink
+    renderSeat={(i, isYou, box) => (
+      <Seat width={box.width} height={box.height} header={<b>{i}</b>}>
+        <HoleCards cards={hands[i]} size="sm" />
+      </Seat>
+    )}
+  />
+  ```
+
+  `seatGap={0}` disables it; the `seats` array form is not auto-shrunk (pass
+  matching `width`/`height` to your `Seat`s).
+
 ### Sizes
 
 `xs` and `sm` cards keep only the **upright** corner index; `md` and `lg` also
@@ -132,7 +188,12 @@ Built-in game-feel (all **on by default**, each toggleable):
 | Your-turn edge glow | `CardTable` | omit `yourTurn` |
 | Winner confetti | `CardTable` | `confetti={false}` |
 
-All animations are disabled automatically when the user prefers reduced motion.
+All CSS animations are disabled automatically when the user prefers reduced
+motion. (The `Pot` count-up is a `requestAnimationFrame` loop, so it is *not*
+covered by that media query.)
+
+Animation tokens live in `@theme`, so Tailwind only ships the keyframes your app
+actually uses.
 
 ## "Whose turn is next?"
 
@@ -147,22 +208,80 @@ const next = nextSeatIndex(current, seatCount, { skip: (i) => players[i].out });
 
 ## Theming
 
-Override the tokens in your own `@theme` block, or pass `className` / `frameClassName`:
+Override any token in your own `@theme` block. Every token below is referenced
+by the components, so an override actually restyles them:
 
 ```css
 @theme {
   --color-felt: #0b3d2e;
-  --color-gold: #ffcc33;
+  --color-felt-light: #14563a;
+  --color-felt-dark: #062418;
+
+  --color-rail: #7a5230;
+  --color-rail-dark: #4d3119;
+  --color-rail-deep: #28190c;
+
+  --color-gold: #ffcc33;       /* turn/winner glow, pot, focus ring */
+  --color-gold-light: #ffe08a; /* ambient glow, backdrop */
+  --color-gold-glow: #fff0c2;  /* spotlight */
+
+  --color-card-back: #14315a;
+  --color-card-back-light: #1e4577;
+  --color-card-back-dark: #0b1d36;
+  --color-card-back-ink: #9fc0e8;
+  --color-card-back-emblem: #ffd98a;
 }
 ```
 
-## Demo
+Confetti has its own `confettiColors` prop rather than a token, because the
+colours go into inline styles that Tailwind's tree-shaking cannot see.
+
+There is also a `--color-chip-red|blue|green|black|white` palette for you to
+build your own chips on. Tokens nothing references — e.g. the chip palette and
+any animation you don't use — are not emitted, because Tailwind v4 only outputs
+theme variables that are used. Use a matching utility (say `bg-chip-red`) and it
+appears.
+
+Individual components also take `className` / `frameClassName`.
+
+The [docs site](demo/) has a live token editor that sets these custom properties
+on a wrapper, which is exactly what an override does document-wide.
+
+## Docs site
+
+The docs in `demo/` are the library's main documentation: a per-component site
+with live demos, expandable source, API tables and a live token editor, plus a
+[Known gaps](demo/src/docs/pages/guide.tsx) page listing what this library does
+*not* do yet.
+
+```bash
+npm run docs          # dev server (imports ../../src, HMR)
+npm run docs:build    # builds the package, then the docs against dist/
+```
+
+`docs:build` compiles the package first and then builds the site against
+`dist/index.js` rather than `src`, so the deployed site is running the artefact
+consumers actually get. It imports the package by its published name in both
+modes — never a relative path into `src`.
+
+Tests cover the docs too: `tests/docs.test.tsx` renders every route and fails if
+a page throws, and `tests/docs-api.test.ts` reads the real interfaces with the
+TypeScript compiler and fails if an API table drifts from the code.
+
+## Development
 
 ```bash
 npm install --include=dev
-npm run demo        # Vite dev server
-npm run demo:build  # static build
+
+npm run typecheck     # tsc --noEmit
+npm test              # vitest: unit, component, docs routes, docs-vs-types
+npm run build         # tsup -> dist (ESM + CJS + d.ts)
+
+npm run test:consumer # pack + install + build a real consumer app, assert the CSS
 ```
+
+`npm run demo` and `npm run demo:build` remain as aliases for `docs` and
+`docs:build`.
 
 ## License
 

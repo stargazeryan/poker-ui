@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --include=dev
+
+      # Types, unit tests and the package build are all things the old pipeline
+      # skipped, which is how a broken build shipped green.
+      #
+      # Typecheck deliberately runs before anything is built: a clean checkout
+      # has no dist/, and type checking must not depend on one (see the "paths"
+      # note in tsconfig.json). Do not reorder these to "fix" a resolution error.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the package
+        run: npm run build
+
+      - name: Check the published package from a real consumer app
+        run: npm run test:consumer
+
+      # Builds the docs site against dist/ (not src/), so the deployed site is
+      # itself evidence that the packed artefact works.
+      - name: Build the docs site from the packed package
+        run: npm run docs:build

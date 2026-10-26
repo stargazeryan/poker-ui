@@ -15,10 +15,13 @@ export interface NextSeatOptions {
  * seat is skipped.
  */
 export function nextSeatIndex(current: number, seatCount: number, opts: NextSeatOptions = {}): number {
-  const n = Math.max(1, Math.floor(seatCount));
+  // `seatCount` comes from game state, so guard against NaN / Infinity / <= 0
+  // rather than propagating NaN out of the modulo.
+  const floored = Math.floor(seatCount);
+  const n = Number.isFinite(floored) && floored > 0 ? floored : 1;
   const dir = opts.dir ?? 1;
   const skip = opts.skip;
-  const start = ((Math.floor(current) % n) + n) % n;
+  const start = (((Math.floor(current) || 0) % n) + n) % n;
 
   let i = start;
   for (let step = 0; step < n - 1; step++) {
