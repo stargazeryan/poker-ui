@@ -10,7 +10,12 @@
  *     the stylesheet, and none of the repo's own test/demo/script files. `files`
  *     in package.json is meant to guarantee this; this checks the guarantee.
  *
- * Usage: node scripts/check-release.mjs [tag-or-version]
+ * Usage: node scripts/check-release.mjs [tag-or-version] [--allow-published]
+ *
+ * `--allow-published` downgrades "this version already exists" from a failure to a
+ * notice. The release workflow passes it and decides for itself whether to
+ * publish, so that re-running a release whose upload already succeeded reports
+ * success instead of a red run that means the opposite.
  */
 
 import { readFileSync } from "node:fs";
@@ -27,7 +32,9 @@ const fail = (msg) => {
 };
 
 const pkg = JSON.parse(readFileSync(resolve(repo, "package.json"), "utf8"));
-const requested = process.argv[2];
+const positional = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
+const requested = positional[0];
+const allowPublished = process.argv.includes("--allow-published");
 
 console.log(`checking ${pkg.name}@${pkg.version}\n`);
 
@@ -47,7 +54,11 @@ const published = spawnSync("npm", ["view", `${pkg.name}@${pkg.version}`, "versi
   encoding: "utf8",
 });
 if (published.stdout.trim() === pkg.version) {
-  fail(`${pkg.version} is already published — bump the version (npm version minor)`);
+  if (allowPublished) {
+    ok(`${pkg.version} is already published — a re-run; nothing will be uploaded`);
+  } else {
+    fail(`${pkg.version} is already published — bump the version (npm version minor)`);
+  }
 } else {
   ok(`${pkg.version} is not published yet`);
 }

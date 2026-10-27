@@ -7,8 +7,9 @@ bumps are manual; publishing is either a command you run or a tag you push.
 
 `npm publish` refuses to overwrite a published version, so **the version must be
 bumped**. For 0.x, semver treats the middle number as the breaking one — this
-branch changes `Pot`'s default formatting and stops clamping `seatCount`, so it
-goes to **0.6.0**, not 0.6.1.
+branch changes `Pot`'s default formatting and stops clamping `seatCount`, which
+made it **0.6.0**, not 0.6.1. That bump is done: `package.json` says 0.6.0 and the
+tag `v0.6.0` exists.
 
 `dist/` is gitignored. Never publish without building: `prepublishOnly` runs the
 type check, the tests and `npm run build`, so `npm publish` cannot ship a stale or
@@ -89,18 +90,59 @@ npm i @stargazeryan/poker-ui@0.6.0 react react-dom vite @vitejs/plugin-react tai
 
 ## Path B — publish from CI, with provenance (recommended once it works)
 
-`.github/workflows/release.yml` publishes on a `v*` tag using npm's **trusted
-publishing**: GitHub mints a short-lived OIDC token for this exact repo and
-workflow, so there is no npm token stored anywhere. Provenance is attached, which
-is what puts the "Built and signed on GitHub Actions" line on the package page.
+`.github/workflows/release.yml` publishes when you **publish a GitHub Release**,
+using npm's **trusted publishing**: GitHub mints a short-lived OIDC credential
+scoped to this repository and this workflow file, so there is no npm token stored
+anywhere. Provenance is attached, which is what puts the "Built and signed on
+GitHub Actions" line on the package page.
+
+A tag push on its own does **not** publish. That is the point of the design: the
+tag records which commit, and publishing the Release is the deliberate act.
 
 ```bash
-npm version minor
-git push --follow-tags     # the tag triggers the workflow
+# 1. the release commit and the tag
+npm version minor -m "release: v%s"     # needs a git identity, see below
+git push --follow-tags
+
+# 2. local pre-flight against the tag you are about to release
+npm run check:release v0.6.0
+
+# 3. create the Release as a DRAFT, read it back, then publish it
+gh release create v0.6.0 --draft --title "v0.6.0" --notes-file /tmp/notes.md
+#    or the web UI: Releases -> Draft a new release -> choose the tag
+#    Publishing the draft is what triggers the workflow.
 ```
+
+What the workflow does, in order: typecheck, tests, build, the packed consumer
+smoke test; refuse if the Release and `package.json` disagree about being a
+pre-release; refuse if the tag and the version disagree or the tarball is wrong;
+**skip silently if that version is already on the registry**, so re-running a
+release whose upload succeeded is green rather than a false alarm;
+`npm publish --provenance --tag latest`; then read the version back off the
+registry and fail if it is not there.
+
+**Pre-releases go to `next`, not `latest`.** A GitHub pre-release publishes under
+the `next` dist-tag, so an rc can be handed to someone who can see the table
+without touching what everyone else installs:
+
+```bash
+npm version preminor --preid rc         # 0.7.0-rc.0
+git push --follow-tags
+gh release create v0.7.0-rc.0 --draft --prerelease --title "v0.7.0-rc.0"
+```
+
+The workflow refuses a pre-release whose version has no prerelease suffix, and the
+reverse, because that is exactly how a version lands on the wrong dist-tag — and a
+published version cannot be taken back.
+
+The tag matters twice over: GitHub runs the workflow **as it exists at the tagged
+commit**, so a tag that predates a workflow change runs the old one; and npm
+identifies the trusted publisher partly by the workflow **filename**, so renaming
+`release.yml` breaks publishing until the npm setting is updated to match.
 
 One-time setup on npmjs.com: the package's **Settings → Trusted Publisher**,
 pointing at repository `stargazeryan/poker-ui` and workflow `release.yml`.
+Nothing else is needed, and there is no token to create.
 
 > I could not reach npm's documentation from the sandbox this was written in
 > (the proxy refused), so the exact field names and the npm CLI version floor

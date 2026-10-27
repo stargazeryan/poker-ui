@@ -1,25 +1,33 @@
 name: Release
 
-# Publishes on a version tag, using npm's OIDC "trusted publishing": GitHub mints
-# a short-lived token for this exact repo + workflow, so there is no npm token to
-# store, leak or rotate. `prepublishOnly` and check-release.mjs also run, so a
-# broken or mismatched package is refused before it reaches the registry.
+# Publishes to npm when a GitHub Release is published, through npm's OIDC trusted
+# publishing: GitHub mints a short-lived credential scoped to this repository and
+# this workflow file, so there is no npm token to store, leak or rotate, and the
+# release carries provenance.
 #
-# One-time setup on npmjs.com, under the package's Settings → Trusted Publisher:
+# Drafts do not trigger this. Create the release as a draft, read it back, then
+# publish it - that is the human gate, and it is why the trigger is a Release
+# rather than a tag push.
+#
+# A pre-release goes to npm under the `next` dist-tag and leaves `latest` alone,
+# so an rc can be handed to someone who can see the table before the version
+# becomes immutable.
+#
+# One-time setup on npmjs.com, under the package's Settings -> Trusted Publisher:
 #   repository  stargazeryan/poker-ui
 #   workflow    release.yml
-# (I could not open npm's docs from this sandbox to re-check the exact fields —
-#  confirm them at docs.npmjs.com/trusted-publishers before the first release.)
+# (Field names to confirm at docs.npmjs.com/trusted-publishers - that host was
+#  unreachable from the sandbox this was written in.)
 
 on:
-  push:
-    tags: ["v*"]
-  # A dress rehearsal: build and gate everything, publish nothing.
+  release:
+    types: [published]
+  # Dress rehearsal: gate everything, publish nothing.
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write # required for trusted publishing + provenance
+  id-token: write # trusted publishing + provenance
 
 jobs:
   release:
@@ -36,25 +44,101 @@ jobs:
 
       - run: npm ci --include=dev
 
-      - name: Gate — nothing gets published from a red tree
+      - name: Gate - nothing gets published from a red tree
         run: |
           npm run typecheck
           npm test
           npm run build
           npm run test:consumer
 
-      - name: Tag and package.json must agree, and the tarball must be right
-        run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
-
-      # No NODE_AUTH_TOKEN: that is the point of trusted publishing.
-      - name: Publish with provenance
-        if: github.event_name == 'push'
-        run: npm publish --provenance --access public
-
-      - name: What just happened
+      - name: Decide what this release means
+        id: target
+        env:
+          # Through env, never interpolated into the script: on a release event the
+          # tag name is attacker-influenced input, and `${{ }}` inside `run:` is how
+          # a shell injection gets in.
+          TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          if [ "${{ github.event_name }}" != "push" ]; then
-            echo "manual run: everything was gated and the tarball checked, but nothing was published"
-          else
-            echo "published $(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          NAME="$(node -p "require('./package.json').name")"
+          if [ "${IS_PRERELEASE:-false}" = "true" ]; then DIST_TAG=next; else DIST_TAG=latest; fi
+          {
+            echo "version=$VERSION"
+            echo "name=$NAME"
+            echo "dist_tag=$DIST_TAG"
+            echo "is_prerelease=${IS_PRERELEASE:-false}"
+          } >> "$GITHUB_OUTPUT"
+          echo "release ${TAG:-<manual run>}: $NAME@$VERSION -> dist-tag $DIST_TAG"
+
+      - name: The release and the version must not disagree
+        if: github.event_name == 'release'
+        env:
+          IS_PRERELEASE: ${{ steps.target.outputs.is_prerelease }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          case "$VERSION" in
+            *-*) VERSION_IS_PRE=true ;;
+            *)   VERSION_IS_PRE=false ;;
+          esac
+          if [ "$IS_PRERELEASE" != "$VERSION_IS_PRE" ]; then
+            echo "::error::the release says prerelease=$IS_PRERELEASE but package.json says $VERSION"
+            echo "A pre-release is published under the 'next' dist-tag and a stable release as 'latest'."
+            echo "If those disagree, the version lands on the wrong dist-tag, and a published version cannot be taken back."
+            exit 1
           fi
+          echo "prerelease=$IS_PRERELEASE agrees with version $VERSION"
+
+      - name: The release tag and package.json must agree, and the tarball must be right
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: node scripts/check-release.mjs "$TAG" --allow-published
+
+      - name: Already on the registry?
+        id: registry
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$NAME@$VERSION is already on the registry - this is a re-run, so nothing will be uploaded."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No NODE_AUTH_TOKEN anywhere in this job: that is the point of trusted publishing.
+      - name: Publish with provenance
+        if: github.event_name == 'release' && steps.registry.outputs.exists == 'false'
+        env:
+          DIST_TAG: ${{ steps.target.outputs.dist_tag }}
+        run: npm publish --provenance --tag "$DIST_TAG" --access public
+
+      - name: Read back what the registry actually has
+        if: github.event_name == 'release' && steps.registry.outputs.exists == 'false'
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          found=""
+          for _ in 1 2 3 4 5; do
+            found="$(npm view "$NAME@$VERSION" version 2>/dev/null || true)"
+            [ "$found" = "$VERSION" ] && break
+            sleep 5
+          done
+          if [ "$found" != "$VERSION" ]; then
+            echo "::error::publish reported success but $NAME@$VERSION is not on the registry"
+            exit 1
+          fi
+          echo "::notice::verified $NAME@$VERSION on the registry"
+          npm view "$NAME" dist-tags --json
+
+      - name: Manual run - nothing was published
+        if: github.event_name != 'release'
+        run: |
+          echo "::notice::dress rehearsal: everything was gated and checked, nothing was published"

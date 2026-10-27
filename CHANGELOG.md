@@ -4,11 +4,11 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from 0.5.0, so it is the section to read before
 upgrading.
 
-## Unreleased — 0.6.0 when you run `npm version minor`
+## 0.6.0 — 2026-10-26
 
 Behaviour changes put this in the minor position: under 0.x, semver treats the
-middle number as the breaking one. 0.5.0 is already on the registry, so this
-cannot be published without a bump.
+middle number as the breaking one. 0.5.0 was already on the registry, so this
+release could not reuse it.
 
 ### Changed (read this before upgrading)
 
