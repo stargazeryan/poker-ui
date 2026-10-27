@@ -26,6 +26,7 @@ import {
 } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Callout, Demo, Field, H2, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
+import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
 
 function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
@@ -290,6 +291,155 @@ function SeatGapDemo() {
   );
 }
 
+/* ------------------------------------------------------------ playground -- */
+
+/**
+ * One control per *tunable* prop — `inventory.ts` holds the list and
+ * tests/docs-api.test.ts fails if a prop that is not seat/center content has no
+ * control here. That is the difference between "the demo shows a table" and
+ * "the demo lets you move every knob".
+ */
+const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
+  seatCount: 6,
+  startAngle: 90,
+  seatWidth: 160,
+  seatHeight: 176,
+  seatGap: 24,
+  betRadiusScale: 0.72,
+  designWidth: DESIGN_W,
+  designHeight: DESIGN_H,
+  marginX: DEFAULT_MARGIN_X,
+  marginY: DEFAULT_MARGIN_Y,
+  feltGap: DEFAULT_FELT_GAP,
+  ambient: true,
+  yourTurn: true,
+  winnerSeats: false,
+  confetti: true,
+  confettiColors: CONFETTI_PALETTES[0].label,
+  fit: "design",
+  yourSeatIndex: "0",
+  className: false,
+};
+
+function CardTablePlayground() {
+  const [v, setV] = useState(PLAYGROUND_INITIAL);
+  const num = (prop: string) => v[prop] as number;
+  const bool = (prop: string) => v[prop] as boolean;
+  const set = (prop: string, value: number | boolean | string) => setV((s) => ({ ...s, [prop]: value }));
+
+  const numeric = CARD_TABLE_CONTROLS.filter((c) => c.kind === "number");
+  const toggles = CARD_TABLE_CONTROLS.filter((c) => c.kind === "boolean");
+  const choices = CARD_TABLE_CONTROLS.filter((c) => c.kind === "enum" || c.kind === "palette");
+
+  const count = Math.max(1, Math.floor(num("seatCount")));
+  const geo = layoutSeats({
+    count,
+    designWidth: num("designWidth"),
+    designHeight: num("designHeight"),
+    marginX: num("marginX"),
+    marginY: num("marginY"),
+    feltGap: num("feltGap"),
+    seatWidth: num("seatWidth"),
+    seatHeight: num("seatHeight"),
+    seatGap: num("seatGap"),
+    startAngle: num("startAngle"),
+    betRadiusScale: num("betRadiusScale"),
+  });
+  const gap = minSeatSeparation(geo.seats);
+  const palette = CONFETTI_PALETTES.find((p) => p.label === v.confettiColors) ?? CONFETTI_PALETTES[0];
+  const frame = `${Math.round(geo.seatW)}×${Math.round(geo.seatH)}`;
+
+  return (
+    <>
+      <div className="grid gap-3 border-b border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-3">
+        {numeric.map((c) => (
+          <Stepper
+            key={c.prop}
+            label={c.prop}
+            value={num(c.prop)}
+            min={c.min ?? 0}
+            max={c.max ?? 100}
+            step={c.step ?? 1}
+            format={(n) => ((c.step ?? 1) < 1 ? n.toFixed(3) : String(n))}
+            onChange={(n) => set(c.prop, n)}
+          />
+        ))}
+      </div>
+
+      <Row className="border-b border-white/10 p-4">
+        {toggles.map((c) => (
+          <Btn key={c.prop} active={bool(c.prop)} onClick={() => set(c.prop, !bool(c.prop))}>
+            <span title={c.hint}>{c.prop}</span>
+          </Btn>
+        ))}
+      </Row>
+
+      <Row className="gap-4 border-b border-white/10 p-4">
+        {choices.map((c) => (
+          <span key={c.prop} className="flex items-center gap-1">
+            <span className="mr-1 font-mono text-[11px] text-neutral-500">{c.prop}</span>
+            {c.options?.map((option) => (
+              <Btn key={option} active={String(v[c.prop]) === option} onClick={() => set(c.prop, option)}>
+                {option}
+              </Btn>
+            ))}
+          </span>
+        ))}
+      </Row>
+
+      <Row className="border-b border-white/10 px-4 py-3">
+        <Field label="seats:" value={count} />
+        <Field label="frames:" value={frame} />
+        <Field label="closest gap:" value={`${gap.toFixed(1)}px${gap < 0 ? " — overlapping" : ""}`} />
+        <Field label="shrunk:" value={geo.seatW < num("seatWidth") - 0.5 || geo.seatH < num("seatHeight") - 0.5 ? "yes" : "no"} />
+      </Row>
+
+      <div className="h-[440px] w-full">
+        <CardTable
+          seatCount={count}
+          startAngle={num("startAngle")}
+          seatWidth={num("seatWidth")}
+          seatHeight={num("seatHeight")}
+          seatGap={num("seatGap")}
+          betRadiusScale={num("betRadiusScale")}
+          designWidth={num("designWidth")}
+          designHeight={num("designHeight")}
+          marginX={num("marginX")}
+          marginY={num("marginY")}
+          feltGap={num("feltGap")}
+          ambient={bool("ambient")}
+          yourTurn={bool("yourTurn")}
+          winnerSeats={bool("winnerSeats") ? [0] : []}
+          confetti={bool("confetti")}
+          confettiColors={[...palette.colors]}
+          fit={v.fit as "design" | "container"}
+          yourSeatIndex={v.yourSeatIndex === "0" ? 0 : null}
+          className={bool("className") ? "outline-dashed outline-1 outline-amber-400/60" : undefined}
+          renderSeat={(i, isYou, box) => (
+            <Seat
+              width={box.width}
+              height={box.height}
+              isActive={i === 0 && bool("yourTurn")}
+              isWinner={bool("winnerSeats") && i === 0}
+              header={<span className="w-full text-center text-[11px] font-semibold">{isYou ? "you" : `seat ${i}`}</span>}
+              footer={<span className="w-full text-center font-mono text-[10px] text-amber-300">{i * 20} BB</span>}
+            >
+              <HoleCards cards={["As", "Kh"]} size="xs" />
+            </Seat>
+          )}
+          renderBet={(i) => (i === 1 ? <ChipStack amount={60} size="sm" /> : i === 3 ? <ChipStack amount={25} size="sm" /> : null)}
+          center={
+            <div className="flex flex-col items-center gap-2">
+              <CommunityCards cards={["Ah", "Kd", "7c"]} size="md" />
+              <Pot label="Main" amount={487} format={formatBB} />
+            </div>
+          }
+        />
+      </div>
+    </>
+  );
+}
+
 export function CardTablePage() {
   const [count, setCount] = useState(6);
   const [turn, setTurn] = useState(true);
@@ -456,6 +606,33 @@ export function CardTablePage() {
 />`}
       >
         <SeatGapDemo />
+      </Demo>
+
+      <Demo
+        title="Every parameter"
+        description={
+          <>
+            Every tunable <Prop>CardTable</Prop> prop, live: the design box, the rail and felt insets, the frame size,
+            the auto-shrink, the betting ring, seat 0&apos;s angle, the viewer, the decorations. The readout under the
+            controls comes from <Prop>layoutSeats</Prop> — the same call the component makes.
+          </>
+        }
+        previewClassName="p-0 overflow-hidden"
+        align="start"
+        code={`<CardTable
+  seatCount={6} startAngle={90}            // ring
+  seatWidth={160} seatHeight={176}         // preferred frame
+  seatGap={24} betRadiusScale={0.72}       // clearance, betting line
+  designWidth={1200} designHeight={900}    // the design box
+  marginX={164 / 1200} marginY={196 / 900} // rail inset
+  feltGap={11}                             // felt inset
+  fit="design"                             // or "container"
+  ambient yourTurn confetti                // decorations
+  confettiColors={["#f39c12", "…"]}
+  yourSeatIndex={0}
+/>`}
+      >
+        <CardTablePlayground />
       </Demo>
 
       <Api slug="card-table" />

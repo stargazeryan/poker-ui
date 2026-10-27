@@ -13,6 +13,7 @@ import {
   seatAngle,
 } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Field, H2, P, Prop, Row, Stepper } from "../ui";
+import { LAYOUT_OPTIONS, TUNABLES } from "../inventory";
 
 /* ----------------------------------------------------------------- layout -- */
 
@@ -199,6 +200,24 @@ export function LayoutPage() {
           </tbody>
         </table>
       </div>
+
+      <H2>Every layout parameter</H2>
+      <P>
+        <Prop>CardTable</Prop>&apos;s layout props are these numbers — the component computes no geometry of its own, it
+        passes them straight into <Prop>layoutSeats</Prop>. This is the whole list, with the default each one falls back
+        to:
+      </P>
+      <ApiTable rows={LAYOUT_OPTIONS} caption="layoutSeats(options)" />
+
+      <H2>Defaults and other constants</H2>
+      <P>
+        The exported values behind those defaults. The docs test reads each of these back from the code, so a changed
+        default cannot sit here unnoticed.
+      </P>
+      <ApiTable
+        rows={TUNABLES.map((t) => ({ name: t.name, type: "constant", default: t.value, description: t.description }))}
+        caption="Exported constants"
+      />
 
       <H2>Exports</H2>
       <ApiTable rows={LAYOUT_EXPORTS} />

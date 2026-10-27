@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { CardTable, ChipStack, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Callout, CodeBlock, Demo, Field, H2, P, Prop, Row } from "../ui";
+import { COLOUR_TOKENS, TOKENS } from "../inventory";
 
 /* --------------------------------------------------------- getting started -- */
 
@@ -108,28 +109,23 @@ export function GettingStarted() {
 
 /* --------------------------------------------------------------- theming -- */
 
-const TOKEN_FIELDS = [
-  { name: "--color-felt", label: "felt", initial: "#0f4d2e" },
-  { name: "--color-felt-light", label: "felt-light", initial: "#23804b" },
-  { name: "--color-felt-dark", label: "felt-dark", initial: "#093b22" },
-  { name: "--color-rail", label: "rail", initial: "#a5744a" },
-  { name: "--color-gold", label: "gold", initial: "#f39c12" },
-  { name: "--color-card-back", label: "card-back", initial: "#5a0c18" },
-  { name: "--color-chip-red", label: "chip-red", initial: "#c0392b" },
-  { name: "--color-chip-blue", label: "chip-blue", initial: "#2980b9" },
-];
+/**
+ * One picker per colour token, and one row per token of any kind — both derived
+ * from `inventory.ts`, so a token the package ships cannot be missing here.
+ * tests/docs-api.test.ts compares that list against `src/styles.css`.
+ */
+const TOKEN_FIELDS = COLOUR_TOKENS.map((t) => ({
+  name: t.name,
+  label: t.name.replace(/^--color-/, ""),
+  initial: t.value,
+}));
 
-const TOKEN_DOCS = [
-  { token: "--color-felt / -light / -dark", controls: "the felt gradient" },
-  { token: "--color-rail / -dark / -deep", controls: "the wooden rail gradient" },
-  { token: "--color-gold", controls: "turn + winner glow, pot pill, focus ring" },
-  { token: "--color-gold-light", controls: "the ambient glow behind the table" },
-  { token: "--color-gold-glow", controls: "the breathing spotlight on the felt" },
-  { token: "--color-card-back / -light / -dark", controls: "the card back gradient" },
-  { token: "--color-card-back-ink", controls: "the card back border" },
-  { token: "--color-card-back-emblem", controls: "the card back rosette" },
-  { token: "--color-chip-red|blue|green|black|white", controls: "the chip denominations used by Chip and ChipStack" },
-];
+const TOKEN_ROWS = TOKENS.map((t) => ({
+  name: t.name,
+  type: t.kind === "colour" ? "colour" : "animation",
+  default: t.value,
+  description: t.controls,
+}));
 
 export function Theming() {
   const [tokens, setTokens] = useState<Record<string, string>>(
@@ -159,7 +155,7 @@ export function Theming() {
         title="Live token editor"
         previewClassName="p-0 overflow-hidden"
         align="start"
-        description="Every colour below comes from the six custom properties on the left of the wrapper."
+        description={`Every colour below comes from the ${TOKEN_FIELDS.length} custom properties set on the wrapper — one picker per colour token the package ships.`}
       >
         <div className="w-full">
           <div className="grid grid-cols-2 gap-3 border-b border-white/10 p-4 sm:grid-cols-3">
@@ -211,9 +207,12 @@ export function Theming() {
       </Demo>
 
       <H2>Tokens</H2>
-      <ApiTable
-        rows={TOKEN_DOCS.map((t) => ({ name: t.token, type: "colour", description: t.controls }))}
-      />
+      <P>
+        Every token the package ships, with the value it ships. The colour ones are the pickers above; the animation ones
+        are timings — override them in <Prop>@theme</Prop> the same way. (Compare with{" "}
+        <Prop>inventory.ts</Prop>, which this table and the pickers are both generated from.)
+      </P>
+      <ApiTable rows={TOKEN_ROWS} caption="Every token" />
       <P>
         Confetti colours are the one exception: they are inline styles, which Tailwind's tree-shaking cannot see, so they
         are a prop (<Prop>confettiColors</Prop>) rather than tokens.
