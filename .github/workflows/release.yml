@@ -111,6 +111,40 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The registry answers a trusted-publisher mismatch with E404 rather than
+      # 401/403, so the disagreement is invisible unless you print the strings npm
+      # compares. Deliberately NOT gated to release events: a `workflow_dispatch`
+      # dress rehearsal from main prints the same identity without touching npm or
+      # moving a tag, which is the cheapest way to find a mismatch.
+      # Non-fatal on purpose: it must never be the thing that blocks a publish.
+      - name: Print the identity npm matches its trusted-publisher settings against
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          echo "compare these with the package's Trusted Publisher settings on npmjs.com"
+          echo "  organization or user : $GITHUB_REPOSITORY_OWNER"
+          echo "  repository           : ${GITHUB_REPOSITORY#*/}"
+          echo "  workflow filename    : $(basename "${GITHUB_WORKFLOW_REF%%@*}")"
+          echo "  workflow ref         : ${GITHUB_WORKFLOW_REF#*@}"
+          echo "  environment          : this job declares none, so that field must be empty on npm"
+          echo "  trigger              : $GITHUB_EVENT_NAME"
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "(no OIDC request endpoint in this environment, so the claim dump is skipped)"
+          else
+            TOKEN="$(curl -sS --fail -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).value")" || TOKEN=""
+            if [ -n "$TOKEN" ]; then
+              echo "the OIDC claims npm actually receives"
+              TOKEN="$TOKEN" node -e '
+                const claims = JSON.parse(Buffer.from(process.env.TOKEN.split(".")[1], "base64url").toString());
+                for (const k of ["sub", "repository", "repository_owner", "job_workflow_ref", "workflow_ref", "ref", "environment", "event_name"]) {
+                  if (claims[k] !== undefined) console.log("  " + k.padEnd(20) + " " + claims[k]);
+                }
+              '
+            else
+              echo "(could not request an ID token, so the claim dump is skipped)"
+            fi
+          fi
+
       # No NODE_AUTH_TOKEN anywhere in this job: that is the point of trusted publishing.
       - name: Publish with provenance
         if: github.event_name == 'release' && steps.registry.outputs.exists == 'false'
@@ -142,3 +176,33 @@ jobs:
         if: github.event_name != 'release'
         run: |
           echo "::notice::dress rehearsal: everything was gated and checked, nothing was published"
+
+      - name: If the publish was refused, here is what to compare
+        if: failure()
+        run: |
+          echo "A refused publish that reads E404 on PUT, after the provenance notice,"
+          echo "means npm accepted the OIDC handshake but does not recognise this"
+          echo "repository and workflow as a trusted publisher for the package."
+          echo ""
+          echo "Compare the values printed further up with npmjs.com -> the package ->"
+          echo "Settings -> Trusted Publisher. The usual disagreements:"
+          echo "  - workflow filename entered as a path (.github/workflows/release.yml)"
+          echo "    instead of just the filename (release.yml)"
+          echo "  - an Environment name filled in on npm while this job declares none"
+          echo "  - the organization or user is not the GitHub owner this run is in"
+          echo "  - the publisher was configured on a different package or scope"
+          echo "  - it was configured while logged in as an npm account that does not"
+          echo "    maintain the package"
+
+      - name: Nothing reached the registry - say so
+        if: failure()
+        continue-on-error: true
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::warning::this run failed, but $NAME@$VERSION IS on the registry - the failure was after the upload"
+          else
+            echo "::notice::$NAME@$VERSION did not reach the registry, so the version number is still free"
+          fi

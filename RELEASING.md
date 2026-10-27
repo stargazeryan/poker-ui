@@ -151,6 +151,50 @@ Nothing else is needed, and there is no token to create.
 > `workflow_dispatch` run of the same workflow is a dress rehearsal: it gates and
 > checks everything and publishes nothing.
 
+## When a publish is refused
+
+The registry answers a **trusted-publisher mismatch with 404, not 401/403**, and it
+uses the same 404 for "does not exist" and "you may not access it" on purpose, so
+the two are indistinguishable from the message alone.
+
+A version-specific 404 from a *read* is the uninteresting one. Something like
+`The requested resource '@stargazeryan/poker-ui@0.6.0' could not be found or you do
+not have permission to access it` just means that version is not published yet —
+compare `npm view @stargazeryan/poker-ui dist-tags`. The one that matters is the
+**PUT** 404, which is the refused publish.
+
+If a run reached the provenance notice (provenance is signed and uploaded to
+Sigstore before the registry is contacted, so it succeeding only means the OIDC
+handshake worked) and then failed with E404 on PUT, npm does not recognise that
+repository and workflow as a publisher for this package. Two families of cause.
+
+**Permission.** Whoever configured the trusted publisher must be able to publish
+the package. Check which account you are:
+
+```bash
+npm whoami                               # the account you are acting as
+npm owner ls @stargazeryan/poker-ui      # who is allowed to publish
+```
+
+The package's maintainer is `stargazeryan`. A publisher added while logged in as
+any other account 404s on publish, and nothing in the error says so.
+
+**Configuration.** The workflow prints the identity npm compares against — on a
+release run, and also on a `workflow_dispatch` dress rehearsal from `main`, which
+needs no tag move and publishes nothing. Compare what it prints with npm's Trusted
+Publisher fields:
+
+| npm field | must equal |
+| --- | --- |
+| organization or user | the GitHub owner the run happens in |
+| repository | the repository name |
+| workflow filename | `release.yml` — the filename, not the path |
+| environment name | empty, because this job declares no environment |
+
+Remember that a tag pins the workflow too. GitHub runs the workflow **as it exists
+at the tagged commit** and a re-run reuses that definition, so a workflow fix only
+takes effect from a tag created after it.
+
 ## Traps
 
 - **Never put an npm token in a chat message, an env var in a workflow file, or
