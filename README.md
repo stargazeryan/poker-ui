@@ -1,18 +1,20 @@
 # @stargazeryan/poker-ui
 
-Game-agnostic **React + Tailwind CSS v4** card-table UI: tables, seats, and
-playing cards. Seats are neutral frames with **slots**, so you decide what goes
-in them (0 cards, N cards, avatars, anything). The table supports **2–10 seats**,
-an optional center slot, and a small set of built-in **game-feel animations**.
+Game-agnostic **React + Tailwind CSS v4** card-table UI: tables, seats and
+playing cards.
 
-- 🎴 `PlayingCard` / `CardBack` / `HoleCards` / `CommunityCards` (with deal/flip animations)
-- 🎯 `CardTable` — responsive, scale-to-fit table with ambient felt, a your-turn edge glow, and winner confetti
-- 💺 `Seat` — a neutral seat frame with slots + animated turn/winner states
-- 🪙 `Pot` — an optional pot pill with a count-up animation
-- 🎰 `ChipStack` / `Chip` — an amount broken into a real stack of chips (white 1, red 5, blue 10, green 25, black 100)
-- 🔁 `nextSeatIndex()` — pure helper for "next seat on the ring"
+- 🎯 `CardTable` — a responsive, scale-to-fit table: felt, rail, seat ring, betting line
+- 💺 `Seat` — a neutral frame with named slots (`header`, `children`, `footer`, …) and turn/winner/dimmed states
+- 🎴 `PlayingCard` / `CardBack` / `HoleCards` / `CommunityCards` — with deal-in and 3D flip animations
+- 🪙 `Pot` — an optional pot pill that counts up
+- 🎰 `ChipStack` / `Chip` — an amount broken into a real stack of chips
+- 🔁 `nextSeatIndex()` — a pure helper for "next seat on the ring"
 
 > Formerly `PokerTable`; kept as a back-compat alias for `CardTable`.
+
+**The split this library is built on:** the components *position and draw*, you
+decide *what is true*. Nothing here knows whose turn it is, who won, or whether
+an amount is big blinds, dollars or points. You compute that and pass it in.
 
 ## Install
 
@@ -20,13 +22,16 @@ an optional center slot, and a small set of built-in **game-feel animations**.
 npm install @stargazeryan/poker-ui
 ```
 
-Peer requirements: `react` >= 18, `react-dom` >= 18, Tailwind CSS v4.
+| Requirement | Version |
+| --- | --- |
+| `react` | >= 18 |
+| `react-dom` | >= 18 |
+| `tailwindcss` | >= 4 (not optional — without it the components render unstyled) |
 
-## Setup (Tailwind v4) — important
+## Setup — the one step people miss
 
-This is a **compiled package**, so your app's Tailwind build cannot see the
-class names used inside it. Add the package as a content source and import its
-theme CSS:
+This is a **compiled package**: your app's Tailwind build cannot see the class
+names inside it, so it has to be told about them.
 
 ```css
 /* app.css */
@@ -36,41 +41,42 @@ theme CSS:
 @source "../node_modules/@stargazeryan/poker-ui";
 ```
 
-> Without the `@source` line, the components render unstyled. Adjust the path to
-> wherever your `node_modules` lives.
->
-> `npm run test:consumer` in this repo packs the package and builds a throwaway
-> app that follows these three lines literally, then asserts the utilities,
-> tokens and keyframes all made it into the output CSS.
+Both extra lines are load-bearing:
 
-## Usage
+- `@source` is what makes the utilities the components use exist in your CSS.
+  Without it everything renders but unstyled. Fix the path if your
+  `node_modules` lives elsewhere.
+- the `styles.css` import brings the `@theme` block: the felt, rail, gold,
+  card-back and chip tokens every component draws with.
+
+> `npm run test:consumer` in this repo packs the package, installs it into a
+> throwaway app that follows those three lines literally, and asserts the
+> utilities, tokens and keyframes all reached the output CSS.
+
+## The smallest useful table
 
 ```tsx
-import { CardTable, Seat, HoleCards, CommunityCards, Pot } from "@stargazeryan/poker-ui";
+import { CardTable, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
 
-const seats = [
-  <Seat key={0} isActive header={<b>You</b>} footer={<span>100 BB</span>}>
-    <HoleCards cards={["As", "Kh"]} size="sm" />
-  </Seat>,
-  <Seat key={1} header={<b>Bot</b>} footer={<span>49 BB</span>}>
-    <HoleCards cards={[null, null]} size="sm" />
-  </Seat>,
-  null, null, null, null,
-];
-
-export function Table() {
+export function Table({ hands, board, pot }) {
   return (
     <div style={{ height: 640 }}>
       <CardTable
         seatCount={6}
-        seats={seats}
-        yourSeatIndex={0}
-        yourTurn
-        winnerSeats={[]}
+        renderSeat={(i, isYou, box) => (
+          <Seat
+            width={box.width}
+            height={box.height}
+            isActive={i === 2}          /* your turn logic, your call */
+            header={<b>{isYou ? "You" : `Seat ${i}`}</b>}
+          >
+            <HoleCards cards={hands[i]} size="sm" />
+          </Seat>
+        )}
         center={
           <>
-            <CommunityCards cards={["Ah", "Kd", "7c", null, null]} size="lg" />
-            <Pot label="Main" amount={240} />
+            <CommunityCards cards={board} size="lg" slots={5} />
+            <Pot label="Main" amount={pot} />
           </>
         }
       />
@@ -79,22 +85,50 @@ export function Table() {
 }
 ```
 
-## Components
+`CardTable` needs a sized container: it lays out in a fixed design box and scales
+that box to fit, so `height` (or a flex parent with a real height) is what makes
+it visible.
+
+## Who owns what
+
+This is the whole mental model, and it is why the package has no game logic in
+it.
+
+| Question | Owner |
+| --- | --- |
+| Where does seat 3 sit, how big is its frame, where does its bet go? | `CardTable` — one ellipse, computed once and handed to you as `box` |
+| Is seat 3 active / winner / folded-out? | **You** — `Seat`'s `isActive` / `isWinner` / `isDimmed` |
+| Whose turn is next, blinds, side pots, showdown order? | **You** — `nextSeatIndex()` walks the ring if you want the mechanical part |
+| What unit is `240`? | **You** — pass `format` to `Pot`; `formatBB(amount, bb)` is the opt-in poker helper |
+| What goes inside a seat? | **You** — slots: 0 cards, 2 cards, an avatar, buttons, anything |
+
+`CardTable` does take a few convenience props for things that are decorative and
+game-shaped (`yourSeatIndex` flags `isYou`, `yourTurn` rings the table edge,
+`winnerSeats` starts the confetti and glows those seats). They only ever *place*
+what you told them to; none of them decides anything. Keep the real state in
+your own store either way — a seat glows because you passed `isWinner`, not
+because the table worked something out.
+
+## Components and their props
+
+The [docs site](demo/) has one page per component with a live demo and the full
+API table, and `tests/docs-api.test.ts` reads the real interfaces back so those
+tables cannot drift. The short version:
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (no upper limit), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line toward the center), `betRadiusScale` (default 0.72, and the drawn betting line follows it), `startAngle` (deg of seat 0, default 90° = directly below the center), `yourSeatIndex` (flags `isYou`; no offset), `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
-| `Seat` | slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter`; states: `isActive`, `isWinner`, `isDimmed`; `animated` (default true), `winnerCrown`, `onClick`, `frameClassName`, `frameStyle` |
-| `Pot` | `amount`, `label`, `format` (defaults to a plain number), `animate` (count-up, default true) |
+| `CardTable` | `seatCount` (no upper limit), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line, facing the centre), `betRadiusScale` (default 0.72 — the drawn line follows it), `startAngle` (degrees of seat 0, default 90° = directly below the centre), `yourSeatIndex`, `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
+| `Seat` | states: `isActive`, `isWinner`, `isDimmed`, `animated` (default true); `winnerCrown`, `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
+| `Pot` | `amount`, `label`, `format` (defaults to a plain, locale-grouped number), `animate` (count-up, default true) |
 | `ChipStack` | `amount` (chip units), `size`, `denominations`, `maxChips` (default 12), `label`, `className` |
-| `Chip` | `value`, `color`, `colorClassName`, `size`, `label`, `className` |
-| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = back), `size`: `xs \| sm \| md \| lg` |
-| `HoleCards` | `cards`, `size`, `deal` (staggered deal-in, default true), `dealKey` (change it to replay the deal for an unchanged hand) |
-| `CardBack` | `size`, `className` |
-| `CommunityCards` | `cards`, `size`, `animated` (3D flip, default true), `slots` (fixed slot count) |
+| `Chip` | `value`, `color`, `colorClassName`, `spotColor`, `size`, `label`, `className` |
+| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`: `xs \| sm \| md \| lg`, `label` |
+| `CardBack` | `size`, `label`, `className` |
+| `HoleCards` | `cards`, `size`, `deal` (default true), `dealKey` (change it to replay the deal for an unchanged hand) |
+| `CommunityCards` | `cards`, `size`, `animated` (default true), `slots` (reserve a fixed width) |
 
-Everything the components do is also available as a pure function, one module per
-concern:
+Everything the components do is also available as a pure function, one module
+per concern:
 
 | Module | Exports |
 | --- | --- |
@@ -113,117 +147,82 @@ Types: `SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `PlayingCardProps`,
 `LayoutOptions`, `SeatLayout`, `EllipseBox`, `Rgba`, `ParsedCard`,
 `Denomination`, `ChipStackEntry`.
 
-### Amounts and units
+## Amounts and units
 
-Nothing here attaches a unit for you. `Pot` renders a plain, locale-grouped
-number and `ChipStack` breaks an amount into chips; neither decides that your
-numbers are big blinds, dollars or points, because that is a game rule and this
-is generic UI.
-
-`formatBB(amount, bb)` is an opt-in poker helper. Pass the big blind — the
-exported `BB = 20` is that helper's own default, not something a component
-applies behind your back:
+Nothing attaches a unit for you. `Pot` renders a plain, locale-grouped number
+and `ChipStack` breaks an amount into chips; neither decides that your numbers
+are big blinds, dollars or points, because that is a game rule and this is
+generic UI.
 
 ```tsx
-<Pot amount={1234} />                                  {/* 1,234      */}
-<Pot amount={1234} format={formatBB} />                {/* 61.7 BB    */}
-<Pot amount={1234} format={(n) => formatBB(n, 100)} /> {/* 12.3 BB    */}
+<Pot amount={1234} />                                  {/* 1,234   */}
+<Pot amount={1234} format={formatBB} />                {/* 61.7 BB */}
+<Pot amount={1234} format={(n) => formatBB(n, 100)} /> {/* 12.3 BB */}
 ```
 
-### Chips
+`formatBB(amount, bb)` is an opt-in poker helper. Pass your big blind — the
+exported `BB = 20` is that helper's own default, not something a component
+applies behind your back.
 
-`ChipStack` turns an amount into a stack of chips, using the greedy breakdown a
-dealer would use: **white 1, red 5, blue 10, green 25, black 100**. Blue is the
-one that varies between houses — plenty of rooms use 20 — so pass
-`denominations` to change the set (and to give the faces dollar labels).
+## Chips
+
+`ChipStack` breaks an amount down the way a dealer would — **white 1, red 5, blue
+10, green 25, black 100** — and draws the result with the largest chip on top.
+Blue is the one that varies between houses (plenty of rooms use 20), so pass
+`denominations` to change the set and to give the faces your own labels.
 
 Amounts are in **chip units** (the smallest chip is 1), not big blinds.
-`chipBreakdown` is exported on its own if you want the split without the artwork,
-and anything below the smallest chip is reported by `chipsTotal` rather than
-rounded up. `maxChips` (default 12) keeps a large bet from becoming a hundred
-black chips.
+`chipBreakdown` is exported on its own if you want the split without the
+artwork, and `chipsTotal` reports what is left below the smallest chip instead
+of rounding it up. `maxChips` (default 12) keeps a large bet from becoming a
+hundred black chips.
 
-### Ellipse layout
+## Layout, seat size and responsiveness
 
-The table, the seat ring and the betting line are all one parametric ellipse:
-
-```
-x(θ) = cx + rx·cos θ      y(θ) = cy + ry·sin θ        θ = startAngle + i·(360/n)
-```
-
-Screen coordinates (y grows downward), so θ = 90° is **directly below** the
-center. **Seat 0 sits at `startAngle` (default 90°)**, and seats divide 360°
-evenly, so 2–10 players always spread out. The betting line uses the same
-formula with a smaller radius (`betRadiusScale`). To keep "you" at the bottom,
-reorder your seat array so the viewer is index 0 (the package adds no offset).
-
-```tsx
-import { seatAngle, ellipsePoint, ringPoints } from "@stargazeryan/poker-ui";
-
-seatAngle(0, 6);                        // 90   (below the center)
-seatAngle(3, 6);                        // 270  (above the center)
-ellipsePoint(300, 200, 120, 80, 90);    // { x: 300, y: 280 }
-ringPoints(4, 300, 200, 120, 80);       // 4 points, first directly below
-```
-
-### Layout, seat size and responsiveness
-
-Everything is laid out in a fixed **design box** (1200×900 by default) which is
-then scaled to fit the container.
+Everything is laid out in a fixed **design box** (1200×900 by default) that is
+then scaled to fit its container.
 
 | Prop | Default | Meaning |
 | --- | --- | --- |
 | `designWidth` / `designHeight` | `1200` / `900` | the design box |
-| `marginX` / `marginY` | `164/1200`, `196/900` | rail inset, as a **fraction** of the design box |
+| `marginX` / `marginY` | `164/1200`, `196/900` | rail inset, as a **fraction** of the box |
 | `feltGap` | `11` | felt inset from the rail, design-space px |
 | `seatWidth` / `seatHeight` | `160` / `176` | **preferred** seat frame size |
 | `seatGap` | `24` | minimum clearance between neighbouring frames |
 | `fit` | `"design"` | `"container"` derives the width from the container |
 
-Margins are proportional, so a custom design box stays in proportion, and the
-seat ring is clamped so frames are never clipped by the design box.
-
-Two things to know:
+Because the insets are fractions, a custom design box stays in proportion.
 
 - **`fit="container"` removes letterboxing.** With the default fit, a
-  phone-portrait container (e.g. 390×700) scales the 4:3 design box down and
-  wastes ~58% of the box — the table ends up tiny. `fit="container"` derives the
-  design width from the container's aspect ratio (clamped to 0.5–2.5) so the
-  table fills the box and the seats render much larger.
-- **Seats shrink to keep their distance.** At 160×176, a 6-seat ring leaves
-  161px between neighbours but a 10-seat ring only 25.6px. `CardTable` measures
-  the ring and shrinks the frames uniformly (never below 50%) until `seatGap` is
-  honoured, so 9–10 seat tables never crowd. Every `Seat` inside the table is
-  told the laid-out size through context, so this works whether you pass
-  `renderSeat` or a `seats` array; `renderSeat` also receives the box as its third
-  argument if you want it. The same mechanism is why 11–16 seats lay out at all
-  (measured: 11 → 126×139 frames, 16 → 80×88); past roughly 16 the frames sit on
-  the 50% floor and overlap, so `seatCount` is not clamped above but it is not
-  magic either:
+  phone-portrait container (390×700) scales the 4:3 box down and wastes ~58% of
+  it, so the table ends up tiny. `fit="container"` derives the design width from
+  the container's aspect ratio (clamped to 0.5–2.5) instead.
+- **Frames shrink to keep their distance.** At 160×176 a 6-seat ring leaves
+  161px between neighbours, but a 10-seat ring leaves only 25.6px. The table
+  measures the ring and shrinks the frames uniformly (never below 50%) until
+  `seatGap` is honoured, so crowded tables never collide. Every `Seat` inside
+  the table is told the size that was settled on, so a bare `<Seat />` matches
+  the ring whether you pass `renderSeat` or a `seats` array; an explicit
+  `width`/`height` still wins.
+- **`seatCount` is not clamped.** 11–16 seats lay out fine (measured: 11 →
+  126×139 frames, 16 → 80×88); past roughly 16 the frames sit on the 50% floor
+  and genuinely overlap. `seatGap={0}` disables the shrink.
 
-  ```tsx
-  <CardTable
-    seatCount={10}
-    seatGap={48}   // roomier; 0 disables the auto-shrink
-    renderSeat={(i, isYou, box) => (
-      <Seat width={box.width} height={box.height} header={<b>{i}</b>}>
-        <HoleCards cards={hands[i]} size="sm" />
-      </Seat>
-    )}
-  />
-  ```
+```tsx
+<CardTable
+  seatCount={10}
+  seatGap={48}
+  renderSeat={(i, isYou, box) => <Seat width={box.width} height={box.height} />}
+/>
+```
 
-  `seatGap={0}` disables it; the `seats` array form is not auto-shrunk (pass
-  matching `width`/`height` to your `Seat`s).
-
-### Sizes
-
-`xs` and `sm` cards keep only the **upright** corner index; `md` and `lg` also
-show the rotated corner index and the large center suit.
+To keep "you" at the bottom, reorder your seat array so the viewer is index 0 —
+the package adds no offset. Seat 0 sits at `startAngle` (default 90°, directly
+below the centre) and the rest divide 360° evenly.
 
 ## Animations
 
-Built-in game-feel (all **on by default**, each toggleable):
+All on by default, each toggleable:
 
 | Effect | Where | Disable with |
 | --- | --- | --- |
@@ -236,28 +235,37 @@ Built-in game-feel (all **on by default**, each toggleable):
 | Your-turn edge glow | `CardTable` | omit `yourTurn` |
 | Winner confetti | `CardTable` | `confetti={false}` |
 
-All CSS animations are disabled automatically when the user prefers reduced
-motion. (The `Pot` count-up is a `requestAnimationFrame` loop, so it is *not*
-covered by that media query.)
+The CSS animations are disabled automatically under
+`prefers-reduced-motion`. The `Pot` count-up is a `requestAnimationFrame` loop,
+so it is not covered by that media query — it checks for itself instead.
 
-Animation tokens live in `@theme`, so Tailwind only ships the keyframes your app
-actually uses.
+Animation timings are theme tokens, so Tailwind only ships the keyframes your
+app actually uses.
 
 ## "Whose turn is next?"
 
-Turn order is game logic, not UI. Compute it in your own engine and pass the
-result into `Seat`'s `isActive` (and `CardTable`'s `yourTurn`). A generic helper
-is provided:
+Turn order is game logic, not UI. Compute it in your engine and pass the result
+into `Seat`'s `isActive` (and `CardTable`'s `yourTurn`). One generic helper walks
+the ring:
 
 ```ts
 import { nextSeatIndex } from "@stargazeryan/poker-ui";
-const next = nextSeatIndex(current, seatCount, { skip: (i) => players[i].out });
+
+const next = nextSeatIndex(current, seatCount, {
+  dir: 1,                        // +1 clockwise, -1 counter-clockwise
+  skip: (i) => players[i].out,   // folded, sitting out, empty
+});
 ```
+
+It wraps, returns `current` when every other seat is skipped, and tolerates a
+`NaN` or negative seat count. Heads-up preflop order, blinds, side pots and
+run-it-twice are not here, and should not be.
 
 ## Theming
 
-Override any token in your own `@theme` block. Every token below is referenced
-by the components, so an override actually restyles them:
+Every colour a component draws with comes from a Tailwind theme token, and every
+token in `styles.css` is referenced by a component — so overriding one actually
+restyles the table, with no `!important` and no per-component overrides:
 
 ```css
 @theme {
@@ -269,9 +277,9 @@ by the components, so an override actually restyles them:
   --color-rail-dark: #4d3119;
   --color-rail-deep: #28190c;
 
-  --color-gold: #ffcc33;       /* turn/winner glow, pot, focus ring */
-  --color-gold-light: #ffe08a; /* ambient glow, backdrop */
-  --color-gold-glow: #fff0c2;  /* spotlight */
+  --color-gold: #ffcc33;       /* turn + winner glow, pot pill, focus ring */
+  --color-gold-light: #ffe08a; /* ambient glow behind the table */
+  --color-gold-glow: #fff0c2;  /* spotlight on the felt */
 
   --color-card-back: #14315a;
   --color-card-back-light: #1e4577;
@@ -279,46 +287,28 @@ by the components, so an override actually restyles them:
   --color-card-back-ink: #9fc0e8;
   --color-card-back-emblem: #ffd98a;
 
-  --color-chip-blue: #1d4ed8;  /* chip denominations */
+  --color-chip-blue: #1d4ed8;  /* chip faces */
 }
 ```
 
-Confetti has its own `confettiColors` prop rather than a token, because the
-colours go into inline styles that Tailwind's tree-shaking cannot see.
+The [docs site](demo/) lists every token with the value it ships and has a live
+editor that sets these properties on a wrapper — which is exactly what an
+override in your `@theme` does document-wide.
 
-`--color-chip-red|blue|green|black|white` is the chip palette, used by `Chip`
-and `ChipStack` through `fill-*` utilities. Note that Tailwind v4 only emits a
-theme variable that something references, which is why the package ships no
-unused tokens: every one in `styles.css` is drawn with by a component, so
-overriding any of them works.
+Confetti colours are the one exception: `confettiColors` is a prop, because
+those colours land in inline styles that Tailwind's tree-shaking cannot see.
+`className` / `frameClassName` / `frameStyle` are there for the rest.
 
-Individual components also take `className` / `frameClassName`.
-
-The [docs site](demo/) has a live token editor that sets these custom properties
-on a wrapper, which is exactly what an override does document-wide.
-
-## Docs site
-
-The docs in `demo/` are the library's main documentation: a per-component site
-with live demos, expandable source, API tables and a live token editor, plus a
-[Known gaps](demo/src/docs/pages/guide.tsx) page listing what this library does
-*not* do yet.
+## Docs site and development
 
 ```bash
-npm run docs          # dev server (imports ../../src, HMR)
-npm run docs:build    # builds the package, then the docs against dist/
+npm run docs          # docs dev server (imports ../../src, HMR)
+npm run docs:build    # builds the package, then the site against dist/
 ```
 
 `docs:build` compiles the package first and then builds the site against
-`dist/index.js` rather than `src`, so the deployed site is running the artefact
-consumers actually get. It imports the package by its published name in both
-modes — never a relative path into `src`.
-
-Tests cover the docs too: `tests/docs.test.tsx` renders every route and fails if
-a page throws, and `tests/docs-api.test.ts` reads the real interfaces with the
-TypeScript compiler and fails if an API table drifts from the code.
-
-## Development
+`dist/index.js` rather than `src`, so the deployed site runs the artefact
+consumers actually get.
 
 ```bash
 npm install --include=dev
@@ -326,12 +316,18 @@ npm install --include=dev
 npm run typecheck     # tsc --noEmit
 npm test              # vitest: unit, component, docs routes, docs-vs-types
 npm run build         # tsup -> dist (ESM + CJS + d.ts)
-
 npm run test:consumer # pack + install + build a real consumer app, assert the CSS
+npm run check:release vX.Y.Z
 ```
 
-`npm run demo` and `npm run demo:build` remain as aliases for `docs` and
-`docs:build`.
+Tests cover the docs, not just the code: `tests/docs.test.tsx` renders every
+route and fails if a page throws, and `tests/docs-api.test.ts` reads the real
+interfaces, the `@theme` tokens and the exported constants back and fails when
+any documented list drifts from the source.
+
+Releases, versioning and the npm trusted-publisher setup are in
+[RELEASING.md](RELEASING.md); behaviour changes per version are in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
