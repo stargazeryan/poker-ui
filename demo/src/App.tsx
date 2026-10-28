@@ -5,6 +5,7 @@ import { GettingStarted, KnownGaps, Theming } from "./docs/pages/guide";
 import {
   CardBackPage,
   CardTablePage,
+  ChipsPage,
   CommunityCardsPage,
   HoleCardsPage,
   PlayingCardPage,
@@ -19,7 +20,8 @@ const PAGES: Record<string, ComponentType> = {
   "known-gaps": KnownGaps,
   "card-table": CardTablePage,
   seat: SeatPage,
-  pot: PotPage,
+  "pot": PotPage,
+  "chips": ChipsPage,
   "playing-card": PlayingCardPage,
   "card-back": CardBackPage,
   "hole-cards": HoleCardsPage,

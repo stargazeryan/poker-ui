@@ -224,6 +224,7 @@ export function Stepper({
   min,
   max,
   step = 1,
+  format,
   onChange,
 }: {
   label: string;
@@ -231,6 +232,8 @@ export function Stepper({
   min: number;
   max: number;
   step?: number;
+  /** Display only — `onChange` always reports the raw number. */
+  format?: (v: number) => string;
   onChange: (v: number) => void;
 }) {
   return (
@@ -245,7 +248,7 @@ export function Stepper({
         onChange={(e) => onChange(Number(e.target.value))}
         className="h-1 w-32 accent-amber-400"
       />
-      <span className="w-14 font-mono text-neutral-200">{value}</span>
+      <span className="w-14 font-mono text-neutral-200">{format ? format(value) : value}</span>
     </label>
   );
 }

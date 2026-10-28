@@ -1,0 +1,208 @@
+name: Release
+
+# Publishes to npm when a GitHub Release is published, through npm's OIDC trusted
+# publishing: GitHub mints a short-lived credential scoped to this repository and
+# this workflow file, so there is no npm token to store, leak or rotate, and the
+# release carries provenance.
+#
+# Drafts do not trigger this. Create the release as a draft, read it back, then
+# publish it - that is the human gate, and it is why the trigger is a Release
+# rather than a tag push.
+#
+# A pre-release goes to npm under the `next` dist-tag and leaves `latest` alone,
+# so an rc can be handed to someone who can see the table before the version
+# becomes immutable.
+#
+# One-time setup on npmjs.com, under the package's Settings -> Trusted Publisher:
+#   repository  stargazeryan/poker-ui
+#   workflow    release.yml
+# (Field names to confirm at docs.npmjs.com/trusted-publishers - that host was
+#  unreachable from the sandbox this was written in.)
+
+on:
+  release:
+    types: [published]
+  # Dress rehearsal: gate everything, publish nothing.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # trusted publishing + provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # npm >= 11.5.1 is what knows how to do the OIDC exchange; Node 24 ships it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci --include=dev
+
+      - name: Gate - nothing gets published from a red tree
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+          npm run test:consumer
+
+      - name: Decide what this release means
+        id: target
+        env:
+          # Through env, never interpolated into the script: on a release event the
+          # tag name is attacker-influenced input, and `${{ }}` inside `run:` is how
+          # a shell injection gets in.
+          TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          NAME="$(node -p "require('./package.json').name")"
+          if [ "${IS_PRERELEASE:-false}" = "true" ]; then DIST_TAG=next; else DIST_TAG=latest; fi
+          {
+            echo "version=$VERSION"
+            echo "name=$NAME"
+            echo "dist_tag=$DIST_TAG"
+            echo "is_prerelease=${IS_PRERELEASE:-false}"
+          } >> "$GITHUB_OUTPUT"
+          echo "release ${TAG:-<manual run>}: $NAME@$VERSION -> dist-tag $DIST_TAG"
+
+      - name: The release and the version must not disagree
+        if: github.event_name == 'release'
+        env:
+          IS_PRERELEASE: ${{ steps.target.outputs.is_prerelease }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          case "$VERSION" in
+            *-*) VERSION_IS_PRE=true ;;
+            *)   VERSION_IS_PRE=false ;;
+          esac
+          if [ "$IS_PRERELEASE" != "$VERSION_IS_PRE" ]; then
+            echo "::error::the release says prerelease=$IS_PRERELEASE but package.json says $VERSION"
+            echo "A pre-release is published under the 'next' dist-tag and a stable release as 'latest'."
+            echo "If those disagree, the version lands on the wrong dist-tag, and a published version cannot be taken back."
+            exit 1
+          fi
+          echo "prerelease=$IS_PRERELEASE agrees with version $VERSION"
+
+      - name: The release tag and package.json must agree, and the tarball must be right
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: node scripts/check-release.mjs "$TAG" --allow-published
+
+      - name: Already on the registry?
+        id: registry
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$NAME@$VERSION is already on the registry - this is a re-run, so nothing will be uploaded."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The registry answers a trusted-publisher mismatch with E404 rather than
+      # 401/403, so the disagreement is invisible unless you print the strings npm
+      # compares. Deliberately NOT gated to release events: a `workflow_dispatch`
+      # dress rehearsal from main prints the same identity without touching npm or
+      # moving a tag, which is the cheapest way to find a mismatch.
+      # Non-fatal on purpose: it must never be the thing that blocks a publish.
+      - name: Print the identity npm matches its trusted-publisher settings against
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          echo "compare these with the package's Trusted Publisher settings on npmjs.com"
+          echo "  organization or user : $GITHUB_REPOSITORY_OWNER"
+          echo "  repository           : ${GITHUB_REPOSITORY#*/}"
+          echo "  workflow filename    : $(basename "${GITHUB_WORKFLOW_REF%%@*}")"
+          echo "  workflow ref         : ${GITHUB_WORKFLOW_REF#*@}"
+          echo "  environment          : this job declares none, so that field must be empty on npm"
+          echo "  trigger              : $GITHUB_EVENT_NAME"
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "(no OIDC request endpoint in this environment, so the claim dump is skipped)"
+          else
+            TOKEN="$(curl -sS --fail -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).value")" || TOKEN=""
+            if [ -n "$TOKEN" ]; then
+              echo "the OIDC claims npm actually receives"
+              TOKEN="$TOKEN" node -e '
+                const claims = JSON.parse(Buffer.from(process.env.TOKEN.split(".")[1], "base64url").toString());
+                for (const k of ["sub", "repository", "repository_owner", "job_workflow_ref", "workflow_ref", "ref", "environment", "event_name"]) {
+                  if (claims[k] !== undefined) console.log("  " + k.padEnd(20) + " " + claims[k]);
+                }
+              '
+            else
+              echo "(could not request an ID token, so the claim dump is skipped)"
+            fi
+          fi
+
+      # No NODE_AUTH_TOKEN anywhere in this job: that is the point of trusted publishing.
+      - name: Publish with provenance
+        if: github.event_name == 'release' && steps.registry.outputs.exists == 'false'
+        env:
+          DIST_TAG: ${{ steps.target.outputs.dist_tag }}
+        run: npm publish --provenance --tag "$DIST_TAG" --access public
+
+      - name: Read back what the registry actually has
+        if: github.event_name == 'release' && steps.registry.outputs.exists == 'false'
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          found=""
+          for _ in 1 2 3 4 5; do
+            found="$(npm view "$NAME@$VERSION" version 2>/dev/null || true)"
+            [ "$found" = "$VERSION" ] && break
+            sleep 5
+          done
+          if [ "$found" != "$VERSION" ]; then
+            echo "::error::publish reported success but $NAME@$VERSION is not on the registry"
+            exit 1
+          fi
+          echo "::notice::verified $NAME@$VERSION on the registry"
+          npm view "$NAME" dist-tags --json
+
+      - name: Manual run - nothing was published
+        if: github.event_name != 'release'
+        run: |
+          echo "::notice::dress rehearsal: everything was gated and checked, nothing was published"
+
+      - name: If the publish was refused, here is what to compare
+        if: failure()
+        run: |
+          echo "A refused publish that reads E404 on PUT, after the provenance notice,"
+          echo "means npm accepted the OIDC handshake but does not recognise this"
+          echo "repository and workflow as a trusted publisher for the package."
+          echo ""
+          echo "Compare the values printed further up with npmjs.com -> the package ->"
+          echo "Settings -> Trusted Publisher. The usual disagreements:"
+          echo "  - workflow filename entered as a path (.github/workflows/release.yml)"
+          echo "    instead of just the filename (release.yml)"
+          echo "  - an Environment name filled in on npm while this job declares none"
+          echo "  - the organization or user is not the GitHub owner this run is in"
+          echo "  - the publisher was configured on a different package or scope"
+          echo "  - it was configured while logged in as an npm account that does not"
+          echo "    maintain the package"
+
+      - name: Nothing reached the registry - say so
+        if: failure()
+        continue-on-error: true
+        env:
+          NAME: ${{ steps.target.outputs.name }}
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::warning::this run failed, but $NAME@$VERSION IS on the registry - the failure was after the upload"
+          else
+            echo "::notice::$NAME@$VERSION did not reach the registry, so the version number is still free"
+          fi

@@ -18,6 +18,11 @@ export interface ComponentDoc {
   title: string;
   /** The exported interface in src this page documents. */
   interfaceName: string;
+  /**
+   * Nav page that documents this component. Defaults to `slug`, so only the
+   * components that share a page with another need it.
+   */
+  page?: string;
   summary: string;
   props: ApiRow[];
   /** For interfaces that are mostly slot content. */
@@ -39,6 +44,7 @@ export const NAV = [
       { slug: "card-table", title: "CardTable" },
       { slug: "seat", title: "Seat" },
       { slug: "pot", title: "Pot" },
+      { slug: "chips", title: "Chips" },
       { slug: "playing-card", title: "PlayingCard" },
       { slug: "card-back", title: "CardBack" },
       { slug: "hole-cards", title: "HoleCards" },
@@ -62,9 +68,9 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "CardTable",
     interfaceName: "CardTableProps",
     summary:
-      "A responsive, game-agnostic table. It lays seats, bets and the felt out on one ellipse inside a fixed design box, then scales that box to fit the container.",
+      "A responsive table that only lays out and draws. One ellipse inside a fixed design box, scaled to fit the container; seats, bets, the felt and an `overlay` slot for whatever you want on top. It holds no game state — not whose turn it is, not who won.",
     props: [
-      { name: "seatCount", type: "number", default: "6", description: "Number of seats, clamped to 2–10." },
+      { name: "seatCount", type: "number", default: "6", description: "Number of seats. No upper limit: the ring shrinks the frames to fit, so 11–16 lay out fine and past ~16 they overlap." },
       {
         name: "seats",
         type: "(ReactNode | null)[]",
@@ -73,9 +79,9 @@ export const COMPONENTS: ComponentDoc[] = [
       },
       {
         name: "renderSeat",
-        type: "(index: number, isYou: boolean, box: SeatBox) => ReactNode",
+        type: "(index: number, box: SeatBox) => ReactNode",
         description:
-          "Render a seat by index. `box` carries the laid-out frame size and centre, so an auto-shrunk seat can match the ring.",
+          "Render a seat by index. `box` carries the laid-out frame size and centre, so an auto-shrunk seat can match the ring — and nothing about the game: pass `isActive` / `isWinner` to `Seat` yourself.",
       },
       {
         name: "bets",
@@ -96,29 +102,19 @@ export const COMPONENTS: ComponentDoc[] = [
         default: "90",
         description: "Angle of seat 0, in degrees. 90° is directly below the centre.",
       },
-      {
-        name: "yourSeatIndex",
-        type: "number | null",
-        default: "null",
-        description:
-          "Flags `isYou` for one seat. Adds no offset — reorder your seat array to put the viewer at the bottom.",
-      },
       { name: "center", type: "ReactNode", description: "Content in the middle of the table (cards, pot, anything)." },
       { name: "ambient", type: "boolean", default: "true", description: "Breathing spotlight and felt shimmer." },
-      { name: "yourTurn", type: "boolean", default: "false", description: "Highlights the table edge." },
       {
-        name: "winnerSeats",
-        type: "number[]",
-        default: "[]",
-        description: "Seat indices that won. A non-empty array also starts the confetti.",
-      },
-      { name: "confetti", type: "boolean", default: "true", description: "Show confetti for winners." },
-      {
-        name: "confettiColors",
-        type: "string[]",
-        default: "party palette",
+        name: "overlay",
+        type: "ReactNode",
         description:
-          "Confetti colours. A prop rather than a theme token, because these land in inline styles that Tailwind's tree-shaking cannot see.",
+          "Content drawn above the seats inside the scaled design box, `pointer-events-none` by default. Where table-edge effects and celebrations go — the table does not know why anything is happening.",
+      },
+      {
+        name: "renderOverlay",
+        type: "(geometry: TableOverlayGeometry) => ReactNode",
+        description:
+          "Alternative to `overlay`, handed the design box and the layout: `geometry.layout.boxes.glow` is the ring a your-turn highlight traces, and `geometry.layout.seats` is every seat centre and frame size.",
       },
       {
         name: "seatWidth",
@@ -132,7 +128,7 @@ export const COMPONENTS: ComponentDoc[] = [
         type: "number",
         default: "24",
         description:
-          "Minimum clearance between neighbouring frames. Seats shrink uniformly (never below 50%) until it is honoured; `0` disables it. Only applies when `renderSeat` is used.",
+          "Minimum clearance between neighbouring frames. Seats shrink uniformly (never below 50%) until it is honoured; `0` disables it. It applies to every seat inside the table now: CardTable hands each Seat its frame size through context, so the `seats` array form shrinks too.",
       },
       { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
       { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
@@ -172,8 +168,14 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Render a default 👑 in the top-left corner when `isWinner` (an explicit `topLeft` wins).",
       },
       { name: "onClick", type: "() => void", description: "Makes the frame a keyboard-accessible button." },
-      { name: "width", type: "number", default: "160", description: "Frame width. CardTable hands you the laid-out size in `box`." },
-      { name: "height", type: "number", default: "176", description: "Frame height." },
+      {
+        name: "width",
+        type: "number",
+        default: "laid-out size",
+        description:
+          "Frame width. Defaults to what the surrounding CardTable laid out — it knows how much room the ring has — or 160 outside a table.",
+      },
+      { name: "height", type: "number", default: "laid-out size", description: "Frame height. Same default as `width`." },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
       { name: "frameClassName", type: "string", description: "Extra classes on the inner frame, to override visuals." },
       { name: "frameStyle", type: "CSSProperties", description: "Inline styles for the inner frame." },
@@ -202,10 +204,64 @@ export const COMPONENTS: ComponentDoc[] = [
       {
         name: "format",
         type: "(amount: number) => string",
-        default: "formatBB",
-        description: "Formatter for the amount. Defaults to Big-Blind formatting against `BB = 20`.",
+        default: "plain number",
+        description:
+          "Formatter for the amount. Defaults to a locale-grouped plain number: the library does not know whether your numbers are chips, dollars, big blinds or points, so it does not attach a unit. `formatBB(amount, bb)` is the opt-in poker helper.",
       },
       { name: "animate", type: "boolean", default: "true", description: "Count up smoothly when the amount changes." },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "chip-stack",
+    title: "ChipStack",
+    interfaceName: "ChipStackProps",
+    page: "chips",
+    summary:
+      "The chips for an amount, as a real stack with the largest denomination on top. Break the amount down with the greedy set a dealer would use (white 1, red 5, blue 10, green 25, black 100) and draw the result.",
+    props: [
+      { name: "amount", type: "number", description: "Amount in chip units — the smallest chip is 1. See `chipBreakdown`." },
+      { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
+      {
+        name: "denominations",
+        type: "Denomination[]",
+        default: "DEFAULT_DENOMINATIONS",
+        description: "Which chips exist and what they are worth. Blue defaults to 10; swap in 20 if your room does that.",
+      },
+      {
+        name: "maxChips",
+        type: "number",
+        default: "12",
+        description: "Most chips to draw, biggest first — a 10,000 bet would otherwise be 100 black chips. The number left off is shown underneath.",
+      },
+      { name: "label", type: "ReactNode", description: "Content under the stack, usually the formatted amount." },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "chip",
+    title: "Chip",
+    interfaceName: "ChipProps",
+    page: "chips",
+    summary:
+      "A single chip, drawn as SVG: a coloured disc with a darker edge for thickness, eight white edge spots, a rim highlight and a white centre carrying the value.",
+    props: [
+      { name: "value", type: "number | string", description: "Printed on the centre of the face. Omit it for a blank chip." },
+      { name: "color", type: "string", description: "CSS colour for the body. Any CSS colour works, including `var(--color-chip-red)`." },
+      {
+        name: "colorClassName",
+        type: "string",
+        description:
+          "A `fill-*` utility applied over `color`. The default denominations use these so the `--color-chip-*` tokens get emitted and stay themeable; a class wins over the `fill` attribute, so `color` is the fallback.",
+      },
+      {
+        name: "spotColor",
+        type: "string",
+        description:
+          "Colour of the eight edge spots. Defaults to `chipSpotColor(color)`, which is white except on a light body — white spots on the white chip sit at 1.1:1 and vanish.",
+      },
+      { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
+      { name: "label", type: "string", description: 'Accessible name. Defaults to "<value> chip".' },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -223,6 +279,12 @@ export const COMPONENTS: ComponentDoc[] = [
         default: '"md"',
         description: "`xs`/`sm` show a single larger centred index; `md`/`lg` add the rotated corner index and centre suit.",
       },
+      {
+        name: "label",
+        type: "string",
+        description:
+          'Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather than the fragments "A" and "♠" a screen reader would otherwise read out. A null card forwards it to CardBack.',
+      },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -234,6 +296,7 @@ export const COMPONENTS: ComponentDoc[] = [
       "The face-down card: a dark red gradient, a gold rosette drawn as inline SVG, and a themed border. This is what PlayingCard renders for a null card.",
     props: [
       { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
+      { name: "label", type: "string", default: '"face-down card"', description: "Accessible name." },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -270,6 +333,25 @@ export const COMPONENTS: ComponentDoc[] = [
         type: "number",
         description: "Reserve a fixed number of slots so the row width never changes as cards arrive.",
       },
+    ],
+  },
+  {
+    slug: "confetti",
+    title: "Confetti",
+    interfaceName: "ConfettiProps",
+    page: "card-table",
+    summary:
+      "Falling confetti, filling the box it is rendered into. A decoration with no opinion about why it is falling: render it when *you* decide something is worth celebrating, usually inside `CardTable`'s `overlay`.",
+    props: [
+      { name: "count", type: "number", default: "44", description: "How many pieces to scatter." },
+      {
+        name: "colors",
+        type: "string[]",
+        default: "party palette",
+        description:
+          "Piece colours, cycled. A prop rather than a theme token because they land in inline styles, which Tailwind's tree-shaking cannot see.",
+      },
+      { name: "className", type: "string", description: "Extra classes." },
     ],
   },
 ];

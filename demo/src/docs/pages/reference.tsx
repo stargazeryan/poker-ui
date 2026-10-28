@@ -13,6 +13,7 @@ import {
   seatAngle,
 } from "@stargazeryan/poker-ui";
 import { ApiTable, Btn, Field, H2, P, Prop, Row, Stepper } from "../ui";
+import { LAYOUT_OPTIONS, TUNABLES } from "../inventory";
 
 /* ----------------------------------------------------------------- layout -- */
 
@@ -27,13 +28,18 @@ const LAYOUT_EXPORTS = [
   { name: "seatAngle(index, seatCount, startAngle?)", type: "number", description: "Ring angle of a seat, in degrees. Seat 0 sits at startAngle (default 90°, directly below the centre)." },
   { name: "ellipsePoint(cx, cy, rx, ry, angleDeg)", type: "Point", description: "Point on an ellipse at an angle. Screen coordinates, so 90° is below the centre." },
   { name: "ringPoints(count, cx, cy, rx, ry, startAngle?)", type: "Point[]", description: "`count` evenly spaced points on an ellipse — handy for any ring, not just seats." },
-  { name: "layoutSeats(options)", type: "Layout", description: "The full seat layout for a design box: table radii, seat ring, the frame size after auto-shrink, and every seat centre." },
+  { name: "layoutSeats(options)", type: "Layout", description: "Everything the table draws for one configuration: every radius, the frame size after auto-shrink, every seat centre, and `boxes` (table / felt / rim / glow / bettingLine) ready to spread onto an absolutely-positioned element. The component computes no geometry of its own." },
+  { name: "ellipseBox(dw, dh, rx, ry)", type: "EllipseBox", description: "Turn radii into the inset box of an absolutely-positioned ellipse — the one place that conversion happens." },
   { name: "minSeatSeparation(seats)", type: "number", description: "Smallest gap between any two seat frames. Negative means they overlap." },
   { name: "fitSeatScale(options)", type: "number", description: "The uniform scale the auto-shrink settles on for a given configuration." },
   { name: "tableRadii(dw, dh, marginX, marginY)", type: "{ rx, ry }", description: "Radii of the table ellipse for a design box and rail inset." },
   { name: "seatRingRadii(dw, dh, tableRx, tableRy, seatW, seatH, feltGap)", type: "{ rx, ry }", description: "Radii of the seat ring, clamped so frames stay inside the design box." },
   { name: "seatPoint(index, count, cx, cy, ringRx, ringRy, startAngle?)", type: "Point", description: "Centre of a seat on the ring." },
   { name: "SEAT_SHRINK_FLOOR", type: "0.5", description: "How far the auto-shrink will go before it gives up." },
+  { name: "RIM_GAP / GLOW_GAP", type: "6 / 2", description: "How far inside the rail the rim highlight and the your-turn glow sit, in design-space px." },
+  { name: "DEFAULT_SEAT_W / DEFAULT_SEAT_H", type: "160 / 176", description: "The default preferred seat frame size, and the fallback a Seat uses outside a table." },
+  { name: "describeCard(card)", type: "string", description: 'The shared way to say a card out loud: "As" → "Ace of spades", null → "face-down card", and an unreadable code is returned as-is rather than invented. PlayingCard and CardBack use it for their accessible name.' },
+  { name: "getRankName / getSuitName / getSuitSymbol / isRedSuit / isKnownSuit", type: "string | boolean", description: "The rest of the card vocabulary, shared so no call site has to invent its own." },
 ];
 
 function GeometryPlayground() {
@@ -146,7 +152,10 @@ export function LayoutPage() {
 
       <H2>Seat crowding</H2>
       <P>
-        Measured on the layout helpers, with the default 160×176 frames and no shrink:
+        Measured on the layout helpers, with the default 160×176 frames. The seat count is not clamped: the ring
+        shrinks frames until <Prop>seatGap</Prop> is honoured, which is what carries 11–16 seats. Past ~16 the frames
+        reach the 50% floor and genuinely overlap, and this table says so rather than the component quietly rendering a
+        different number of seats than you asked for.
       </P>
       <div className="mt-3 overflow-x-auto rounded-xl border border-white/10">
         <table className="w-full border-collapse text-left text-sm">
@@ -159,7 +168,7 @@ export function LayoutPage() {
             </tr>
           </thead>
           <tbody>
-            {[2, 3, 4, 6, 8, 9, 10].map((n) => {
+            {[2, 4, 6, 8, 10, 11, 12, 14, 16, 20].map((n) => {
               const opts = {
                 count: n,
                 designWidth: DESIGN_W,
@@ -178,7 +187,9 @@ export function LayoutPage() {
                 <tr key={n} className="border-t border-white/[0.06]">
                   <td className="px-4 py-2.5 font-mono text-[12px] text-neutral-200">{n}</td>
                   <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">{raw.toFixed(1)}px</td>
-                  <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">{gap.toFixed(1)}px</td>
+                  <td className={"px-4 py-3 font-mono text-[12px] " + (gap < 0 ? "text-amber-400" : "text-neutral-300")}>
+                    {gap.toFixed(1)}px{gap < 0 ? " — overlapping" : ""}
+                  </td>
                   <td className="px-4 py-3 font-mono text-[12px] text-neutral-300">
                     {fitted.seatW}×{fitted.seatH}
                     {fitted.seatW < 160 && <span className="ml-2 text-amber-400">shrunk</span>}
@@ -189,6 +200,24 @@ export function LayoutPage() {
           </tbody>
         </table>
       </div>
+
+      <H2>Every layout parameter</H2>
+      <P>
+        <Prop>CardTable</Prop>&apos;s layout props are these numbers — the component computes no geometry of its own, it
+        passes them straight into <Prop>layoutSeats</Prop>. This is the whole list, with the default each one falls back
+        to:
+      </P>
+      <ApiTable rows={LAYOUT_OPTIONS} caption="layoutSeats(options)" />
+
+      <H2>Defaults and other constants</H2>
+      <P>
+        The exported values behind those defaults. The docs test reads each of these back from the code, so a changed
+        default cannot sit here unnoticed.
+      </P>
+      <ApiTable
+        rows={TUNABLES.map((t) => ({ name: t.name, type: "constant", default: t.value, description: t.description }))}
+        caption="Exported constants"
+      />
 
       <H2>Exports</H2>
       <ApiTable rows={LAYOUT_EXPORTS} />
@@ -215,9 +244,9 @@ export function TurnOrderPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Turn order</h1>
       <P>
         Turn order is game logic, not UI. This library computes nothing about who acts next — you compute it in your own
-        engine and pass the result into <Prop>Seat</Prop>&apos;s <Prop>isActive</Prop> and{" "}
-        <Prop>CardTable</Prop>&apos;s <Prop>yourTurn</Prop>. One generic helper is provided for the mechanical part of
-        walking the ring:
+        engine, pass the result into <Prop>Seat</Prop>&apos;s <Prop>isActive</Prop>, and draw whatever the table edge
+        should show via <Prop>CardTable</Prop>&apos;s <Prop>overlay</Prop>. One generic helper is provided for the
+        mechanical part of walking the ring:
       </P>
       <pre className="mt-3 overflow-x-auto rounded-lg border border-white/10 bg-[#0c100e] p-4 font-mono text-[12.5px] leading-relaxed text-neutral-300">
 {`nextSeatIndex(current, seatCount, {

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_BET_SCALE,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
 } from "../src/components/CardTable";
+import { GLOW_GAP, RIM_GAP } from "../src/layout";
 import { minSeatSeparation, layoutSeats, type LayoutOptions } from "../src/layout";
 
 const base: LayoutOptions = {
@@ -58,6 +60,41 @@ describe("tableRadii / layoutSeats — design box", () => {
   });
 });
 
+describe("every drawn ellipse comes from one place", () => {
+  it("derives the boxes from the same centre and radii", () => {
+    const l = layoutSeats(base);
+    const cx = base.designWidth / 2;
+    const cy = base.designHeight / 2;
+
+    expect(l.boxes.table.top).toBeCloseTo(cy - l.tableRy, 6);
+    expect(l.boxes.table.left).toBeCloseTo(cx - l.tableRx, 6);
+    // symmetric
+    expect(l.boxes.table.right).toBeCloseTo(l.boxes.table.left, 6);
+    expect(l.boxes.table.bottom).toBeCloseTo(l.boxes.table.top, 6);
+    // felt, rim and glow are the table inset by their own gap
+    expect(l.boxes.felt.top).toBeCloseTo(l.boxes.table.top + base.feltGap, 6);
+    expect(l.boxes.felt.left).toBeCloseTo(l.boxes.table.left + base.feltGap, 6);
+    expect(l.boxes.rim.top).toBeCloseTo(l.boxes.table.top + RIM_GAP, 6);
+    expect(l.boxes.glow.top).toBeCloseTo(l.boxes.table.top + GLOW_GAP, 6);
+  });
+
+  it("keeps the betting line and the bet radii telling the same story", () => {
+    // the bug this replaced: the line was drawn from a constant while the chips
+    // were placed from a prop, so they drifted apart
+    const l = layoutSeats({ ...base, betRadiusScale: 0.85 });
+    expect(l.betRx).toBeCloseTo(l.tableRx * 0.85, 6);
+    expect(l.betRy).toBeCloseTo(l.tableRy * 0.85, 6);
+    expect(l.boxes.bettingLine.top).toBeCloseTo(base.designHeight / 2 - l.betRy, 6);
+    expect(l.boxes.bettingLine.left).toBeCloseTo(base.designWidth / 2 - l.betRx, 6);
+  });
+
+  it("defaults and clamps betRadiusScale in the layout, not in the component", () => {
+    expect(layoutSeats(base).betRx).toBeCloseTo(layoutSeats(base).tableRx * DEFAULT_BET_SCALE, 6);
+    expect(layoutSeats({ ...base, betRadiusScale: 9 }).betRx).toBeCloseTo(layoutSeats(base).tableRx, 6);
+    expect(layoutSeats({ ...base, betRadiusScale: 0 }).betRx).toBeCloseTo(layoutSeats(base).tableRx * 0.2, 6);
+  });
+});
+
 describe("minSeatSeparation", () => {
   it("is Infinity below two seats and positive when frames are apart", () => {
     expect(minSeatSeparation([])).toBe(Infinity);
@@ -78,7 +115,7 @@ describe("minSeatSeparation", () => {
   });
 });
 
-describe("seat crowding across 2–10 seats", () => {
+describe("seat crowding across the seat counts", () => {
   it("never overlaps at the default frame size, and stays above DEFAULT_SEAT_GAP", () => {
     const measured: Record<number, number> = {};
     for (const count of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -125,6 +162,24 @@ describe("seat crowding across 2–10 seats", () => {
     expect(minSeatSeparation(roomy.seats)).toBeGreaterThanOrEqual(48);
     expect(roomy.seatW).toBeLessThan(tight.seatW);
     expect(roomy.seatH).toBeLessThan(tight.seatH);
+  });
+
+  it("lays out 11–16 seats without overlapping, and says where it gives up", () => {
+    // The auto-shrink is what makes these possible, so the seatGap has to be the
+    // real one - seatGap: 0 would disable the shrink and leave 160px frames.
+    for (const count of [11, 12, 14, 16]) {
+      const l = layoutSeats({ ...base, count, seatGap: DEFAULT_SEAT_GAP });
+      expect(l.seatW, `${count} seats`).toBeLessThan(160);
+      expect(l.seatW, `${count} seats`).toBeGreaterThanOrEqual(Math.round(160 * 0.5));
+      expect(minSeatSeparation(l.seats), `${count} seats`).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not pretend it can fit an unbounded number of seats", () => {
+    // the documented limit: past ~16 the frames sit on the 50% floor and overlap
+    const huge = layoutSeats({ ...base, count: 20, seatGap: DEFAULT_SEAT_GAP });
+    expect(huge.seatW).toBe(Math.round(160 * 0.5));
+    expect(minSeatSeparation(huge.seats)).toBeLessThan(0);
   });
 
   it("treats seatGap <= 0 as disabled", () => {

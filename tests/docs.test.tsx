@@ -76,7 +76,7 @@ describe("docs site", () => {
   it("lists the known gaps honestly", () => {
     const { container } = at("known-gaps");
     expect(container.textContent).toContain("parseCard");
-    expect(container.textContent).toContain("Reduced motion is uneven");
+    expect(container.textContent).toContain("Reduced motion is per-component");
   });
 
   it("wires accounting of seats on the turn-order page", () => {

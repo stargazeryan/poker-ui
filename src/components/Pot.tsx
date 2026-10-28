@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
-import { formatBB } from "../format";
+import { COUNT_UP_MS } from "../motion";
+
+/**
+ * The default rendering of an amount: the number, grouped by the locale, with no
+ * unit attached.
+ *
+ * This library does not know whether your numbers are chips, dollars, big blinds
+ * or points, so it does not invent a unit. `formatBB` is available as an opt-in
+ * poker helper — `<Pot amount={n} format={(v) => formatBB(v, 100)} />`.
+ */
+const defaultFormat = (amount: number): string => amount.toLocaleString();
+
+/** Whether the user has asked for less motion. Guarded: jsdom and SSR have no matchMedia. */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 export interface PotProps {
   amount: number;
   /** Optional label, e.g. "Main" / "Side". */
   label?: string;
-  /** Formatter for the amount; defaults to Big-Blind formatting. */
+  /**
+   * Formatter for the amount. Defaults to a plain, locale-grouped number —
+   * pass one if your amounts have a unit.
+   */
   format?: (amount: number) => string;
   /** Animate the amount counting up when it changes. Default true. */
   animate?: boolean;
@@ -24,8 +43,15 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
     const from = shownRef.current;
     const to = value;
     if (from === to) return;
+    // The media query in styles.css cannot reach a rAF loop, so the JS animation
+    // has to check for itself. Jump straight to the value instead.
+    if (prefersReducedMotion()) {
+      shownRef.current = to;
+      setShown(to);
+      return;
+    }
     let raf = 0;
-    const dur = 500;
+    const dur = COUNT_UP_MS;
     // Time the animation off the rAF timestamps themselves and never against
     // `performance.now()`: that is a second clock with a different origin, and
     // its skew against the rAF clock is unbounded. Mixing them made `t`
@@ -50,7 +76,7 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
 }
 
 /** A small, standalone pot pill. Optional — the table does not require it. */
-export function Pot({ amount, label, format = formatBB, animate = true, className }: PotProps) {
+export function Pot({ amount, label, format = defaultFormat, animate = true, className }: PotProps) {
   return (
     <div className={cn("flex items-center gap-2 font-mono text-sm text-gold", className)}>
       {label && <span className="text-neutral-400">{label}</span>}

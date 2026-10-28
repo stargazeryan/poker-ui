@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { CardTable } from "../src/components/CardTable";
+import {
+  CardTable,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DESIGN_H,
+  DESIGN_W,
+  type TableOverlayGeometry,
+} from "../src/components/CardTable";
+import { Confetti } from "../src/components/Confetti";
+import { Seat } from "../src/components/Seat";
+import { GLOW_GAP, layoutSeats } from "../src/layout";
 import { setElementSize } from "./setup";
 
 const insetPx = (el: HTMLElement): { top: number; right: number; bottom: number; left: number } => ({
@@ -21,13 +33,21 @@ describe("CardTable — seats", () => {
     }
   });
 
-  it("clamps seatCount to 2–10", () => {
-    expect(render(<CardTable seatCount={1} renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(
-      '[data-part="seat"]',
-    )).toHaveLength(2);
-    expect(render(<CardTable seatCount={40} renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(
-      '[data-part="seat"]',
-    )).toHaveLength(10);
+  it("renders the seat count it was given, without clamping the top end", () => {
+    // 12 used to be silently rendered as 10, even though the ring lays it out fine
+    for (const n of [11, 12, 16]) {
+      const { container, unmount } = render(<CardTable seatCount={n} renderSeat={(i) => <div>{i}</div>} />);
+      expect(container.querySelectorAll('[data-part="seat"]'), `${n} seats`).toHaveLength(n);
+      unmount();
+    }
+  });
+
+  it("still guards the bottom end, where there is no sensible layout", () => {
+    for (const n of [0, -3, NaN]) {
+      const { container, unmount } = render(<CardTable seatCount={n} renderSeat={(i) => <div>{i}</div>} />);
+      expect(container.querySelectorAll('[data-part="seat"]'), `seatCount=${String(n)}`).toHaveLength(1);
+      unmount();
+    }
   });
 
   it("skips null entries in the `seats` array but keeps the other indices in place", () => {
@@ -50,21 +70,21 @@ describe("CardTable — seats", () => {
     expect(px(seat(0).style.left)).toBeCloseTo(600 - 80, 3);
   });
 
-  it("flags `isYou` for yourSeatIndex only, and passes the laid-out box to renderSeat", () => {
-    const seen = new Map<number, { isYou: boolean; width: number; height: number }>();
+  it("hands renderSeat the laid-out box, and nothing about the game", () => {
+    const seen = new Map<number, { keys: string[]; width: number; height: number }>();
     render(
       <CardTable
         seatCount={4}
-        yourSeatIndex={2}
-        renderSeat={(i, isYou, box) => {
-          seen.set(i, { isYou, width: box.width, height: box.height });
+        renderSeat={(i, box) => {
+          seen.set(i, { keys: Object.keys(box), width: box.width, height: box.height });
           return <div>{i}</div>;
         }}
       />,
     );
     expect([...seen.keys()]).toEqual([0, 1, 2, 3]);
-    expect([...seen.values()].map((s) => s.isYou)).toEqual([false, false, true, false]);
     expect([...seen.values()].every((s) => s.width === 160 && s.height === 176)).toBe(true);
+    // the table says where a seat is, never who is sitting in it
+    expect([...seen.values()].some((s) => s.keys.includes("isYou"))).toBe(false);
   });
 
   it("hands renderSeat the shrunk frame size when the ring is too tight", () => {
@@ -74,7 +94,7 @@ describe("CardTable — seats", () => {
         seatCount={10}
         seatWidth={200}
         seatHeight={220}
-        renderSeat={(i, _isYou, box) => {
+        renderSeat={(i, box) => {
           sizes.push(box.width);
           return <div>{i}</div>;
         }}
@@ -83,6 +103,66 @@ describe("CardTable — seats", () => {
     expect(new Set(sizes).size).toBe(1);
     expect(sizes[0]).toBeLessThan(200);
     expect(sizes[0]).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe("the seat frame size has one source", () => {
+  it("tells a bare Seat the size it laid out, with no props threaded through", () => {
+    const { container } = render(
+      <CardTable seatCount={10} seatWidth={200} seatHeight={220} renderSeat={() => <Seat />} />,
+    );
+    // what the ring actually computed
+    const expected = layoutSeats({
+      count: 10,
+      designWidth: DESIGN_W,
+      designHeight: DESIGN_H,
+      marginX: DEFAULT_MARGIN_X,
+      marginY: DEFAULT_MARGIN_Y,
+      feltGap: DEFAULT_FELT_GAP,
+      seatWidth: 200,
+      seatHeight: 220,
+      seatGap: DEFAULT_SEAT_GAP,
+      startAngle: 90,
+    });
+
+    // Seat's root carries the width; the inner frame carries the height.
+    const wrapper = container.querySelector('[data-seat="0"]') as HTMLElement;
+    const root = wrapper.firstElementChild as HTMLElement;
+    const frame = [...wrapper.querySelectorAll("div")].find(
+      (el) => (el as HTMLElement).style.height !== "",
+    ) as HTMLElement;
+
+    expect(parseFloat(root.style.width)).toBe(expected.seatW);
+    expect(parseFloat(frame.style.height)).toBe(expected.seatH);
+    expect(expected.seatW).toBeLessThan(200);
+  });
+
+  it("shrinks the ring for a seats array too, now that the size is shared", () => {
+    const { container } = render(
+      <CardTable
+        seatCount={10}
+        seatWidth={200}
+        seatHeight={220}
+        seats={Array.from({ length: 10 }, (_, i) => <div key={i}>{i}</div>)}
+      />,
+    );
+    // seat 0 sits directly below the centre, so left = cx - seatW / 2
+    const left = parseFloat((container.querySelector('[data-seat="0"]') as HTMLElement).style.left);
+    expect(2 * (DESIGN_W / 2 - left)).toBeLessThan(200);
+  });
+
+  it("still lets an explicit width win", () => {
+    const { container } = render(
+      <CardTable seatCount={10} renderSeat={() => <Seat width={123} height={45} />} />,
+    );
+    const wrapper = container.querySelector('[data-seat="0"]') as HTMLElement;
+    const root = wrapper.firstElementChild as HTMLElement;
+    const frame = [...wrapper.querySelectorAll("div")].find(
+      (el) => (el as HTMLElement).style.height !== "",
+    ) as HTMLElement;
+
+    expect(root.style.width).toBe("123px");
+    expect(frame.style.height).toBe("45px");
   });
 });
 
@@ -178,33 +258,51 @@ describe("CardTable — scaling and fit", () => {
   });
 });
 
-describe("CardTable — decorations", () => {
-  it("shows confetti only for a non-empty winnerSeats and can be disabled", () => {
-    const withWinner = render(<CardTable seatCount={4} winnerSeats={[0]} renderSeat={(i) => <div>{i}</div>} />);
-    expect(withWinner.container.querySelectorAll(".animate-confetti").length).toBeGreaterThan(0);
-    expect(render(<CardTable seatCount={4} winnerSeats={[0]} confetti={false} renderSeat={(i) => <div>{i}</div>} />)
-      .container.querySelectorAll(".animate-confetti")).toHaveLength(0);
-    expect(render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(
-      ".animate-confetti",
-    )).toHaveLength(0);
+describe("CardTable — overlay and decorations", () => {
+  it("draws nothing above the seats until the caller puts something there", () => {
+    const { container } = render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelectorAll('[data-part="overlay"]')).toHaveLength(0);
+    expect(container.querySelectorAll(".animate-confetti")).toHaveLength(0);
+    expect(container.querySelectorAll(".animate-turn-glow")).toHaveLength(0);
   });
 
-  it("themeable confetti colours (a prop, since inline styles are invisible to Tailwind)", () => {
+  it("renders an overlay element above the seats, non-interactive by default", () => {
+    const { container } = render(
+      <CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} overlay={<span data-testid="glow" />} />,
+    );
+    const layer = container.querySelector('[data-part="overlay"]') as HTMLElement;
+    expect(layer).toBeTruthy();
+    expect(layer.className).toContain("pointer-events-none");
+    expect(layer.querySelector('[data-testid="glow"]')).toBeTruthy();
+  });
+
+  it("hands renderOverlay the design box and the layout, so a ring lands on the real ellipse", () => {
+    let seen: TableOverlayGeometry | null = null;
     const { container } = render(
       <CardTable
-        seatCount={4}
-        winnerSeats={[0]}
-        confettiColors={["#010203", "#040506"]}
+        seatCount={6}
+        designWidth={900}
+        designHeight={1100}
+        marginX={0.12}
         renderSeat={(i) => <div>{i}</div>}
+        renderOverlay={(geometry) => {
+          seen = geometry;
+          return <div data-testid="ring" style={geometry.layout.boxes.glow} className="animate-turn-glow" />;
+        }}
       />,
     );
-    const colors = new Set(
-      [...container.querySelectorAll(".animate-confetti")].map((el) => (el as HTMLElement).style.backgroundColor),
-    );
-    expect(colors).toEqual(new Set(["rgb(1, 2, 3)", "rgb(4, 5, 6)"]));
+    expect(seen).toBeTruthy();
+    const geometry = seen as unknown as TableOverlayGeometry;
+    expect(geometry.designWidth).toBe(900);
+    expect(geometry.designHeight).toBe(1100);
+    expect(geometry.layout.seats).toHaveLength(6);
+    // tableRx = 450 - 0.12*900 = 342, and the glow ring sits GLOW_GAP inside it
+    const glowRx = (900 - geometry.layout.boxes.glow.left - geometry.layout.boxes.glow.right) / 2;
+    expect(glowRx).toBeCloseTo(450 - 0.12 * 900 - GLOW_GAP, 3);
+    expect(container.querySelectorAll(".animate-turn-glow")).toHaveLength(1);
   });
 
-  it("renders the centre slot only when given, and toggles ambient / yourTurn", () => {
+  it("renders the centre slot only when given, and toggles ambient", () => {
     expect(render(<CardTable renderSeat={(i) => <div>{i}</div>} center={<b>pot</b>} />).container.textContent).toContain("pot");
     expect(render(<CardTable renderSeat={(i) => <div>{i}</div>} />).container.textContent).not.toContain("pot");
     expect(
@@ -215,9 +313,24 @@ describe("CardTable — decorations", () => {
         ".animate-felt-shimmer",
       ),
     ).toHaveLength(0);
-    expect(
-      render(<CardTable yourTurn renderSeat={(i) => <div>{i}</div>} />).container.querySelectorAll(".animate-turn-glow"),
-    ).toHaveLength(1);
+  });
+
+  it("Confetti fills its box, cycles the palette, and survives a nonsense count", () => {
+    const { container } = render(<Confetti count={3} colors={["#010203", "#040506"]} />);
+    const pieces = [...container.querySelectorAll(".animate-confetti")] as HTMLElement[];
+    expect(pieces).toHaveLength(3);
+    expect(pieces.map((p) => p.style.backgroundColor)).toEqual(["rgb(1, 2, 3)", "rgb(4, 5, 6)", "rgb(1, 2, 3)"]);
+
+    const box = container.firstElementChild as HTMLElement;
+    expect(box.getAttribute("aria-hidden")).toBe("true");
+    expect(box.className).toContain("absolute");
+    expect(box.className).toContain("inset-0");
+
+    expect(render(<Confetti count={-5} />).container.querySelectorAll(".animate-confetti")).toHaveLength(0);
+    expect(render(<Confetti count={2} />).container.querySelectorAll(".animate-confetti")).toHaveLength(2);
+    // an empty palette falls back rather than emitting `undefined`
+    const empty = render(<Confetti count={1} colors={[]} />).container.querySelector(".animate-confetti") as HTMLElement;
+    expect(empty.style.backgroundColor).not.toBe("");
   });
 
   it("does not re-measure on unrelated re-renders beyond the resize observer", () => {

@@ -93,10 +93,18 @@ describe("Seat", () => {
 });
 
 describe("Pot", () => {
-  it("formats with the default BB formatter", () => {
+  it("renders a plain number by default — it does not invent a unit", () => {
     const { container } = render(<Pot amount={240} animate={false} />);
-    expect(container.textContent).toContain(formatBB(240));
-    expect(container.textContent).toContain("12 BB");
+    expect(container.textContent).toContain("240");
+    // a big blind is a poker rule, so it is never applied for you
+    expect(container.textContent).not.toContain("BB");
+  });
+
+  it("uses formatBB only when asked, with whatever big blind you pass", () => {
+    expect(render(<Pot amount={240} animate={false} format={formatBB} />).container.textContent).toContain("12 BB");
+    expect(
+      render(<Pot amount={240} animate={false} format={(n) => formatBB(n, 100)} />).container.textContent,
+    ).toContain("2.4 BB");
   });
 
   it("renders the optional label", () => {
@@ -111,9 +119,33 @@ describe("Pot", () => {
 
   it("counts up to a new amount when it changes", async () => {
     const { container, rerender } = render(<Pot amount={100} />);
-    expect(container.textContent).toContain(formatBB(100));
+    expect(container.textContent).toContain("100");
     rerender(<Pot amount={240} />);
-    await waitFor(() => expect(container.textContent).toContain(formatBB(240)), { timeout: 2000 });
+    await waitFor(() => expect(container.textContent).toContain("240"), { timeout: 2000 });
+  });
+
+  it("jumps straight to the new amount under prefers-reduced-motion", () => {
+    // the CSS media query cannot reach a rAF loop, so Pot checks for itself
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const { container, rerender } = render(<Pot amount={100} />);
+      rerender(<Pot amount={240} />);
+      // synchronously, with no animation frames in between
+      expect(container.textContent).toContain("240");
+    } finally {
+      if (original) window.matchMedia = original;
+      else delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
   });
 
   it("uses the themed gold token", () => {

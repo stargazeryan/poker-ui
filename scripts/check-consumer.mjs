@@ -100,22 +100,25 @@ try {
   writeFileSync(
     join(app, "src", "main.tsx"),
     `import { createRoot } from "react-dom/client";
-import { CardTable, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack } from "@stargazeryan/poker-ui";
+import { CardTable, Confetti, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack } from "@stargazeryan/poker-ui";
 import "./app.css";
 
 createRoot(document.getElementById("root")!).render(
-  <div className="bg-chip-red">
+  <div>
     <CardTable
       seatCount={6}
-      yourTurn
-      winnerSeats={[0]}
-      yourSeatIndex={0}
-      renderSeat={(i, isYou, box) => (
-        <Seat width={box.width} height={box.height} isActive={isYou} header={<b>{isYou ? "you" : i}</b>}>
+      renderSeat={(i, box) => (
+        <Seat width={box.width} height={box.height} isActive={i === 0} header={<b>{i === 0 ? "you" : i}</b>}>
           <HoleCards cards={["As", "Kh"]} size="sm" />
         </Seat>
       )}
       renderBet={(i) => (i === 0 ? <CardBack size="xs" /> : null)}
+      renderOverlay={({ layout }) => (
+        <>
+          <div style={layout.boxes.glow} className="animate-turn-glow rounded-[50%]" />
+          <Confetti count={8} colors={["#f39c12", "#e74c3c"]} />
+        </>
+      )}
       center={
         <div>
           <CommunityCards cards={["Ah", "Kd", "7c"]} size="md" />
@@ -183,7 +186,11 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     [".via-rail-dark", /\.via-rail-dark\s*{/],
     [".to-rail-deep", /\.to-rail-deep\s*{/],
     [".w-8.h-11 (card size)", /\.h-11\s*{/],
-    [".bg-chip-red", /\.bg-chip-red\s*{/],
+    // ChipStack is the only thing referencing the chip palette, so these prove
+    // the tokens reach a consumer's CSS rather than the consumer emitting them
+    // themselves.
+    [".fill-chip-black", /\.fill-chip-black\s*{/],
+    [".fill-chip-blue", /\.fill-chip-blue\s*{/],
   ];
   for (const [label, re] of utilities) {
     (re.test(css) ? ok : fail)(`utility present: ${label}`);
@@ -198,8 +205,8 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     ["felt-shimmer", true],
     ["spotlight-breathe", true],
     ["confetti", true],
-    ["card-deal (unused)", false],
-    ["bubble-pop (unused)", false],
+    ["card-deal (removed as dead)", false],
+    ["bubble-pop (removed as dead)", false],
   ];
   for (const [name, expected] of keyframes) {
     const present = css.includes(`@keyframes ${name}`);
@@ -217,11 +224,51 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     "--color-rail",
     "--color-gold",
     "--color-card-back",
-    // a chip token, only used by the consumer's own markup
     "--color-chip-red",
+    "--color-chip-black",
+    "--color-chip-blue",
+    // removed as dead: nothing in the package or the docs referenced them
+    "--color-wood",
   ];
+  const mustBeAbsent = new Set(["--color-wood"]);
   for (const token of packageTokens) {
-    css.includes(`${token}:`) ? ok(`token referenced by the components is emitted: ${token}`) : fail(`token missing: ${token}`);
+    const present = css.includes(`${token}:`);
+    if (mustBeAbsent.has(token)) {
+      present ? fail(`token should be gone but is still emitted: ${token}`) : ok(`dead token still gone: ${token}`);
+    } else {
+      present ? ok(`token referenced by the components is emitted: ${token}`) : fail(`token missing: ${token}`);
+    }
+  }
+
+  /*
+   * The reduced-motion block must not reach into the host app's animations.
+   * Both the pattern and the brace matching have to tolerate minification:
+   * Lightning CSS turns the query into `@media(prefers-reduced-motion:reduce)`.
+   */
+  const rmAt = css.search(/@media\s*\(\s*prefers-reduced-motion/);
+  if (rmAt === -1) {
+    fail("reduced-motion block is missing from the output entirely");
+  } else {
+    let depth = 0;
+    let end = css.length;
+    for (let i = css.indexOf("{", rmAt); i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    const rmBlock = css.slice(rmAt, end);
+    if (/\*\s*[,{]/.test(rmBlock)) {
+      fail("reduced-motion rule uses a universal selector, which would disable the host app's animations");
+    } else if (!rmBlock.includes(".animate-turn-glow")) {
+      fail("reduced-motion rule does not name this package's own animations");
+    } else {
+      ok("reduced-motion rule is scoped to the library's own animations");
+    }
   }
 
   // Sanity: an unbuilt/unresolved import would leave the library out of the bundle.

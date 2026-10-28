@@ -1,12 +1,39 @@
 import { useRef, useLayoutEffect, useState, useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
 import { ellipsePoint, seatAngle } from "../geometry";
-import { layoutSeats } from "../layout";
+import {
+  DEFAULT_BET_SCALE,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DEFAULT_SEAT_H,
+  DEFAULT_SEAT_W,
+  DESIGN_H,
+  DESIGN_W,
+  layoutSeats,
+  type EllipseBox,
+  type Layout,
+} from "../layout";
+import { SeatSizeContext } from "./seatSize";
+
+/*
+ * The design constants live in `layout.ts` with the rest of the geometry. They
+ * are re-exported here so imports from this module keep working.
+ */
+export {
+  DEFAULT_BET_SCALE,
+  DEFAULT_FELT_GAP,
+  DEFAULT_MARGIN_X,
+  DEFAULT_MARGIN_Y,
+  DEFAULT_SEAT_GAP,
+  DESIGN_H,
+  DESIGN_W,
+} from "../layout";
 
 /** Geometry CardTable laid a seat frame out for, handed to `renderSeat`. */
 export interface SeatBox {
   index: number;
-  isYou: boolean;
   /** Centre of the frame, in design space. */
   x: number;
   y: number;
@@ -15,17 +42,36 @@ export interface SeatBox {
   height: number;
 }
 
+/** What `renderOverlay` is handed: the design box, and the layout inside it. */
+export interface TableOverlayGeometry {
+  /** Design box the overlay is scaled with. */
+  designWidth: number;
+  designHeight: number;
+  /** Everything `layoutSeats` computed — centres, frame size, every ellipse box. */
+  layout: Layout;
+}
+
 export interface CardTableProps {
-  /** Number of seats (2–10). Default 6. */
+    /**
+   * Number of seats. Default 6.
+   *
+   * There is no upper limit. The seat ring shrinks the frames until `seatGap` is
+   * honoured, so 11–16 seats lay out fine (measured: 11 -> 126x139 frames,
+   * 16 -> 80x88). Past roughly 16 the frames hit the 50% shrink floor and start
+   * to overlap — that is the caller's call, not something to clamp silently.
+   */
   seatCount?: number;
   /** Optional per-seat content. Length should equal `seatCount`. */
   seats?: (ReactNode | null)[];
   /**
-   * Alternative to `seats`: render a seat by index. Receives the laid-out
-   * frame box as a third argument, so an auto-shrunk seat can be sized to
-   * match the ring: `<Seat width={box.width} height={box.height} />`.
+   * Alternative to `seats`: render a seat by index, and size a shrunk frame to
+   * the ring: `<Seat width={box.width} height={box.height} />`.
+   *
+   * The table tells you *where* the seat is, never *what it is*: no `isYou`,
+   * no active/winner flag. Those are yours to pass to `Seat` — see the
+   * `overlay` prop for the decorations that used to live here.
    */
-  renderSeat?: (index: number, isYou: boolean, box: SeatBox) => ReactNode;
+  renderSeat?: (index: number, box: SeatBox) => ReactNode;
   /**
    * Optional per-seat "bet" content, auto-positioned on the betting line
    * (`betRadiusScale`) along the seat-to-center radius, so it faces the middle
@@ -41,36 +87,44 @@ export interface CardTableProps {
   betRadiusScale?: number;
   /**
    * Angle (degrees) of seat 0. Default 90° = directly below the table centre.
-   * Seats advance by `360 / seatCount` from there, so 2–10 players spread evenly.
+   * Seats advance by `360 / seatCount` from there.
    */
   startAngle?: number;
-  /** Which seat is the viewer (adds no offset; only flags `isYou`). Default null. */
-  yourSeatIndex?: number | null;
   /** Optional content in the middle of the table (cards, pot, anything). */
   center?: ReactNode;
   /** Ambient spotlight + felt shimmer. Default true. */
   ambient?: boolean;
-  /** Highlight the table edge (e.g. when it is your turn). Default false. */
-  yourTurn?: boolean;
-  /** Winning seat indices; when non-empty, confetti falls. */
-  winnerSeats?: number[];
-  /** Show confetti for winners. Default true. */
-  confetti?: boolean;
   /**
-   * Confetti colours. Defaults to a party palette. This is a prop rather than a
-   * theme token because the colours land in inline styles, which Tailwind's
-   * tree-shaking cannot see — a custom property nothing references never gets
-   * emitted.
+   * Content drawn above the seats, inside the scaled design box
+   * (`pointer-events-none`). This is where the caller puts table-edge effects
+   * and celebrations — the table does not know why anything is happening.
+   *
+   * ```tsx
+   * <CardTable overlay={isMyTurn ? <TableGlow /> : null} />
+   * ```
    */
-  confettiColors?: string[];
+  overlay?: ReactNode;
+  /**
+   * Alternative to `overlay`: render it with the geometry the table laid out,
+   * so a decoration can be positioned on the real ellipse instead of guessed
+   * at. Continues to work if the design box is resized:
+   *
+   * ```tsx
+   * renderOverlay={({ layout }) => (
+   *   <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
+   * )}
+   * ```
+   */
+  renderOverlay?: (geometry: TableOverlayGeometry) => ReactNode;
   /** Preferred seat frame width. Default 160. */
   seatWidth?: number;
   /** Preferred seat frame height. Default 176. */
   seatHeight?: number;
   /**
    * Minimum clearance to keep between neighbouring seat frames, in design-space
-   * px. Frames shrink uniformly (down to 50%) until it is honoured, which is
-   * what keeps 9–10 seat tables from looking cramped. `0` disables it.
+   * px. Frames shrink uniformly (down to 50%) until it is honoured, which is what
+   * keeps 9–10 seat tables from looking cramped and what lets 11–16 seat tables
+   * lay out at all. `0` disables it.
    * Only applies when `renderSeat` is used (it is the only form that can size
    * the frames); the `seats` array keeps the size you were given.
    * Default 24.
@@ -102,28 +156,18 @@ export interface CardTableProps {
   className?: string;
 }
 
-/** Default design space. */
-export const DESIGN_W = 1200;
-export const DESIGN_H = 900;
-/** Rail inset as a fraction of the design box (164/1200, 196/900). */
-export const DEFAULT_MARGIN_X = 164 / DESIGN_W;
-export const DEFAULT_MARGIN_Y = 196 / DESIGN_H;
-/** Gap between the rail and the felt, in design-space px. */
-export const DEFAULT_FELT_GAP = 11;
-/** Default radius of the bet ring, as a fraction of the table radius. */
-export const DEFAULT_BET_SCALE = 0.72;
-/** Default minimum clearance between neighbouring seat frames. */
-export const DEFAULT_SEAT_GAP = 24;
 /** Aspect range `fit="container"` will not go outside of. */
 const MIN_FIT_ASPECT = 0.5;
 const MAX_FIT_ASPECT = 2.5;
 
-const DEFAULT_CONFETTI_COLORS = ["#f39c12", "#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#9b59b6"];
-
 /**
  * A responsive, game-agnostic card table. It scales a design box (1200x900 by
  * default) onto its container and arranges `seatCount` seats around the felt.
- * Purely presentational: supply seat content and an optional `center` slot.
+ *
+ * It lays out and it draws: seat positions, frame sizes, the betting line, the
+ * felt, the scaling, and an `overlay` slot for whatever you want on top. It
+ * holds no opinion about the game — not whose turn it is, not who won, not
+ * which seat is yours. Put those on the `Seat`s you pass in.
  */
 export function CardTable({
   seatCount = 6,
@@ -133,15 +177,12 @@ export function CardTable({
   renderBet,
   betRadiusScale = DEFAULT_BET_SCALE,
   startAngle = 90,
-  yourSeatIndex = null,
   center,
   ambient = true,
-  yourTurn = false,
-  winnerSeats = [],
-  confetti = true,
-  confettiColors = DEFAULT_CONFETTI_COLORS,
-  seatWidth = 160,
-  seatHeight = 176,
+  overlay,
+  renderOverlay,
+  seatWidth = DEFAULT_SEAT_W,
+  seatHeight = DEFAULT_SEAT_H,
   seatGap = DEFAULT_SEAT_GAP,
   designWidth = DESIGN_W,
   designHeight = DESIGN_H,
@@ -151,7 +192,8 @@ export function CardTable({
   fit = "design",
   className,
 }: CardTableProps) {
-  const count = Math.max(2, Math.min(10, Math.floor(seatCount)));
+  const requested = Math.floor(seatCount);
+  const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
   const outerRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
@@ -170,9 +212,6 @@ export function CardTable({
     return () => ro.disconnect();
   }, []);
 
-  // The seat frames can only be sized when the caller renders them for us.
-  const canShrinkSeats = renderSeat !== undefined;
-
   const geo = useMemo(() => {
     const dh = designHeight;
     const dw =
@@ -189,8 +228,11 @@ export function CardTable({
       feltGap,
       seatWidth,
       seatHeight,
-      seatGap: canShrinkSeats ? seatGap : 0,
+      // Always applied. Every Seat inside the table is told its frame size
+      // through context, so the shrink is no longer limited to `renderSeat`.
+      seatGap,
       startAngle,
+      betRadiusScale,
     });
 
     const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh) : 1;
@@ -207,33 +249,35 @@ export function CardTable({
     seatGap,
     startAngle,
     fit,
-    canShrinkSeats,
+    betRadiusScale,
     box.w,
     box.h,
   ]);
 
   const { designW, designH, scale, layout } = geo;
-  const { tableRx, tableRy, cx, cy, seatW, seatH } = layout;
-
-  const betScale = Math.min(1, Math.max(0.2, betRadiusScale));
-  const betRx = tableRx * betScale;
-  const betRy = tableRy * betScale;
+  const { cx, cy, seatW, seatH, betRx, betRy, boxes } = layout;
   const hasBets = bets !== undefined || renderBet !== undefined;
+  const hasOverlay = overlay !== undefined || renderOverlay !== undefined;
 
-  // Explicit top/right/bottom/left rather than the `inset` shorthand: it is
-  // what every browser and CSSOM implementation (incl. jsdom) agrees on.
-  const insetOf = (dy: number, dx: number) => ({
-    top: `${dy.toFixed(2)}px`,
-    right: `${dx.toFixed(2)}px`,
-    bottom: `${dy.toFixed(2)}px`,
-    left: `${dx.toFixed(2)}px`,
+  /*
+   * Every ellipse comes from `layoutSeats` as an inset box, so this component
+   * computes no geometry of its own. The betting line in particular used to be
+   * derived here from a module constant while the chips were positioned from the
+   * `betRadiusScale` prop, which is how the two drifted apart.
+   *
+   * Explicit top/right/bottom/left rather than the `inset` shorthand: it is what
+   * every browser and CSSOM implementation (incl. jsdom) agrees on.
+   */
+  const px = (b: EllipseBox) => ({
+    top: `${b.top}px`,
+    right: `${b.right}px`,
+    bottom: `${b.bottom}px`,
+    left: `${b.left}px`,
   });
-  const tableFrameInset = insetOf(designH / 2 - tableRy, designW / 2 - tableRx);
-  const feltInset = insetOf(designH / 2 - tableRy + feltGap, designW / 2 - tableRx + feltGap);
-  const rimInset = insetOf(designH / 2 - tableRy + 6, designW / 2 - tableRx + 6);
-  const ringInset = insetOf(designH / 2 - tableRy + 2, designW / 2 - tableRx + 2);
-  // Follows `betRadiusScale`, so the chips always land on the drawn line.
-  const betLineInset = insetOf(designH / 2 - betRy, designW / 2 - betRx);
+  const tableFrameInset = px(boxes.table);
+  const feltInset = px(boxes.felt);
+  const rimInset = px(boxes.rim);
+  const betLineInset = px(boxes.bettingLine);
 
   return (
     <div
@@ -293,15 +337,6 @@ export function CardTable({
             </span>
           </div>
 
-          {/* your-turn edge glow */}
-          {yourTurn && (
-            <div
-              className="pointer-events-none absolute z-10 animate-turn-glow rounded-[50%]"
-              style={ringInset}
-              aria-hidden="true"
-            />
-          )}
-
           {/* center slot (optional) */}
           {center !== undefined && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -311,24 +346,31 @@ export function CardTable({
 
           {/* seats */}
           <div className="absolute inset-0 z-20">
-            {layout.seats.map((seat) => {
-              const { index, x, y } = seat;
-              const isYou = index === yourSeatIndex;
-              const box: SeatBox = { index, isYou, x, y, width: seatW, height: seatH };
-              const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou, box) : null;
-              if (content === null) return null;
-              return (
-                <div
-                  key={index}
-                  data-part="seat"
-                  data-seat={index}
-                  className="absolute"
-                  style={{ left: `${x - seatW / 2}px`, top: `${y - seatH / 2}px` }}
-                >
-                  {content}
-                </div>
-              );
-            })}
+            {/*
+             * The context is what gives every `Seat` its frame size: one source
+             * for it (the ring this table computed) instead of CardTable's
+             * seatWidth and Seat's own width being two unrelated numbers that
+             * happen to share a default.
+             */}
+            <SeatSizeContext.Provider value={{ width: seatW, height: seatH }}>
+              {layout.seats.map((seat) => {
+                const { index, x, y } = seat;
+                const box: SeatBox = { index, x, y, width: seatW, height: seatH };
+                const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, box) : null;
+                if (content === null) return null;
+                return (
+                  <div
+                    key={index}
+                    data-part="seat"
+                    data-seat={index}
+                    className="absolute"
+                    style={{ left: `${x - seatW / 2}px`, top: `${y - seatH / 2}px` }}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
+            </SeatSizeContext.Provider>
           </div>
 
           {/* bets on the betting line (positioned toward the table center) */}
@@ -352,30 +394,12 @@ export function CardTable({
             </div>
           )}
 
-          {/* winner confetti */}
-          {confetti && winnerSeats.length > 0 && (
-            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
-              {Array.from({ length: 44 }).map((_, i) => {
-                const w = 5 + (i % 4) * 2;
-                const h = 9 + (i % 3) * 4;
-                const dur = 1.7 + (i % 5) * 0.28;
-                const delay = (i % 12) * 0.14;
-                return (
-                  <span
-                    key={i}
-                    className="absolute top-[26%] animate-confetti rounded-[2px]"
-                    style={{
-                      left: `${(i * 37) % 96}%`,
-                      width: w,
-                      height: h,
-                      backgroundColor: confettiColors[i % confettiColors.length],
-                      animationDuration: `${dur}s`,
-                      animationDelay: `${delay}s`,
-                      animationIterationCount: "infinite",
-                    }}
-                  />
-                );
-              })}
+          {/* caller-drawn overlay: edge effects, celebrations, annotations */}
+          {hasOverlay && (
+            <div data-part="overlay" className="pointer-events-none absolute inset-0 z-30">
+              {overlay !== undefined
+                ? overlay
+                : renderOverlay?.({ designWidth: designW, designHeight: designH, layout })}
             </div>
           )}
 

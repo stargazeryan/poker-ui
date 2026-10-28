@@ -2,23 +2,35 @@
  * Pure layout math for the card table. No React, no game rules.
  *
  * Everything is derived from one parametric ellipse (see `geometry.ts`). The
- * table, the seat ring and the betting line are three ellipses sharing a centre
- * and an aspect ratio.
+ * table, the felt, the rim, the seat ring and the betting line are ellipses
+ * sharing a centre and an aspect ratio, and they are all computed **here**.
  *
- * This module exists so the layout can be unit-tested without a DOM: seat
- * positions, the seat ring, and the auto-shrink that keeps neighbouring seat
- * frames from crowding each other.
+ * That matters: the betting line used to be computed inside `CardTable` from a
+ * module constant while the chips were positioned from the `betRadiusScale`
+ * prop, and the two drifted apart. One ellipse, one place that computes it.
  */
 
 import { ellipsePoint, seatAngle } from "./geometry";
 
-export interface Box {
-  /** Centre of the frame, in design space. */
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+/** Default design space. */
+export const DESIGN_W = 1200;
+export const DESIGN_H = 900;
+/** Rail inset as a fraction of the design box (164/1200, 196/900). */
+export const DEFAULT_MARGIN_X = 164 / DESIGN_W;
+export const DEFAULT_MARGIN_Y = 196 / DESIGN_H;
+/** Gap between the rail and the felt, in design-space px. */
+export const DEFAULT_FELT_GAP = 11;
+/** Default radius of the bet ring, as a fraction of the table radius. */
+export const DEFAULT_BET_SCALE = 0.72;
+/** Default minimum clearance between neighbouring seat frames. */
+export const DEFAULT_SEAT_GAP = 24;
+/** Default preferred seat frame size. */
+export const DEFAULT_SEAT_W = 160;
+export const DEFAULT_SEAT_H = 176;
+/** How far inside the rail the rim highlight sits, in design-space px. */
+export const RIM_GAP = 6;
+/** How far inside the rail the your-turn glow sits, in design-space px. */
+export const GLOW_GAP = 2;
 
 export interface LayoutOptions {
   /** Number of seats. */
@@ -42,6 +54,8 @@ export interface LayoutOptions {
   seatGap: number;
   /** Angle of seat 0, in degrees. */
   startAngle: number;
+  /** Where the betting line sits, as a fraction of the table radii. Default 0.72. */
+  betRadiusScale?: number;
 }
 
 export interface SeatLayout {
@@ -54,6 +68,18 @@ export interface SeatLayout {
   height: number;
 }
 
+/**
+ * How far an ellipse sits inside the design box, in design-space px. Spread it
+ * onto an absolutely-positioned element and the ellipse lands where the rest of
+ * the layout expects.
+ */
+export interface EllipseBox {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 export interface Layout {
   /** Seat centre used for every ring, in design space. */
   cx: number;
@@ -64,10 +90,21 @@ export interface Layout {
   /** Radii of the seat ring. */
   ringRx: number;
   ringRy: number;
+  /** Radii of the betting line. */
+  betRx: number;
+  betRy: number;
   /** Seat frame size actually used. */
   seatW: number;
   seatH: number;
   seats: SeatLayout[];
+  /** Every ellipse the table draws, ready to position. */
+  boxes: {
+    table: EllipseBox;
+    felt: EllipseBox;
+    rim: EllipseBox;
+    glow: EllipseBox;
+    bettingLine: EllipseBox;
+  };
 }
 
 /** Smallest fraction of the preferred seat size the auto-shrink will go to. */
@@ -118,6 +155,13 @@ export function seatPoint(
   return ellipsePoint(cx, cy, ringRx, ringRy, seatAngle(index, count, startAngle));
 }
 
+/** Turn radii into the inset box of an absolutely-positioned ellipse. */
+export function ellipseBox(designWidth: number, designHeight: number, rx: number, ry: number): EllipseBox {
+  const top = designHeight / 2 - ry;
+  const left = designWidth / 2 - rx;
+  return { top, right: left, bottom: top, left };
+}
+
 /** Axis-aligned separation of two seat frames: > 0 is a gap, < 0 a penetration. */
 function boxSeparation(a: SeatLayout, b: SeatLayout): number {
   const dx = Math.max(b.x - a.x - (a.width + b.width) / 2, a.x - b.x - (a.width + b.width) / 2);
@@ -165,7 +209,8 @@ function positionsFor(
  *
  * A 10-seat table at the default 160x176 frames only leaves ~26px between
  * neighbours, which reads as crowded; shrinking them a little spreads the ring
- * out. Wide tables (2–8 seats) are unaffected — they pass on the first step.
+ * out. It is also what makes 11–16 seats possible at all. Wide tables (2–8
+ * seats) are unaffected — they pass on the first step.
  */
 export function fitSeatScale(opts: LayoutOptions): number {
   if (opts.seatGap <= 0) return 1;
@@ -186,8 +231,8 @@ export function fitSeatScale(opts: LayoutOptions): number {
 }
 
 /**
- * Full seat layout for a design box: the table ellipse, the seat ring, the
- * (possibly shrunk) frame size, and every seat centre.
+ * Everything the table draws for one configuration: the table ellipse, the felt,
+ * the rim, the glow ring, the betting line, the seat ring and every seat centre.
  */
 export function layoutSeats(opts: LayoutOptions): Layout {
   const { rx, ry } = tableRadii(opts.designWidth, opts.designHeight, opts.marginX, opts.marginY);
@@ -199,6 +244,11 @@ export function layoutSeats(opts: LayoutOptions): Layout {
   const seatH = Math.max(1, Math.round(opts.seatHeight * scale));
 
   const ring = seatRingRadii(opts.designWidth, opts.designHeight, rx, ry, seatW, seatH, opts.feltGap);
+  const betScale = Math.min(1, Math.max(0.2, opts.betRadiusScale ?? DEFAULT_BET_SCALE));
+  const betRx = rx * betScale;
+  const betRy = ry * betScale;
+
+  const box = (bx: number, by: number) => ellipseBox(opts.designWidth, opts.designHeight, bx, by);
 
   return {
     cx,
@@ -207,8 +257,17 @@ export function layoutSeats(opts: LayoutOptions): Layout {
     tableRy: ry,
     ringRx: ring.rx,
     ringRy: ring.ry,
+    betRx,
+    betRy,
     seatW,
     seatH,
     seats: positionsFor(opts.count, cx, cy, ring.rx, ring.ry, seatW, seatH, opts.startAngle),
+    boxes: {
+      table: box(rx, ry),
+      felt: box(rx - opts.feltGap, ry - opts.feltGap),
+      rim: box(rx - RIM_GAP, ry - RIM_GAP),
+      glow: box(rx - GLOW_GAP, ry - GLOW_GAP),
+      bettingLine: box(betRx, betRy),
+    },
   };
 }

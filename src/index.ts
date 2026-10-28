@@ -1,5 +1,25 @@
 export { cn } from "./cn";
 export { BB, formatBB } from "./format";
+export {
+  contrastRatio,
+  flatten,
+  mostVisible,
+  parseColor,
+  relativeLuminance,
+  type Rgba,
+} from "./color";
+export { SIZES, type CardSize, type ChipSize, type Size } from "./sizes";
+export { COUNT_UP_MS, DEAL_STAGGER_MS, FLIP_STAGGER_MS } from "./motion";
+export {
+  describeCard,
+  getRankName,
+  getSuitName,
+  getSuitSymbol,
+  isKnownSuit,
+  isRedSuit,
+  parseCard,
+  type ParsedCard,
+} from "./cards";
 export { nextSeatIndex, type NextSeatOptions } from "./seat";
 export {
   seatAngle,
@@ -8,14 +28,19 @@ export {
   type Point,
 } from "./geometry";
 export {
+  DEFAULT_SEAT_H,
+  DEFAULT_SEAT_W,
+  GLOW_GAP,
+  RIM_GAP,
   SEAT_SHRINK_FLOOR,
+  ellipseBox,
   fitSeatScale,
   layoutSeats,
   minSeatSeparation,
   seatPoint,
   seatRingRadii,
   tableRadii,
-  type Box,
+  type EllipseBox,
   type Layout,
   type LayoutOptions,
   type SeatLayout,
@@ -26,14 +51,24 @@ export {
   CardBack,
   HoleCards,
   CommunityCards,
-  parseCard,
-  getSuitSymbol,
   type PlayingCardProps,
   type CardBackProps,
   type HoleCardsProps,
   type CommunityCardsProps,
-  type CardSize,
 } from "./components/PlayingCard";
+
+export {
+  DEFAULT_DENOMINATIONS,
+  chipBreakdown,
+  chipCount,
+  chipSpotColor,
+  chipsTotal,
+  type ChipStackEntry,
+  type Denomination,
+} from "./chips";
+
+export { Chip, ChipStack, type ChipProps, type ChipStackProps } from "./components/Chip";
+export { Confetti, type ConfettiProps } from "./components/Confetti";
 
 export { Seat, type SeatProps } from "./components/Seat";
 export { Pot, type PotProps } from "./components/Pot";
@@ -48,6 +83,7 @@ export {
   CardTable,
   type CardTableProps,
   type SeatBox,
+  type TableOverlayGeometry,
 } from "./components/CardTable";
 
 // Back-compat alias (the table is now game-agnostic).
