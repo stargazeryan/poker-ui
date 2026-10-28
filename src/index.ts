@@ -68,6 +68,7 @@ export {
 } from "./chips";
 
 export { Chip, ChipStack, type ChipProps, type ChipStackProps } from "./components/Chip";
+export { Confetti, type ConfettiProps } from "./components/Confetti";
 
 export { Seat, type SeatProps } from "./components/Seat";
 export { Pot, type PotProps } from "./components/Pot";
@@ -82,6 +83,7 @@ export {
   CardTable,
   type CardTableProps,
   type SeatBox,
+  type TableOverlayGeometry,
 } from "./components/CardTable";
 
 // Back-compat alias (the table is now game-agnostic).

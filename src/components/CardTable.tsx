@@ -13,6 +13,7 @@ import {
   DESIGN_W,
   layoutSeats,
   type EllipseBox,
+  type Layout,
 } from "../layout";
 import { SeatSizeContext } from "./seatSize";
 
@@ -33,13 +34,21 @@ export {
 /** Geometry CardTable laid a seat frame out for, handed to `renderSeat`. */
 export interface SeatBox {
   index: number;
-  isYou: boolean;
   /** Centre of the frame, in design space. */
   x: number;
   y: number;
   /** Frame size the ring was laid out for (≤ `seatWidth`/`seatHeight`). */
   width: number;
   height: number;
+}
+
+/** What `renderOverlay` is handed: the design box, and the layout inside it. */
+export interface TableOverlayGeometry {
+  /** Design box the overlay is scaled with. */
+  designWidth: number;
+  designHeight: number;
+  /** Everything `layoutSeats` computed — centres, frame size, every ellipse box. */
+  layout: Layout;
 }
 
 export interface CardTableProps {
@@ -55,11 +64,14 @@ export interface CardTableProps {
   /** Optional per-seat content. Length should equal `seatCount`. */
   seats?: (ReactNode | null)[];
   /**
-   * Alternative to `seats`: render a seat by index. Receives the laid-out
-   * frame box as a third argument, so an auto-shrunk seat can be sized to
-   * match the ring: `<Seat width={box.width} height={box.height} />`.
+   * Alternative to `seats`: render a seat by index, and size a shrunk frame to
+   * the ring: `<Seat width={box.width} height={box.height} />`.
+   *
+   * The table tells you *where* the seat is, never *what it is*: no `isYou`,
+   * no active/winner flag. Those are yours to pass to `Seat` — see the
+   * `overlay` prop for the decorations that used to live here.
    */
-  renderSeat?: (index: number, isYou: boolean, box: SeatBox) => ReactNode;
+  renderSeat?: (index: number, box: SeatBox) => ReactNode;
   /**
    * Optional per-seat "bet" content, auto-positioned on the betting line
    * (`betRadiusScale`) along the seat-to-center radius, so it faces the middle
@@ -75,28 +87,35 @@ export interface CardTableProps {
   betRadiusScale?: number;
   /**
    * Angle (degrees) of seat 0. Default 90° = directly below the table centre.
-   * Seats advance by `360 / seatCount` from there, so 2–10 players spread evenly.
+   * Seats advance by `360 / seatCount` from there.
    */
   startAngle?: number;
-  /** Which seat is the viewer (adds no offset; only flags `isYou`). Default null. */
-  yourSeatIndex?: number | null;
   /** Optional content in the middle of the table (cards, pot, anything). */
   center?: ReactNode;
   /** Ambient spotlight + felt shimmer. Default true. */
   ambient?: boolean;
-  /** Highlight the table edge (e.g. when it is your turn). Default false. */
-  yourTurn?: boolean;
-  /** Winning seat indices; when non-empty, confetti falls. */
-  winnerSeats?: number[];
-  /** Show confetti for winners. Default true. */
-  confetti?: boolean;
   /**
-   * Confetti colours. Defaults to a party palette. This is a prop rather than a
-   * theme token because the colours land in inline styles, which Tailwind's
-   * tree-shaking cannot see — a custom property nothing references never gets
-   * emitted.
+   * Content drawn above the seats, inside the scaled design box
+   * (`pointer-events-none`). This is where the caller puts table-edge effects
+   * and celebrations — the table does not know why anything is happening.
+   *
+   * ```tsx
+   * <CardTable overlay={isMyTurn ? <TableGlow /> : null} />
+   * ```
    */
-  confettiColors?: string[];
+  overlay?: ReactNode;
+  /**
+   * Alternative to `overlay`: render it with the geometry the table laid out,
+   * so a decoration can be positioned on the real ellipse instead of guessed
+   * at. Continues to work if the design box is resized:
+   *
+   * ```tsx
+   * renderOverlay={({ layout }) => (
+   *   <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
+   * )}
+   * ```
+   */
+  renderOverlay?: (geometry: TableOverlayGeometry) => ReactNode;
   /** Preferred seat frame width. Default 160. */
   seatWidth?: number;
   /** Preferred seat frame height. Default 176. */
@@ -141,12 +160,14 @@ export interface CardTableProps {
 const MIN_FIT_ASPECT = 0.5;
 const MAX_FIT_ASPECT = 2.5;
 
-const DEFAULT_CONFETTI_COLORS = ["#f39c12", "#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#9b59b6"];
-
 /**
  * A responsive, game-agnostic card table. It scales a design box (1200x900 by
  * default) onto its container and arranges `seatCount` seats around the felt.
- * Purely presentational: supply seat content and an optional `center` slot.
+ *
+ * It lays out and it draws: seat positions, frame sizes, the betting line, the
+ * felt, the scaling, and an `overlay` slot for whatever you want on top. It
+ * holds no opinion about the game — not whose turn it is, not who won, not
+ * which seat is yours. Put those on the `Seat`s you pass in.
  */
 export function CardTable({
   seatCount = 6,
@@ -156,13 +177,10 @@ export function CardTable({
   renderBet,
   betRadiusScale = DEFAULT_BET_SCALE,
   startAngle = 90,
-  yourSeatIndex = null,
   center,
   ambient = true,
-  yourTurn = false,
-  winnerSeats = [],
-  confetti = true,
-  confettiColors = DEFAULT_CONFETTI_COLORS,
+  overlay,
+  renderOverlay,
   seatWidth = DEFAULT_SEAT_W,
   seatHeight = DEFAULT_SEAT_H,
   seatGap = DEFAULT_SEAT_GAP,
@@ -239,6 +257,7 @@ export function CardTable({
   const { designW, designH, scale, layout } = geo;
   const { cx, cy, seatW, seatH, betRx, betRy, boxes } = layout;
   const hasBets = bets !== undefined || renderBet !== undefined;
+  const hasOverlay = overlay !== undefined || renderOverlay !== undefined;
 
   /*
    * Every ellipse comes from `layoutSeats` as an inset box, so this component
@@ -258,7 +277,6 @@ export function CardTable({
   const tableFrameInset = px(boxes.table);
   const feltInset = px(boxes.felt);
   const rimInset = px(boxes.rim);
-  const ringInset = px(boxes.glow);
   const betLineInset = px(boxes.bettingLine);
 
   return (
@@ -319,15 +337,6 @@ export function CardTable({
             </span>
           </div>
 
-          {/* your-turn edge glow */}
-          {yourTurn && (
-            <div
-              className="pointer-events-none absolute z-10 animate-turn-glow rounded-[50%]"
-              style={ringInset}
-              aria-hidden="true"
-            />
-          )}
-
           {/* center slot (optional) */}
           {center !== undefined && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -346,9 +355,8 @@ export function CardTable({
             <SeatSizeContext.Provider value={{ width: seatW, height: seatH }}>
               {layout.seats.map((seat) => {
                 const { index, x, y } = seat;
-                const isYou = index === yourSeatIndex;
-                const box: SeatBox = { index, isYou, x, y, width: seatW, height: seatH };
-                const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, isYou, box) : null;
+                const box: SeatBox = { index, x, y, width: seatW, height: seatH };
+                const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, box) : null;
                 if (content === null) return null;
                 return (
                   <div
@@ -386,30 +394,12 @@ export function CardTable({
             </div>
           )}
 
-          {/* winner confetti */}
-          {confetti && winnerSeats.length > 0 && (
-            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
-              {Array.from({ length: 44 }).map((_, i) => {
-                const w = 5 + (i % 4) * 2;
-                const h = 9 + (i % 3) * 4;
-                const dur = 1.7 + (i % 5) * 0.28;
-                const delay = (i % 12) * 0.14;
-                return (
-                  <span
-                    key={i}
-                    className="absolute top-[26%] animate-confetti rounded-[2px]"
-                    style={{
-                      left: `${(i * 37) % 96}%`,
-                      width: w,
-                      height: h,
-                      backgroundColor: confettiColors[i % confettiColors.length],
-                      animationDuration: `${dur}s`,
-                      animationDelay: `${delay}s`,
-                      animationIterationCount: "infinite",
-                    }}
-                  />
-                );
-              })}
+          {/* caller-drawn overlay: edge effects, celebrations, annotations */}
+          {hasOverlay && (
+            <div data-part="overlay" className="pointer-events-none absolute inset-0 z-30">
+              {overlay !== undefined
+                ? overlay
+                : renderOverlay?.({ designWidth: designW, designHeight: designH, layout })}
             </div>
           )}
 

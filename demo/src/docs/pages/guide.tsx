@@ -15,15 +15,18 @@ const SETUP = `
 const MINIMAL = `
 import { CardTable, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
 
-export function Table({ hands, board }) {
+export function Table({ hands, board, activeSeat }) {
   return (
     <div style={{ height: 640 }}>
       <CardTable
         seatCount={6}
-        yourSeatIndex={0}
-        yourTurn
-        renderSeat={(i, isYou, box) => (
-          <Seat width={box.width} height={box.height} isActive={isYou} header={<b>{i}</b>}>
+        renderSeat={(i, box) => (
+          <Seat
+            width={box.width}
+            height={box.height}
+            isActive={activeSeat === i}   /* your state, your call */
+            header={<b>{i === 0 ? "You" : "Seat " + i}</b>}
+          >
             <HoleCards cards={hands[i]} size="sm" />
           </Seat>
         )}
@@ -82,14 +85,12 @@ export function GettingStarted() {
       >
         <CardTable
           seatCount={6}
-          yourSeatIndex={0}
-          yourTurn
-          renderSeat={(i, isYou, box) => (
+          renderSeat={(i, box) => (
             <Seat
               width={box.width}
               height={box.height}
               isActive={i === 3}
-              header={<span className="w-full truncate text-center font-semibold">{isYou ? "You" : `Seat ${i}`}</span>}
+              header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
               footer={<span className="w-full text-center font-mono text-gold-light">100 BB</span>}
             >
               {i % 2 === 0 ? <HoleCards cards={["As", "Kh"]} size="sm" /> : <HoleCards cards={[null, null]} size="sm" />}
@@ -179,15 +180,12 @@ export function Theming() {
           <div style={tokens as CSSProperties} className="h-[420px] w-full">
             <CardTable
               seatCount={6}
-              yourSeatIndex={0}
-              yourTurn
-              winnerSeats={[]}
-              renderSeat={(i, isYou, box) => (
+              renderSeat={(i, box) => (
                 <Seat
                   width={box.width}
                   height={box.height}
                   isActive={i === 3}
-                  header={<span className="w-full text-center font-semibold">{isYou ? "You" : i}</span>}
+                  header={<span className="w-full text-center font-semibold">{i === 0 ? "You" : i}</span>}
                 >
                   <HoleCards cards={["As", "Kh"]} size="sm" />
                 </Seat>
@@ -214,8 +212,8 @@ export function Theming() {
       </P>
       <ApiTable rows={TOKEN_ROWS} caption="Every token" />
       <P>
-        Confetti colours are the one exception: they are inline styles, which Tailwind's tree-shaking cannot see, so they
-        are a prop (<Prop>confettiColors</Prop>) rather than tokens.
+        Confetti colours are the one exception: they are inline styles, which Tailwind's tree-shaking cannot see, so
+        they are a prop (<Prop>colors</Prop> on <Prop>Confetti</Prop>) rather than tokens.
       </P>
       <P>
         Individual components also take <Prop>className</Prop>; <Prop>Seat</Prop> additionally takes{" "}
@@ -237,8 +235,8 @@ const GAPS: Array<[string, string]> = [
     "Each animation checks for itself: the CSS ones through a media query scoped to this package's own animation classes, and the Pot count-up through matchMedia, because a rAF loop is out of reach of any media query. There is no central switch, so a new animation has to remember to opt in.",
   ],
   [
-    "Confetti never stops",
-    "The 44 confetti spans run on an infinite iteration count for as long as winnerSeats is non-empty. There is no timeout and no cleanup, so a long-lived winner keeps animating.",
+    "Confetti never stops on its own",
+    "<Confetti /> runs on an infinite iteration count for as long as it is mounted: there is no built-in timeout, so stopping it means unmounting it (which is what a caller who knows when the celebration is over will do anyway). The upside of it being a component is that the caller decides exactly that.",
   ],
   [
     "Seats don't rotate",
@@ -261,12 +259,12 @@ const GAPS: Array<[string, string]> = [
     "That warns on the server. It is guarded by a \"use client\" banner, so it works in a client component, but SSR of a client component still logs the warning.",
   ],
   [
-    "tailwindcss is a documented peer but not a declared one",
-    "peerDependencies lists only react and react-dom, so npm will not warn about an incompatible Tailwind.",
+    "The overlay slot is pointer-events-none",
+    "CardTable's overlay layer does not capture clicks, so it cannot swallow a tap meant for a seat under it. Want something interactive up there? Turn pointer events back on for your own element.",
   ],
   [
-    "No release pipeline",
-    "Version bumps are manual and there is no npm publish workflow, no changesets and no provenance. CI does verify typecheck, tests, the package build and the consumer path.",
+    "Releases are deliberate, but manual",
+    "A tag alone publishes nothing: publishing a GitHub Release runs release.yml, which uses npm trusted publishing (so no token is stored anywhere) and attaches provenance. Version bumps are still a human running npm version, and the CHANGELOG is hand-written — there are no changesets.",
   ],
   [
     "nextSeatIndex is a helper, not turn order",
@@ -293,7 +291,7 @@ export function KnownGaps() {
       <Row className="mt-4">
         <Field
           label="fixed in this branch:"
-          value="betting-line desync · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size"
+          value="betting-line desync · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti)"
         />
       </Row>
     </>

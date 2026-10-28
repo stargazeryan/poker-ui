@@ -4,6 +4,59 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from 0.5.0, so it is the section to read before
 upgrading.
 
+## 0.7.0 — 2026-10-27
+
+`CardTable` no longer holds game state. It lays out and it draws; the caller
+decides what is true. Five props went away, which is why this is a minor under
+0.x — if the CHANGELOG's Changed section is non-empty, the middle number moves.
+
+### Changed (read this before upgrading)
+
+- **`CardTable` no longer knows whose turn it is, who won, or which seat is
+  yours.** `yourTurn`, `winnerSeats`, `confetti`, `confettiColors` and
+  `yourSeatIndex` are gone. In their place: an `overlay` / `renderOverlay` slot,
+  and a standalone `Confetti`.
+
+  ```tsx
+  // 0.6.0
+  <CardTable yourTurn winnerSeats={[0]} confetti yourSeatIndex={0} />
+
+  // 0.7.0 — your state, your decorations
+  <CardTable
+    renderOverlay={({ layout }) => (
+      <>
+        {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
+        {winners.length > 0 && <Confetti colors={["#f39c12", "#e74c3c"]} />}
+      </>
+    )}
+  />
+  ```
+
+  A seat glows because you passed `Seat isWinner`, not because the table worked
+  something out from an index.
+- **`renderSeat` no longer receives `isYou`**, and `SeatBox` no longer carries
+  it. The table says *where* a seat is, never *who* is sitting in it — compute
+  that in your own state and pass `isActive` / `isWinner` / `isDimmed` to the
+  `Seat` you render. The signature is `renderSeat(index, box)`; the box moved
+  from third argument to second.
+- `Seat`'s states, `ambient`, and the felt/rail/token surface are unchanged.
+  `.animate-turn-glow` still ships and is still used (`Seat isActive`), so a
+  caller-drawn ring can use it as before.
+
+### Added
+
+- `CardTable`: `overlay?: ReactNode` and
+  `renderOverlay?: (geometry: TableOverlayGeometry) => ReactNode` — a layer
+  inside the scaled design box, above the seats and `pointer-events-none`, for
+  whatever the caller wants up there. `renderOverlay` is handed the design box
+  and everything `layoutSeats` computed: every ellipse box (table, felt, rim,
+  glow, betting line), every seat centre, and the frame size after the
+  auto-shrink.
+- `Confetti` (`count`, `colors`, `className`) — the falling pieces as a component
+  you decide when to render. `.animate-confetti` and `@keyframes confetti` keep
+  reaching consumer CSS through it.
+- `TableOverlayGeometry` type.
+
 ## 0.6.0 — 2026-10-26
 
 Behaviour changes put this in the minor position: under 0.x, semver treats the

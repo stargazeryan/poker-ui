@@ -5,6 +5,7 @@ import {
   Chip,
   ChipStack,
   CommunityCards,
+  Confetti,
   DEFAULT_DENOMINATIONS,
   DEFAULT_FELT_GAP,
   DEFAULT_MARGIN_X,
@@ -24,7 +25,7 @@ import {
   seatAngle,
   type Denomination,
 } from "@stargazeryan/poker-ui";
-import { ApiTable, Btn, Callout, Demo, Field, H2, Prop, Row, Stepper } from "../ui";
+import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
 
@@ -280,9 +281,8 @@ function SeatGapDemo() {
         <CardTable
           seatCount={count}
           seatGap={gap}
-          yourSeatIndex={0}
-          renderSeat={(i, isYou, box) => (
-            <Player i={i} isYou={isYou} width={box.width} height={box.height} active={i === 1} />
+          renderSeat={(i, box) => (
+            <Player i={i} isYou={i === 0} width={box.width} height={box.height} active={i === 1} />
           )}
           center={<Pot label="Main" amount={487} />}
         />
@@ -312,13 +312,12 @@ const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
   marginY: DEFAULT_MARGIN_Y,
   feltGap: DEFAULT_FELT_GAP,
   ambient: true,
-  yourTurn: true,
-  winnerSeats: false,
-  confetti: true,
-  confettiColors: CONFETTI_PALETTES[0].label,
   fit: "design",
-  yourSeatIndex: "0",
   className: false,
+  // Not CardTable props: what the *caller* decides to put in the overlay slot.
+  glow: true,
+  confetti: true,
+  palette: CONFETTI_PALETTES[0].label,
 };
 
 function CardTablePlayground() {
@@ -346,7 +345,7 @@ function CardTablePlayground() {
     betRadiusScale: num("betRadiusScale"),
   });
   const gap = minSeatSeparation(geo.seats);
-  const palette = CONFETTI_PALETTES.find((p) => p.label === v.confettiColors) ?? CONFETTI_PALETTES[0];
+  const palette = CONFETTI_PALETTES.find((p) => p.label === v.palette) ?? CONFETTI_PALETTES[0];
   const frame = `${Math.round(geo.seatW)}×${Math.round(geo.seatH)}`;
 
   return (
@@ -387,6 +386,21 @@ function CardTablePlayground() {
         ))}
       </Row>
 
+      <Row className="gap-4 border-b border-white/10 p-4">
+        <span className="mr-1 font-mono text-[11px] text-neutral-500">overlay</span>
+        <Btn active={bool("glow")} onClick={() => set("glow", !bool("glow"))}>
+          your-turn ring
+        </Btn>
+        <Btn active={bool("confetti")} onClick={() => set("confetti", !bool("confetti"))}>
+          <span title="renders <Confetti />">confetti</span>
+        </Btn>
+        {CONFETTI_PALETTES.map((p) => (
+          <Btn key={p.label} active={v.palette === p.label} onClick={() => set("palette", p.label)}>
+            {p.label}
+          </Btn>
+        ))}
+      </Row>
+
       <Row className="border-b border-white/10 px-4 py-3">
         <Field label="seats:" value={count} />
         <Field label="frames:" value={frame} />
@@ -408,20 +422,21 @@ function CardTablePlayground() {
           marginY={num("marginY")}
           feltGap={num("feltGap")}
           ambient={bool("ambient")}
-          yourTurn={bool("yourTurn")}
-          winnerSeats={bool("winnerSeats") ? [0] : []}
-          confetti={bool("confetti")}
-          confettiColors={[...palette.colors]}
           fit={v.fit as "design" | "container"}
-          yourSeatIndex={v.yourSeatIndex === "0" ? 0 : null}
           className={bool("className") ? "outline-dashed outline-1 outline-amber-400/60" : undefined}
-          renderSeat={(i, isYou, box) => (
+          renderOverlay={({ layout }) => (
+            <>
+              {bool("glow") && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
+              {bool("confetti") && <Confetti colors={[...palette.colors]} />}
+            </>
+          )}
+          renderSeat={(i, box) => (
             <Seat
               width={box.width}
               height={box.height}
-              isActive={i === 0 && bool("yourTurn")}
-              isWinner={bool("winnerSeats") && i === 0}
-              header={<span className="w-full text-center text-[11px] font-semibold">{isYou ? "you" : `seat ${i}`}</span>}
+              isActive={i === 0 && bool("glow")}
+              isWinner={bool("confetti") && i === 0}
+              header={<span className="w-full text-center text-[11px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
               footer={<span className="w-full text-center font-mono text-[10px] text-amber-300">{i * 20} BB</span>}
             >
               <HoleCards cards={["As", "Kh"]} size="xs" />
@@ -460,8 +475,7 @@ export function CardTablePage() {
         code={`<CardTable
   seatCount={6}
   startAngle={90}
-  yourSeatIndex={0}
-  renderSeat={(i, isYou, box) => (
+  renderSeat={(i, box) => (
     <Seat width={box.width} height={box.height} header={<b>{i}</b>}>
       <HoleCards cards={hands[i]} size="sm" />
     </Seat>
@@ -480,8 +494,7 @@ export function CardTablePage() {
           <div className="h-[400px] w-full">
             <CardTable
               seatCount={count}
-              yourSeatIndex={0}
-              renderSeat={(i, isYou, box) => <Player i={i} isYou={isYou} width={box.width} height={box.height} />}
+              renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
               center={<Pot label="Main" amount={487} />}
             />
           </div>
@@ -500,8 +513,7 @@ export function CardTablePage() {
         <div className="h-[400px] w-full">
           <CardTable
             seatCount={6}
-            yourSeatIndex={0}
-            renderSeat={(i, isYou, box) => <Player i={i} isYou={isYou} width={box.width} height={box.height} />}
+            renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
             renderBet={(i) =>
               CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null
             }
@@ -511,28 +523,52 @@ export function CardTablePage() {
       </Demo>
 
       <Demo
-        title="Turn, winner and confetti"
-        description={<><Prop>yourTurn</Prop> rings the table edge; <Prop>winnerSeats</Prop> starts the confetti and glows those seats.</>}
+        title="The overlay: edge effects and celebrations"
+        description={
+          <>
+            The table has no <Prop>yourTurn</Prop> and no <Prop>winnerSeats</Prop> — it does not know that anything is
+            happening. <Prop>renderOverlay</Prop> hands you the geometry, and <em>you</em> draw the ring and drop the
+            confetti when your own state says so.
+          </>
+        }
         previewClassName="p-0 overflow-hidden"
-        code={`<CardTable yourTurn winnerSeats={[0]} confetti />`}
+        code={`<CardTable
+  renderOverlay={({ layout }) => (
+    <>
+      {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
+      {showdown && <Confetti colors={["#f39c12", "#e74c3c"]} />}
+    </>
+  )}
+  renderSeat={(i, box) => <Seat isActive={myTurnSeat === i} width={box.width} height={box.height} />}
+/>`}
       >
         <div className="w-full">
           <Row className="justify-center border-b border-white/10 py-3">
             <Btn onClick={() => setTurn((v) => !v)} active={turn}>
-              yourTurn
+              your turn
             </Btn>
             <Btn onClick={() => setWinner((v) => !v)} active={winner}>
-              winnerSeats=[0]
+              showdown
             </Btn>
           </Row>
           <div className="h-[400px] w-full">
             <CardTable
               seatCount={6}
-              yourSeatIndex={0}
-              yourTurn={turn}
-              winnerSeats={winner ? [0] : []}
-              renderSeat={(i, isYou, box) => (
-                <Player i={i} isYou={isYou} width={box.width} height={box.height} winner={winner && i === 0} />
+              renderOverlay={({ layout }) => (
+                <>
+                  {turn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
+                  {winner && <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} />}
+                </>
+              )}
+              renderSeat={(i, box) => (
+                <Player
+                  i={i}
+                  isYou={i === 0}
+                  width={box.width}
+                  height={box.height}
+                  active={turn && i === 2}
+                  winner={winner && i === 2}
+                />
               )}
               center={<Pot label="Main" amount={487} />}
             />
@@ -564,12 +600,12 @@ export function CardTablePage() {
                 <CardTable
                   seatCount={6}
                   fit={o.fit}
-                  renderSeat={(i, isYou, box) => (
+                  renderSeat={(i, box) => (
                     <Seat
                       width={box.width}
                       height={box.height}
                       frameClassName="p-1"
-                      header={<span className="w-full text-center text-[9px]">{isYou ? "you" : i}</span>}
+                      header={<span className="w-full text-center text-[9px]">{i === 0 ? "you" : i}</span>}
                     />
                   )}
                 />
@@ -627,12 +663,44 @@ export function CardTablePage() {
   marginX={164 / 1200} marginY={196 / 900} // rail inset
   feltGap={11}                             // felt inset
   fit="design"                             // or "container"
-  ambient yourTurn confetti                // decorations
-  confettiColors={["#f39c12", "…"]}
-  yourSeatIndex={0}
+  ambient                                  // spotlight + shimmer
+  renderOverlay={({ layout }) => (…)}      // the ring, the confetti — your call
 />`}
       >
         <CardTablePlayground />
+      </Demo>
+
+      <H2>Who decides what</H2>
+      <P>
+        The table lays out and draws; it never decides. There is no <Prop>yourTurn</Prop> and no{" "}
+        <Prop>winnerSeats</Prop> on it — it holds no game state at all. The caller passes <Prop>isActive</Prop> /{" "}
+        <Prop>isWinner</Prop> to the <Prop>Seat</Prop>s it renders, and puts edge effects and celebrations in{" "}
+        <Prop>overlay</Prop>. Everything the table knows is geometry, and <Prop>renderOverlay</Prop> hands you all of it
+        — which is why a your-turn ring is one line rather than a prop. The demo above shows exactly that, and its{" "}
+        <em>show code</em> has the snippet:
+      </P>
+      <P>
+        <Prop>geometry.layout</Prop> is exactly what <Prop>layoutSeats</Prop> returned: every ellipse box (table, felt,
+        rim, glow, betting line), every seat centre, and the frame size after the auto-shrink.
+      </P>
+
+      <H2>Confetti</H2>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["confetti"].summary}</p>
+      <Api slug="confetti" />
+      <Demo
+        title="Confetti"
+        description={
+          <>
+            Fills whatever box it is rendered into — here a plain <Prop>relative</Prop> div, in the table it is the
+            design box via <Prop>overlay</Prop>. It animates for as long as it is mounted, so unmount it to stop it.
+          </>
+        }
+        previewClassName="p-0 overflow-hidden"
+        code={`<Confetti count={60} colors={["#f39c12", "#e74c3c", "#2ecc71", "#3498db"]} />`}
+      >
+        <div className="relative h-[280px] w-full bg-neutral-950">
+          <Confetti count={60} colors={["#f39c12", "#e74c3c", "#2ecc71", "#3498db"]} />
+        </div>
       </Demo>
 
       <Api slug="card-table" />

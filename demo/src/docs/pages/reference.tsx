@@ -244,9 +244,9 @@ export function TurnOrderPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Turn order</h1>
       <P>
         Turn order is game logic, not UI. This library computes nothing about who acts next — you compute it in your own
-        engine and pass the result into <Prop>Seat</Prop>&apos;s <Prop>isActive</Prop> and{" "}
-        <Prop>CardTable</Prop>&apos;s <Prop>yourTurn</Prop>. One generic helper is provided for the mechanical part of
-        walking the ring:
+        engine, pass the result into <Prop>Seat</Prop>&apos;s <Prop>isActive</Prop>, and draw whatever the table edge
+        should show via <Prop>CardTable</Prop>&apos;s <Prop>overlay</Prop>. One generic helper is provided for the
+        mechanical part of walking the ring:
       </P>
       <pre className="mt-3 overflow-x-auto rounded-lg border border-white/10 bg-[#0c100e] p-4 font-mono text-[12.5px] leading-relaxed text-neutral-300">
 {`nextSeatIndex(current, seatCount, {

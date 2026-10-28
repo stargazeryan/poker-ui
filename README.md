@@ -58,17 +58,17 @@ Both extra lines are load-bearing:
 ```tsx
 import { CardTable, CommunityCards, HoleCards, Pot, Seat } from "@stargazeryan/poker-ui";
 
-export function Table({ hands, board, pot }) {
+export function Table({ hands, board, pot, activeSeat }) {
   return (
     <div style={{ height: 640 }}>
       <CardTable
         seatCount={6}
-        renderSeat={(i, isYou, box) => (
+        renderSeat={(i, box) => (
           <Seat
             width={box.width}
             height={box.height}
-            isActive={i === 2}          /* your turn logic, your call */
-            header={<b>{isYou ? "You" : `Seat ${i}`}</b>}
+            isActive={activeSeat === i}   /* your turn logic, your call */
+            header={<b>{i === 0 ? "You" : `Seat ${i}`}</b>}
           >
             <HoleCards cards={hands[i]} size="sm" />
           </Seat>
@@ -102,12 +102,28 @@ it.
 | What unit is `240`? | **You** — pass `format` to `Pot`; `formatBB(amount, bb)` is the opt-in poker helper |
 | What goes inside a seat? | **You** — slots: 0 cards, 2 cards, an avatar, buttons, anything |
 
-`CardTable` does take a few convenience props for things that are decorative and
-game-shaped (`yourSeatIndex` flags `isYou`, `yourTurn` rings the table edge,
-`winnerSeats` starts the confetti and glows those seats). They only ever *place*
-what you told them to; none of them decides anything. Keep the real state in
-your own store either way — a seat glows because you passed `isWinner`, not
-because the table worked something out.
+`CardTable` has no game props at all: no `yourTurn`, no `winnerSeats`, no
+`yourSeatIndex`. It takes an `overlay` — or `renderOverlay`, which is handed the
+geometry — for anything you want drawn on top, and it exports the pieces that
+used to be its own decorations. A seat glows because you passed `isWinner`, not
+because the table worked something out from an index:
+
+```tsx
+<CardTable
+  renderOverlay={({ layout }) => (
+    <>
+      {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
+      {showdown && <Confetti colors={["#f39c12", "#e74c3c"]} />}
+    </>
+  )}
+  renderSeat={(i, box) => <Seat isActive={activeSeat === i} width={box.width} height={box.height} />}
+/>
+```
+
+`renderOverlay` receives the design box and everything `layoutSeats` computed,
+so a decoration sits on the real ellipse instead of a guess: every ellipse box
+(table, felt, rim, glow, betting line), every seat centre, and the frame size
+after the auto-shrink.
 
 ## Components and their props
 
@@ -117,11 +133,12 @@ tables cannot drift. The short version:
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount` (no upper limit), `seats` or `renderSeat(i, isYou, box)`, `bets` or `renderBet(i)` (placed on the betting line, facing the centre), `betRadiusScale` (default 0.72 — the drawn line follows it), `startAngle` (degrees of seat 0, default 90° = directly below the centre), `yourSeatIndex`, `center`, `ambient` (default true), `yourTurn`, `winnerSeats`, `confetti` (default true), `confettiColors`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
+| `CardTable` | `seatCount` (no upper limit), `seats` or `renderSeat(i, box)`, `bets` or `renderBet(i)` (placed on the betting line, facing the centre), `betRadiusScale` (default 0.72 — the drawn line follows it), `startAngle` (degrees of seat 0, default 90° = directly below the centre), `center`, `ambient` (default true), `overlay` or `renderOverlay(geometry)`, `seatWidth`, `seatHeight`, `seatGap` (default 24), `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
 | `Seat` | states: `isActive`, `isWinner`, `isDimmed`, `animated` (default true); `winnerCrown`, `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
 | `Pot` | `amount`, `label`, `format` (defaults to a plain, locale-grouped number), `animate` (count-up, default true) |
 | `ChipStack` | `amount` (chip units), `size`, `denominations`, `maxChips` (default 12), `label`, `className` |
 | `Chip` | `value`, `color`, `colorClassName`, `spotColor`, `size`, `label`, `className` |
+| `Confetti` | `count` (default 44), `colors` (default a party palette), `className` — fills the box it is rendered into; unmount it to stop it |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`: `xs \| sm \| md \| lg`, `label` |
 | `CardBack` | `size`, `label`, `className` |
 | `HoleCards` | `cards`, `size`, `deal` (default true), `dealKey` (change it to replay the deal for an unchanged hand) |
@@ -141,7 +158,8 @@ per concern:
 | `motion` | `COUNT_UP_MS`, `DEAL_STAGGER_MS`, `FLIP_STAGGER_MS` |
 | misc | `cn`, `nextSeatIndex`, `formatBB`, `BB` |
 
-Types: `SeatProps`, `CardTableProps`, `SeatBox`, `PotProps`, `PlayingCardProps`,
+Types: `SeatProps`, `CardTableProps`, `SeatBox`, `TableOverlayGeometry`,
+`ConfettiProps`, `PotProps`, `PlayingCardProps`,
 `CardBackProps`, `HoleCardsProps`, `CommunityCardsProps`, `ChipProps`,
 `ChipStackProps`, `CardSize`, `ChipSize`, `Size`, `Point`, `Layout`,
 `LayoutOptions`, `SeatLayout`, `EllipseBox`, `Rgba`, `ParsedCard`,
@@ -232,8 +250,8 @@ All on by default, each toggleable:
 | Winner glow | `Seat isWinner` | `animated={false}` |
 | Pot count-up | `Pot` | `animate={false}` |
 | Ambient felt + spotlight | `CardTable` | `ambient={false}` |
-| Your-turn edge glow | `CardTable` | omit `yourTurn` |
-| Winner confetti | `CardTable` | `confetti={false}` |
+| Your-turn edge glow | your own ring in `CardTable`'s `overlay` | render it conditionally |
+| Confetti | `<Confetti />` | render it conditionally |
 
 The CSS animations are disabled automatically under
 `prefers-reduced-motion`. The `Pot` count-up is a `requestAnimationFrame` loop,
@@ -244,9 +262,9 @@ app actually uses.
 
 ## "Whose turn is next?"
 
-Turn order is game logic, not UI. Compute it in your engine and pass the result
-into `Seat`'s `isActive` (and `CardTable`'s `yourTurn`). One generic helper walks
-the ring:
+Turn order is game logic, not UI. Compute it in your engine, pass the result into
+`Seat`'s `isActive`, and draw whatever the table edge should show through
+`CardTable`'s `overlay`. One generic helper walks the ring:
 
 ```ts
 import { nextSeatIndex } from "@stargazeryan/poker-ui";
@@ -295,7 +313,7 @@ The [docs site](demo/) lists every token with the value it ships and has a live
 editor that sets these properties on a wrapper — which is exactly what an
 override in your `@theme` does document-wide.
 
-Confetti colours are the one exception: `confettiColors` is a prop, because
+Confetti colours are the one exception: `Confetti`'s `colors` is a prop, because
 those colours land in inline styles that Tailwind's tree-shaking cannot see.
 `className` / `frameClassName` / `frameStyle` are there for the rest.
 

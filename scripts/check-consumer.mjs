@@ -100,22 +100,25 @@ try {
   writeFileSync(
     join(app, "src", "main.tsx"),
     `import { createRoot } from "react-dom/client";
-import { CardTable, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack } from "@stargazeryan/poker-ui";
+import { CardTable, Confetti, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack } from "@stargazeryan/poker-ui";
 import "./app.css";
 
 createRoot(document.getElementById("root")!).render(
   <div>
     <CardTable
       seatCount={6}
-      yourTurn
-      winnerSeats={[0]}
-      yourSeatIndex={0}
-      renderSeat={(i, isYou, box) => (
-        <Seat width={box.width} height={box.height} isActive={isYou} header={<b>{isYou ? "you" : i}</b>}>
+      renderSeat={(i, box) => (
+        <Seat width={box.width} height={box.height} isActive={i === 0} header={<b>{i === 0 ? "you" : i}</b>}>
           <HoleCards cards={["As", "Kh"]} size="sm" />
         </Seat>
       )}
       renderBet={(i) => (i === 0 ? <CardBack size="xs" /> : null)}
+      renderOverlay={({ layout }) => (
+        <>
+          <div style={layout.boxes.glow} className="animate-turn-glow rounded-[50%]" />
+          <Confetti count={8} colors={["#f39c12", "#e74c3c"]} />
+        </>
+      )}
       center={
         <div>
           <CommunityCards cards={["Ah", "Kd", "7c"]} size="md" />

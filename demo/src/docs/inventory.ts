@@ -50,11 +50,11 @@ export const TOKENS: TokenRow[] = [
   { name: "--color-chip-white", kind: "colour", value: "#ecf0f1", controls: "the white chip face (1 in the default set)" },
   { name: "--animate-card-flip", kind: "animation", value: "card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "the 3D flip of each community card" },
   { name: "--animate-deal-in", kind: "animation", value: "deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "hole cards dealing in, staggered by 100ms" },
-  { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive` and `CardTable yourTurn`" },
+  { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive`, and any ring you draw in `CardTable`'s overlay" },
   { name: "--animate-winner-glow", kind: "animation", value: "winner-glow 1.6s ease-in-out infinite", controls: "`Seat isWinner`" },
   { name: "--animate-felt-shimmer", kind: "animation", value: "felt-shimmer 22s linear infinite", controls: "the ambient sheen sweeping the felt" },
   { name: "--animate-spotlight", kind: "animation", value: "spotlight-breathe 7s ease-in-out infinite", controls: "the spotlight breathing on the felt" },
-  { name: "--animate-confetti", kind: "animation", value: "confetti 2s ease-in forwards", controls: "one piece of winner confetti, falling" },
+  { name: "--animate-confetti", kind: "animation", value: "confetti 2s ease-in forwards", controls: "one piece of `<Confetti />`, falling" },
 ];
 
 /** The tokens the live editor can set — animations are not colour pickers. */
@@ -101,7 +101,7 @@ export interface ControlSpec {
  * have no control in the playground. The coverage test requires every other
  * `CardTableProps` member to appear in `CARD_TABLE_CONTROLS`.
  */
-export const CONTENT_PROPS = ["seats", "renderSeat", "bets", "renderBet", "center"] as const;
+export const CONTENT_PROPS = ["seats", "renderSeat", "bets", "renderBet", "center", "overlay", "renderOverlay"] as const;
 
 export const CONFETTI_PALETTES = [
   { label: "party", colors: ["#f39c12", "#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#9b59b6"] },
@@ -122,12 +122,7 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "marginY", kind: "number", min: 0, max: 0.35, step: 0.005, hint: "rail inset, as a fraction" },
   { prop: "feltGap", kind: "number", min: 0, max: 60, step: 1, hint: "felt inset from the rail" },
   { prop: "ambient", kind: "boolean", hint: "spotlight + felt shimmer" },
-  { prop: "yourTurn", kind: "boolean", hint: "rings the table edge" },
-  { prop: "winnerSeats", kind: "boolean", hint: "seat 0 wins → confetti + glow" },
-  { prop: "confetti", kind: "boolean", hint: "confetti for winners" },
-  { prop: "confettiColors", kind: "palette", options: CONFETTI_PALETTES.map((p) => p.label) },
   { prop: "fit", kind: "enum", options: ["design", "container"] },
-  { prop: "yourSeatIndex", kind: "enum", options: ["off", "0"] },
   { prop: "className", kind: "boolean", hint: "hangs a debug outline on the outer element" },
 ];
 

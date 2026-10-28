@@ -68,7 +68,7 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "CardTable",
     interfaceName: "CardTableProps",
     summary:
-      "A responsive, game-agnostic table. It lays seats, bets and the felt out on one ellipse inside a fixed design box, then scales that box to fit the container.",
+      "A responsive table that only lays out and draws. One ellipse inside a fixed design box, scaled to fit the container; seats, bets, the felt and an `overlay` slot for whatever you want on top. It holds no game state — not whose turn it is, not who won.",
     props: [
       { name: "seatCount", type: "number", default: "6", description: "Number of seats. No upper limit: the ring shrinks the frames to fit, so 11–16 lay out fine and past ~16 they overlap." },
       {
@@ -79,9 +79,9 @@ export const COMPONENTS: ComponentDoc[] = [
       },
       {
         name: "renderSeat",
-        type: "(index: number, isYou: boolean, box: SeatBox) => ReactNode",
+        type: "(index: number, box: SeatBox) => ReactNode",
         description:
-          "Render a seat by index. `box` carries the laid-out frame size and centre, so an auto-shrunk seat can match the ring.",
+          "Render a seat by index. `box` carries the laid-out frame size and centre, so an auto-shrunk seat can match the ring — and nothing about the game: pass `isActive` / `isWinner` to `Seat` yourself.",
       },
       {
         name: "bets",
@@ -102,29 +102,19 @@ export const COMPONENTS: ComponentDoc[] = [
         default: "90",
         description: "Angle of seat 0, in degrees. 90° is directly below the centre.",
       },
-      {
-        name: "yourSeatIndex",
-        type: "number | null",
-        default: "null",
-        description:
-          "Flags `isYou` for one seat. Adds no offset — reorder your seat array to put the viewer at the bottom.",
-      },
       { name: "center", type: "ReactNode", description: "Content in the middle of the table (cards, pot, anything)." },
       { name: "ambient", type: "boolean", default: "true", description: "Breathing spotlight and felt shimmer." },
-      { name: "yourTurn", type: "boolean", default: "false", description: "Highlights the table edge." },
       {
-        name: "winnerSeats",
-        type: "number[]",
-        default: "[]",
-        description: "Seat indices that won. A non-empty array also starts the confetti.",
-      },
-      { name: "confetti", type: "boolean", default: "true", description: "Show confetti for winners." },
-      {
-        name: "confettiColors",
-        type: "string[]",
-        default: "party palette",
+        name: "overlay",
+        type: "ReactNode",
         description:
-          "Confetti colours. A prop rather than a theme token, because these land in inline styles that Tailwind's tree-shaking cannot see.",
+          "Content drawn above the seats inside the scaled design box, `pointer-events-none` by default. Where table-edge effects and celebrations go — the table does not know why anything is happening.",
+      },
+      {
+        name: "renderOverlay",
+        type: "(geometry: TableOverlayGeometry) => ReactNode",
+        description:
+          "Alternative to `overlay`, handed the design box and the layout: `geometry.layout.boxes.glow` is the ring a your-turn highlight traces, and `geometry.layout.seats` is every seat centre and frame size.",
       },
       {
         name: "seatWidth",
@@ -343,6 +333,25 @@ export const COMPONENTS: ComponentDoc[] = [
         type: "number",
         description: "Reserve a fixed number of slots so the row width never changes as cards arrive.",
       },
+    ],
+  },
+  {
+    slug: "confetti",
+    title: "Confetti",
+    interfaceName: "ConfettiProps",
+    page: "card-table",
+    summary:
+      "Falling confetti, filling the box it is rendered into. A decoration with no opinion about why it is falling: render it when *you* decide something is worth celebrating, usually inside `CardTable`'s `overlay`.",
+    props: [
+      { name: "count", type: "number", default: "44", description: "How many pieces to scatter." },
+      {
+        name: "colors",
+        type: "string[]",
+        default: "party palette",
+        description:
+          "Piece colours, cycled. A prop rather than a theme token because they land in inline styles, which Tailwind's tree-shaking cannot see.",
+      },
+      { name: "className", type: "string", description: "Extra classes." },
     ],
   },
 ];
