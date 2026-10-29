@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "../demo/src/App";
-import { FIRST_SLUG, NAV } from "../demo/src/docs/registry";
+import { COMPONENTS, FIRST_SLUG, NAV } from "../demo/src/docs/registry";
 
 /**
  * The docs site is the library's front door, and nothing else renders it: it has
@@ -31,7 +31,11 @@ describe("docs site", () => {
   });
 
   it("renders a live component on every component page", () => {
-    for (const slug of ["card-table", "seat", "pot", "playing-card", "hole-cards", "community-cards"]) {
+    // Derived from the registry, so a component added without a live demo on its
+    // page fails here rather than shipping a prop table and some prose.
+    const pages = [...new Set(COMPONENTS.map((c) => c.page ?? c.slug))];
+    expect(pages.length).toBeGreaterThan(6);
+    for (const slug of pages) {
       const { container, unmount } = at(slug);
       // the demo previews are real DOM, not screenshots
       expect(container.querySelector(".doc-preview"), slug).not.toBeNull();
@@ -71,6 +75,19 @@ describe("docs site", () => {
     expect(container.textContent).toContain("25.6px");
     expect(container.textContent).toContain("161.0px");
     expect(container.textContent).toContain("58%"); // iPhone portrait letterboxing
+  });
+
+  it("shows the worked examples as real games, not as screenshots", () => {
+    const { container } = at("games");
+    // four games, and the ring only the betting one declared
+    expect(container.querySelector('[data-ring="betting-line"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-part="head"]')).toHaveLength(2);
+    expect(container.textContent).toContain("13 cards");
+  });
+
+  it("offers the table types on the table-types page", () => {
+    const { container } = at("table-types");
+    expect(container.querySelectorAll('[data-part="seat"]').length).toBeGreaterThan(0);
   });
 
   it("lists the known gaps honestly", () => {

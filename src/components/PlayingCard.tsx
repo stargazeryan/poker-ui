@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
 import { cn } from "../cn";
+import { CARD_HEIGHT, CARD_WIDTH } from "../cardSize";
 import { describeCard, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "../cards";
-import { DEAL_STAGGER_MS, FLIP_STAGGER_MS } from "../motion";
+import { FLIP_MS, STAGGER_MS } from "../motion";
 import { type CardSize } from "../sizes";
 
 /*
@@ -73,7 +75,7 @@ export interface PlayingCardProps {
 const CARD_FACE = "relative bg-gradient-to-br from-white via-white to-neutral-100 rounded-md border border-neutral-300/90 overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
 
 /**
- * A single playing card. Size is driven by the `size` prop (never viewport
+ * A single card. Size is driven by the `size` prop (never viewport
  * breakpoints) so cards scale predictably inside any container. Small sizes
  * (xs / sm) show only a larger upright index, centered in the card.
  */
@@ -174,6 +176,182 @@ export function CardBack({ size = "md", label = "face-down card", className }: C
   );
 }
 
+/** How a card arrives: sliding in, turning over, or not at all. */
+export type CardAnimation = "deal" | "flip" | false;
+
+export interface CardRowProps {
+  cards: (string | null)[];
+  /** Default `"md"`. */
+  size?: CardSize;
+  /**
+   * Arrival animation. `"deal"` slides each card in (the default), `"flip"`
+   * turns it over in 3D, `false` renders the row static.
+   */
+  animation?: CardAnimation;
+  /** Delay between neighbouring cards, in ms. Defaults to `STAGGER_MS` / `FLIP_MS`. */
+  stagger?: number;
+  /**
+   * Change this to replay the animation for an unchanged row (e.g. a hand id or
+   * a round number). Without it, a card whose value changed re-animates on its
+   * own, but a new hand holding the same cards looks identical.
+   */
+  animationKey?: string | number;
+  /**
+   * Reserve this many slots, so the row's width never changes as cards arrive.
+   * Positions past the end of `cards` render as empty space.
+   */
+  slots?: number;
+  /**
+   * What a `null` **within** `cards` means: `"back"` (default) is a face-down
+   * card, `"empty"` is an undealt position. Past the end of the array is always
+   * empty.
+   */
+  placeholder?: "back" | "empty";
+  className?: string;
+}
+
+/**
+ * A row of cards — a hand, a board, a meld, a dealer's up-cards. One component
+ * with one animation prop, rather than a component per game term: the
+ * arrangement and the entrance are the same in every card game, and only the
+ * vocabulary differs.
+ */
+export function CardRow({
+  cards,
+  size = "md",
+  animation = "deal",
+  stagger,
+  animationKey,
+  slots,
+  placeholder = "back",
+  className,
+}: CardRowProps) {
+  const count = Math.max(slots ?? cards.length, cards.length);
+  const step = stagger ?? (animation === "flip" ? FLIP_MS : STAGGER_MS);
+  const shown = Array.from({ length: count }, (_, i) => (i < cards.length ? cards[i] : undefined));
+
+  return (
+    <div className={cn("flex gap-2", animation === "flip" && "[perspective:800px]", className)}>
+      {shown.map((card, i) => {
+        const key =
+          animation === "deal"
+            ? animationKey !== undefined
+              ? `${animationKey}:${i}`
+              : `${i}:${card ?? "back"}`
+            : `${animationKey ?? ""}:${i}`;
+        const style = animation ? { animationDelay: `${i * step}ms` } : undefined;
+        const animClass =
+          animation === "deal" ? "animate-deal-in" : animation === "flip" ? "animate-card-flip" : undefined;
+
+        if (card === undefined) {
+          // Past the end of `cards`: an undealt position keeps the row's width.
+          return <div key={`${i}:empty`} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />;
+        }
+        if (card === null && placeholder === "empty") {
+          return <div key={`${i}:gap`} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />;
+        }
+
+        return (
+          <div
+            key={key}
+            className={cn(SIZE_CLASSES[size], animClass)}
+            style={{ aspectRatio: "10/14", ...style }}
+          >
+            <PlayingCard card={card} size={size} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export interface CardSlotProps {
+  /** Default `"md"`. */
+  size?: CardSize;
+  /** Accessible name for the empty slot. Default "empty card slot". */
+  label?: string;
+  /** Put a card (or anything else) in the slot. */
+  children?: ReactNode;
+  className?: string;
+}
+
+/**
+ * A reserved position for a card that may or may not be there yet — a board
+ * that is half dealt, a three-card game's three positions, a face-down slot.
+ * Renders as a dashed outline when empty, so a client can lay out the final
+ * shape of a game before any card exists.
+ */
+export function CardSlot({ size = "md", label = "empty card slot", children, className }: CardSlotProps) {
+  const filled = children !== undefined && children !== null;
+  return (
+    <div
+      // An empty slot announces itself; a filled one is only a frame, so the
+      // card inside keeps its own accessible name instead of being shadowed.
+      role={filled ? undefined : "img"}
+      aria-label={filled ? undefined : label}
+      className={cn(
+        "relative flex items-center justify-center rounded-md border-2 border-dashed border-white/15",
+        className,
+      )}
+      style={{ width: CARD_WIDTH[size], height: CARD_HEIGHT[size] }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export interface CardFanProps {
+  cards: (string | null)[];
+  /** Default `"lg"`. */
+  size?: CardSize;
+  /** How much neighbouring cards overlap, 0–0.95 of a card width. Default 0.55. */
+  overlap?: number;
+  /** Total spread in degrees. `0` (the default) is a flat overlapping row. */
+  arc?: number;
+  className?: string;
+}
+
+/**
+ * Overlapping cards, optionally fanned into an arc — the shape a large hand
+ * wants. A 13-card hand at `size="sm"` laid out flat is wider than any seat
+ * frame; overlapped, it fits.
+ */
+export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, className }: CardFanProps) {
+  const width = CARD_WIDTH[size];
+  const height = CARD_HEIGHT[size];
+  const n = cards.length;
+  const step = width * (1 - Math.min(0.95, Math.max(0, overlap)));
+  const mid = (n - 1) / 2;
+  const total = (n - 1) * step;
+  // The cards pivot about a point below the row, so a non-zero arc splays the
+  // tops apart while the bottoms stay together — a held hand, not a row.
+  const pivot = height * 0.35;
+
+  return (
+    <div className={cn("relative", className)} style={{ width: total + width, height }}>
+      {cards.map((card, i) => {
+        const t = n === 1 ? 0 : (i - mid) / mid;
+        const rotate = (t * arc) / 2;
+        return (
+          <div
+            key={`${i}:${card ?? "back"}`}
+            className="absolute top-0"
+            style={{
+              left: i * step,
+              transform: rotate === 0 ? undefined : `rotate(${rotate}deg)`,
+              transformOrigin: rotate === 0 ? undefined : `50% calc(100% + ${pivot}px)`,
+            }}
+          >
+            <PlayingCard card={card} size={size} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- deprecated names -- */
+
 export interface HoleCardsProps {
   cards: (string | null)[];
   size?: CardSize;
@@ -182,31 +360,21 @@ export interface HoleCardsProps {
   deal?: boolean;
   /**
    * Change this to replay the deal animation for an unchanged hand (e.g. a hand
-   * id or a round number). Without it, a card whose value changed re-deals on
-   * its own, but a new hand holding the same two cards looks identical.
+   * id or a round number).
    */
   dealKey?: string | number;
 }
 
-/** A row of a player's hole cards. */
+/** @deprecated Renamed to `CardRow`. `HoleCards` is a Hold'em word for a row of cards. */
 export function HoleCards({ cards, size = "lg", className, deal = true, dealKey }: HoleCardsProps) {
   return (
-    <div className={cn("flex gap-2", className)}>
-      {cards.map((card, i) => (
-        /*
-         * Keying on the card rather than the index is what makes the deal
-         * animation replay: React reuses an element whose key is unchanged, and
-         * a reused element never restarts its CSS animation.
-         */
-        <div
-          key={dealKey !== undefined ? `${dealKey}:${i}` : `${i}:${card ?? "back"}`}
-          className={cn(deal && "animate-deal-in")}
-          style={deal ? { animationDelay: `${i * DEAL_STAGGER_MS}ms` } : undefined}
-        >
-          <PlayingCard card={card} size={size} />
-        </div>
-      ))}
-    </div>
+    <CardRow
+      cards={cards}
+      size={size}
+      className={className}
+      animation={deal ? "deal" : false}
+      animationKey={dealKey}
+    />
   );
 }
 
@@ -216,28 +384,24 @@ export interface CommunityCardsProps {
   className?: string;
   /** Animate each card with a 3D flip. Default true. */
   animated?: boolean;
-  /** Reserve a fixed number of slots so the row width never changes. */
+  /**
+   * Reserve a fixed number of slots so the row width never changes.
+   * A `null` inside `cards` renders as a **card back** here, where it used to
+   * render as empty space — pass a shorter array to leave undealt positions.
+   */
   slots?: number;
 }
 
-/** A row of community cards, each flipping in with a staggered delay. */
+/** @deprecated Renamed to `CardRow` with `animation="flip"`. "Community" is a Hold'em word. */
 export function CommunityCards({ cards, size = "md", className, animated = true, slots }: CommunityCardsProps) {
-  const count = slots ?? cards.length;
-  const list = Array.from({ length: count }, (_, i) => cards[i] ?? null);
   return (
-    <div className={cn("flex gap-1.5", animated && "[perspective:800px]", className)}>
-      {list.map((card, i) => (
-        <div key={i} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }}>
-          {card ? (
-            <div
-              className={cn("h-full w-full", animated && "animate-card-flip")}
-              style={animated ? { animationDelay: `${i * FLIP_STAGGER_MS}ms` } : undefined}
-            >
-              <PlayingCard card={card} size={size} />
-            </div>
-          ) : null}
-        </div>
-      ))}
-    </div>
+    <CardRow
+      cards={cards}
+      size={size}
+      className={className}
+      animation={animated ? "flip" : false}
+      slots={slots}
+      placeholder="empty"
+    />
   );
 }

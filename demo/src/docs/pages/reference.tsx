@@ -6,8 +6,8 @@ import {
   DESIGN_H,
   DESIGN_W,
   ellipsePoint,
-  layoutSeats,
-  minSeatSeparation,
+  layoutTable,
+  minFrameSeparation,
   nextSeatIndex,
   ringPoints,
   seatAngle,
@@ -28,14 +28,17 @@ const LAYOUT_EXPORTS = [
   { name: "seatAngle(index, seatCount, startAngle?)", type: "number", description: "Ring angle of a seat, in degrees. Seat 0 sits at startAngle (default 90°, directly below the centre)." },
   { name: "ellipsePoint(cx, cy, rx, ry, angleDeg)", type: "Point", description: "Point on an ellipse at an angle. Screen coordinates, so 90° is below the centre." },
   { name: "ringPoints(count, cx, cy, rx, ry, startAngle?)", type: "Point[]", description: "`count` evenly spaced points on an ellipse — handy for any ring, not just seats." },
-  { name: "layoutSeats(options)", type: "Layout", description: "Everything the table draws for one configuration: every radius, the frame size after auto-shrink, every seat centre, and `boxes` (table / felt / rim / glow / bettingLine) ready to spread onto an absolutely-positioned element. The component computes no geometry of its own." },
+  { name: "layoutTable(options)", type: "Layout", description: "Everything the table draws for one configuration: the surface and its boxes (table / felt / rim / glow), the frame size after auto-shrink, every seat centre, plus `ringBox(radius)` and `slotPoint(index, radius)` to place a declared ring or slot on the real surface. The component computes no geometry of its own." },
+  { name: "layoutSeats(options)", type: "Layout", description: "Deprecated alias of `layoutTable` — it lays out a whole table, not just seats." },
   { name: "ellipseBox(dw, dh, rx, ry)", type: "EllipseBox", description: "Turn radii into the inset box of an absolutely-positioned ellipse — the one place that conversion happens." },
-  { name: "minSeatSeparation(seats)", type: "number", description: "Smallest gap between any two seat frames. Negative means they overlap." },
-  { name: "fitSeatScale(options)", type: "number", description: "The uniform scale the auto-shrink settles on for a given configuration." },
+  { name: "minFrameSeparation(frames)", type: "number", description: "Smallest gap between any two frames. Negative means they overlap. `minSeatSeparation` is a deprecated alias." },
+  { name: "fitSeatScale(options)", type: "number", description: "The uniform scale the auto-shrink settles on for a given configuration — over a ring, a perimeter, a row or a grid." },
+  { name: "frames.ts: ringFrames / rowFrames / gridFrames / perimeterFrames / fitFrameScale / minFrameSeparation / FRAME_SHRINK_FLOOR", type: "FrameBox[] | number", description: "The positioning strategies on their own, with no table around them: a frame is just a rectangle at a point, so these lay out a ring of options, a blackjack row, a grid or a rectangle's edge with the same auto-shrink a table uses. This is the escape hatch for a seating that is none of the three table shapes." },
+  { name: "RoundTable / SquareTable / DealerTable / TABLE_TYPES", type: "component | Record", description: "The three table types, and a lookup from the string name (`\"round\" | \"square\" | \"dealer\"`) to the component. Shapes, not games — no game-specific table is exported anywhere." },
   { name: "tableRadii(dw, dh, marginX, marginY)", type: "{ rx, ry }", description: "Radii of the table ellipse for a design box and rail inset." },
   { name: "seatRingRadii(dw, dh, tableRx, tableRy, seatW, seatH, feltGap)", type: "{ rx, ry }", description: "Radii of the seat ring, clamped so frames stay inside the design box." },
   { name: "seatPoint(index, count, cx, cy, ringRx, ringRy, startAngle?)", type: "Point", description: "Centre of a seat on the ring." },
-  { name: "SEAT_SHRINK_FLOOR", type: "0.5", description: "How far the auto-shrink will go before it gives up." },
+  { name: "SEAT_SHRINK_FLOOR / FRAME_SHRINK_FLOOR", type: "0.5 / 0.5", description: "How far the auto-shrink will go before it gives up — the seat ring's copy, and the one any non-seat arrangement uses." },
   { name: "RIM_GAP / GLOW_GAP", type: "6 / 2", description: "How far inside the rail the rim highlight and the your-turn glow sit, in design-space px." },
   { name: "DEFAULT_SEAT_W / DEFAULT_SEAT_H", type: "160 / 176", description: "The default preferred seat frame size, and the fallback a Seat uses outside a table." },
   { name: "describeCard(card)", type: "string", description: 'The shared way to say a card out loud: "As" → "Ace of spades", null → "face-down card", and an unreadable code is returned as-is rather than invented. PlayingCard and CardBack use it for their accessible name.' },
@@ -90,9 +93,10 @@ export function LayoutPage() {
     <>
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Layout &amp; geometry</h1>
       <P>
-        The table, the seat ring and the betting line are one parametric ellipse, and the whole thing is laid out in a
-        fixed <strong>design box</strong> that is then scaled to fit its container. Everything below is derived from
-        that single formula:
+        The table and the seat ring are one parametric ellipse, and the whole thing is laid out in a fixed{" "}
+        <strong>design box</strong> that is then scaled to fit its container. Everything below is derived from that
+        single formula — and a ring you declare (a betting line, a target zone) traces the same one, at a fraction of
+        the surface:
       </P>
       <pre className="mt-3 overflow-x-auto rounded-lg border border-white/10 bg-[#0c100e] p-4 font-mono text-[12.5px] leading-relaxed text-neutral-300">
 {`x(θ) = cx + rx·cos θ      y(θ) = cy + ry·sin θ      θ = startAngle + i·(360/n)`}
@@ -180,9 +184,9 @@ export function LayoutPage() {
                 seatHeight: 176,
                 startAngle: 90,
               };
-              const raw = minSeatSeparation(layoutSeats({ ...opts, seatGap: 0 }).seats);
-              const fitted = layoutSeats({ ...opts, seatGap: 24 });
-              const gap = minSeatSeparation(fitted.seats);
+              const raw = minFrameSeparation(layoutTable({ ...opts, seatGap: 0 }).seats);
+              const fitted = layoutTable({ ...opts, seatGap: 24 });
+              const gap = minFrameSeparation(fitted.seats);
               return (
                 <tr key={n} className="border-t border-white/[0.06]">
                   <td className="px-4 py-2.5 font-mono text-[12px] text-neutral-200">{n}</td>
@@ -204,10 +208,10 @@ export function LayoutPage() {
       <H2>Every layout parameter</H2>
       <P>
         <Prop>CardTable</Prop>&apos;s layout props are these numbers — the component computes no geometry of its own, it
-        passes them straight into <Prop>layoutSeats</Prop>. This is the whole list, with the default each one falls back
-        to:
+        passes them straight into <Prop>layoutTable</Prop>. This is the whole list, with the default each one falls
+        back to:
       </P>
-      <ApiTable rows={LAYOUT_OPTIONS} caption="layoutSeats(options)" />
+      <ApiTable rows={LAYOUT_OPTIONS} caption="layoutTable(options)" />
 
       <H2>Defaults and other constants</H2>
       <P>
@@ -245,7 +249,7 @@ export function TurnOrderPage() {
       <P>
         Turn order is game logic, not UI. This library computes nothing about who acts next — you compute it in your own
         engine, pass the result into <Prop>Seat</Prop>&apos;s <Prop>isActive</Prop>, and draw whatever the table edge
-        should show via <Prop>CardTable</Prop>&apos;s <Prop>overlay</Prop>. One generic helper is provided for the
+        should show via <Prop>CardTable</Prop>&apos;s <Prop>renderOverlay</Prop>. One generic helper is provided for the
         mechanical part of walking the ring:
       </P>
       <pre className="mt-3 overflow-x-auto rounded-lg border border-white/10 bg-[#0c100e] p-4 font-mono text-[12.5px] leading-relaxed text-neutral-300">

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Seat } from "../src/components/Seat";
-import { Pot } from "../src/components/Pot";
-import { formatBB } from "../src/format";
+import { Counter, Pot } from "../src/components/Counter";
+import { formatBB } from "../src/wager/format";
 
 describe("Seat", () => {
   it("renders every slot it is given and nothing it is not", () => {
@@ -56,11 +56,11 @@ describe("Seat", () => {
     expect(still.container.innerHTML).not.toContain("243,156,18");
   });
 
-  it("shows a default crown only when isWinner + winnerCrown", () => {
-    expect(render(<Seat isWinner winnerCrown />).container.textContent).toContain("👑");
+  it("draws no decoration of its own — a crown is the caller's, not a state", () => {
+    // 0.7.0 had a `winnerCrown` prop that put a 👑 on the frame. A crown is a
+    // decoration, not a state, so it goes through `topLeft` like anything else.
     expect(render(<Seat isWinner />).container.textContent).not.toContain("👑");
-    // an explicit topLeft wins over the crown
-    expect(render(<Seat isWinner winnerCrown topLeft={<span>tl</span>} />).container.textContent).not.toContain("👑");
+    expect(render(<Seat isWinner topLeft={<span>👑</span>} />).container.textContent).toContain("👑");
   });
 
   it("is a keyboard-accessible button when onClick is given", () => {
@@ -92,35 +92,39 @@ describe("Seat", () => {
   });
 });
 
-describe("Pot", () => {
+describe("Counter", () => {
+  it("is still reachable under its old name", () => {
+    expect(Pot).toBe(Counter);
+  });
+
   it("renders a plain number by default — it does not invent a unit", () => {
-    const { container } = render(<Pot amount={240} animate={false} />);
+    const { container } = render(<Counter amount={240} animate={false} />);
     expect(container.textContent).toContain("240");
     // a big blind is a poker rule, so it is never applied for you
     expect(container.textContent).not.toContain("BB");
   });
 
   it("uses formatBB only when asked, with whatever big blind you pass", () => {
-    expect(render(<Pot amount={240} animate={false} format={formatBB} />).container.textContent).toContain("12 BB");
+    expect(render(<Counter amount={240} animate={false} format={formatBB} />).container.textContent).toContain("12 BB");
     expect(
-      render(<Pot amount={240} animate={false} format={(n) => formatBB(n, 100)} />).container.textContent,
+      render(<Counter amount={240} animate={false} format={(n) => formatBB(n, 100)} />).container.textContent,
     ).toContain("2.4 BB");
   });
 
   it("renders the optional label", () => {
-    expect(render(<Pot amount={10} label="Main" animate={false} />).container.textContent).toContain("Main");
-    expect(render(<Pot amount={10} animate={false} />).container.textContent).not.toContain("Main");
+    expect(render(<Counter amount={10} label="Main" animate={false} />).container.textContent).toContain("Main");
+    expect(render(<Counter amount={10} animate={false} />).container.textContent).not.toContain("Main");
   });
 
   it("accepts a custom formatter", () => {
-    const { container } = render(<Pot amount={240} format={(n) => `$${n}`} animate={false} />);
+    const { container } = render(<Counter amount={240} format={(n) => `$${n}`} animate={false} />);
     expect(container.textContent).toContain("$240");
   });
 
   it("counts up to a new amount when it changes", async () => {
-    const { container, rerender } = render(<Pot amount={100} />);
+    const { container, rerender } = render(<Counter amount={100} />);
     expect(container.textContent).toContain("100");
-    rerender(<Pot amount={240} />);
+    rerender(<Counter amount={240} />);
     await waitFor(() => expect(container.textContent).toContain("240"), { timeout: 2000 });
   });
 
@@ -138,8 +142,8 @@ describe("Pot", () => {
       dispatchEvent: () => false,
     })) as unknown as typeof window.matchMedia;
     try {
-      const { container, rerender } = render(<Pot amount={100} />);
-      rerender(<Pot amount={240} />);
+      const { container, rerender } = render(<Counter amount={100} />);
+      rerender(<Counter amount={240} />);
       // synchronously, with no animation frames in between
       expect(container.textContent).toContain("240");
     } finally {
@@ -149,6 +153,6 @@ describe("Pot", () => {
   });
 
   it("uses the themed gold token", () => {
-    expect(render(<Pot amount={10} />).container.innerHTML).toContain("text-gold");
+    expect(render(<Counter amount={10} />).container.innerHTML).toContain("text-gold");
   });
 });

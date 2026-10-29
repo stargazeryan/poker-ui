@@ -7,12 +7,14 @@ import { fileURLToPath } from "node:url";
  * docs smoke test run in CI without a pack/install cycle.
  */
 const pkgEntry = fileURLToPath(new URL("./src/index.ts", import.meta.url));
+const wagerEntry = fileURLToPath(new URL("./src/wager/index.ts", import.meta.url));
 const pkgStyles = fileURLToPath(new URL("./src/styles.css", import.meta.url));
 
 export default defineConfig({
   resolve: {
     alias: [
       { find: "@stargazeryan/poker-ui/styles.css", replacement: pkgStyles },
+      { find: "@stargazeryan/poker-ui/wager", replacement: wagerEntry },
       { find: /^@stargazeryan\/poker-ui$/, replacement: pkgEntry },
     ],
   },

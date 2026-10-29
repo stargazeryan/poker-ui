@@ -1,7 +1,7 @@
 {
   "name": "@stargazeryan/poker-ui",
-  "version": "0.7.0",
-  "description": "Themable React + Tailwind CSS v4 components for poker tables and playing cards.",
+  "version": "0.8.0",
+  "description": "Game-agnostic React + Tailwind CSS v4 card-table UI: tables, seats, cards and chips.",
   "license": "MIT",
   "author": "Ryan",
   "homepage": "https://stargazeryan.github.io/poker-ui/",
@@ -28,6 +28,12 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./wager": {
+      "types": "./dist/wager.d.ts",
+      "import": "./dist/wager.js",
+      "require": "./dist/wager.cjs",
+      "default": "./dist/wager.js"
     },
     "./styles.css": "./src/styles.css",
     "./package.json": "./package.json"

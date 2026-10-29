@@ -17,6 +17,7 @@ const pkgDir = fileURLToPath(new URL("..", import.meta.url));
  * itself evidence that the published artefact works.
  */
 const resolvePkg = (mode: string) => (mode === "dist" ? "dist/index.js" : "src/index.ts");
+const resolveWager = (mode: string) => (mode === "dist" ? "dist/wager.js" : "src/wager/index.ts");
 
 export default defineConfig(({ mode }) => ({
   root: "demo",
@@ -26,8 +27,10 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
-      // exact match, so the subpath export below still resolves on its own
+      // exact match, so the subpath exports below still resolve on their own
       { find: /^@stargazeryan\/poker-ui$/, replacement: join(pkgDir, resolvePkg(mode)) },
+      // mirrors the "./wager" entry in package.json's exports map
+      { find: "@stargazeryan/poker-ui/wager", replacement: join(pkgDir, resolveWager(mode)) },
       // mirrors the "./styles.css" entry in package.json's exports map
       { find: "@stargazeryan/poker-ui/styles.css", replacement: join(pkgDir, "src/styles.css") },
     ],
