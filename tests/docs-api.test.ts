@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import * as PACKAGE from "../src/index";
+import * as CORE from "../src/index";
+import * as WAGER from "../src/wager";
 import { COMPONENTS, NAV } from "../demo/src/docs/registry";
 import {
   CARD_TABLE_CONTROLS,
@@ -21,11 +22,21 @@ import {
  * interfaces with the TypeScript compiler and refuses to let the two drift.
  */
 
-const COMPONENT_DIR = fileURLToPath(new URL("../src/components", import.meta.url));
+const ROOT = fileURLToPath(new URL("../src", import.meta.url));
+/** Every directory a `*Props` interface can live in, so a new one is never missed. */
+const COMPONENT_DIRS = ["components", "tables", "wager"].map((d) => `${ROOT}/${d}`);
+
+function componentFiles(): string[] {
+  return COMPONENT_DIRS.flatMap((dir) =>
+    readdirSync(dir)
+      .filter((f) => f.endsWith(".tsx"))
+      .map((f) => `${dir}/${f}`),
+  );
+}
 
 function propNamesOf(interfaceName: string): string[] {
-  for (const file of readdirSync(COMPONENT_DIR).filter((f) => f.endsWith(".tsx"))) {
-    const text = readFileSync(`${COMPONENT_DIR}/${file}`, "utf8");
+  for (const file of componentFiles()) {
+    const text = readFileSync(file, "utf8");
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     let found: string[] | null = null;
     const visit = (node: ts.Node): void => {
@@ -40,13 +51,13 @@ function propNamesOf(interfaceName: string): string[] {
     visit(source);
     if (found) return found;
   }
-  throw new Error(`interface ${interfaceName} not found in src/components`);
+  throw new Error(`interface ${interfaceName} not found in src/components, src/wager or src/recipes`);
 }
 
 function exportedPropInterfaces(): string[] {
   const names: string[] = [];
-  for (const file of readdirSync(COMPONENT_DIR).filter((f) => f.endsWith(".tsx"))) {
-    const text = readFileSync(`${COMPONENT_DIR}/${file}`, "utf8");
+  for (const file of componentFiles()) {
+    const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(/export interface (\w+Props)\b/g)) names.push(match[1]);
   }
   return names;
@@ -67,22 +78,47 @@ describe("docs API tables", () => {
     expect(undocumented, "a new component was added without a docs page").toEqual([]);
   });
 
-  it("documents every component on a real nav page", () => {
-    const componentsNav = NAV.find((group) => group.section === "Components");
-    expect(componentsNav, "the nav must have a Components section").toBeTruthy();
-    const pageSlugs = componentsNav!.items.map((item) => item.slug);
+  it.each(COMPONENTS.filter((c) => c.omitOf).map((c) => [c.title, c] as const))(
+    "%s really does add no props of its own",
+    (_title, doc) => {
+      // For a preset: the docs say "these props are CardTable's, minus the shape
+      // knobs it already decided". This reads the `extends Omit<…, keys>` clause
+      // back and checks the keys are exactly the ones claimed — otherwise the
+      // empty prop table would be a place for a real prop to hide.
+      expect(doc.props, `${doc.title} claims to add nothing`).toEqual([]);
+      const file = componentFiles().find((f) => readFileSync(f, "utf8").includes(`export interface ${doc.interfaceName}`));
+      expect(file, `${doc.interfaceName} not found`).toBeTruthy();
+      const text = readFileSync(file as string, "utf8");
+      const pattern = new RegExp(
+        `export interface ${doc.interfaceName} extends Omit<${doc.omitOf!.from},([^>]+)>`,
+      );
+      const match = pattern.exec(text);
+      expect(match, `${doc.interfaceName} must narrow ${doc.omitOf!.from} with an Omit`).toBeTruthy();
+      const keys = (match as RegExpExecArray)[1]
+        .split("|")
+        .map((k) => k.trim().replace(/^["']|["']$/g, ""))
+        .sort();
+      expect(keys).toEqual([...doc.omitOf!.keys].sort());
+    },
+  );
 
-    // every component has to be reachable from a page someone can click to
+  it("documents every component on a real nav page", () => {
+    // Every section, not just Components: how the nav is grouped is a display
+    // decision, but a documented component has to be reachable from somewhere.
+    const pageSlugs = NAV.flatMap((group) => group.items.map((item) => item.slug));
+
     for (const doc of COMPONENTS) {
       const page = doc.page ?? doc.slug;
       expect(pageSlugs, `${doc.title} is not on any nav page`).toContain(page);
     }
     // and every component page has to document something
     for (const slug of pageSlugs) {
-      expect(
-        COMPONENTS.some((doc) => (doc.page ?? doc.slug) === slug),
-        `nav page "${slug}" documents nothing`,
-      ).toBe(true);
+      const documents = COMPONENTS.some((doc) => (doc.page ?? doc.slug) === slug);
+      const isProseGuide = NAV.some(
+        (group) => group.section !== "Components" && group.items.some((item) => item.slug === slug),
+      );
+      if (isProseGuide) continue;
+      expect(documents, `nav page "${slug}" documents nothing`).toBe(true);
     }
   });
 
@@ -97,17 +133,15 @@ describe("docs API tables", () => {
 /* --------------------------------------------------------------- the knobs -- */
 
 /**
- * Props are not the only thing anyone tunes: theme tokens, `layoutSeats`
+ * Props are not the only thing anyone tunes: theme tokens, `layoutTable`
  * options, the exported constants and — for the interactive demos — which prop
  * has a control. Those lists live in `demo/src/docs/inventory.ts`, and these
  * read the real source back so "the docs do not list every parameter" fails
  * here instead of being something a reader has to notice.
  */
 
-const SRC = fileURLToPath(new URL("../src", import.meta.url));
-
 function interfaceMembers(file: string, interfaceName: string): string[] {
-  const text = readFileSync(`${SRC}/${file}`, "utf8");
+  const text = readFileSync(`${ROOT}/${file}`, "utf8");
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   let found: string[] | null = null;
   const visit = (node: ts.Node): void => {
@@ -126,7 +160,7 @@ function interfaceMembers(file: string, interfaceName: string): string[] {
 
 /** The `@theme` block: name and value, as shipped. */
 function themeTokens(): Array<{ name: string; value: string }> {
-  const css = readFileSync(`${SRC}/styles.css`, "utf8");
+  const css = readFileSync(`${ROOT}/styles.css`, "utf8");
   const block = css.slice(css.indexOf("@theme"), css.indexOf("@keyframes"));
   const rows: Array<{ name: string; value: string }> = [];
   for (const line of block.split("\n")) {
@@ -136,9 +170,10 @@ function themeTokens(): Array<{ name: string; value: string }> {
   return rows;
 }
 
-function exportedNames(): string[] {
-  const text = readFileSync(`${SRC}/index.ts`, "utf8");
-  const source = ts.createSourceFile("index.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+/** The named exports of one entry point, read off its source. */
+function exportedNames(entry: string): string[] {
+  const text = readFileSync(`${ROOT}/${entry}`, "utf8");
+  const source = ts.createSourceFile(entry, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const names: string[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
@@ -151,6 +186,14 @@ function exportedNames(): string[] {
   visit(source);
   return names;
 }
+
+/** The two entry points, by the name a `TUNABLES` row uses for them. */
+const ENTRY_FILES: Record<string, string> = {
+  core: "index.ts",
+  wager: "wager/index.ts",
+};
+
+const ENTRY_MODULES: Record<string, unknown> = { core: CORE, wager: WAGER };
 
 describe("docs inventory", () => {
   it("documents every theme token, with the value that ships", () => {
@@ -167,7 +210,7 @@ describe("docs inventory", () => {
     expect(COLOUR_TOKENS.map((t) => t.name)).toEqual(colours);
   });
 
-  it("documents every layoutSeats option", () => {
+  it("documents every layoutTable option", () => {
     expect([...LAYOUT_OPTIONS.map((r) => r.name)].sort()).toEqual(interfaceMembers("layout.ts", "LayoutOptions").sort());
   });
 
@@ -181,13 +224,28 @@ describe("docs inventory", () => {
   });
 
   it("documents every tunable constant with the value the code has", () => {
-    const names = exportedNames();
     for (const row of TUNABLES) {
-      expect(names, `${row.name} is not exported by src/index.ts`).toContain(row.name);
-      const actual = (PACKAGE as unknown as Record<string, unknown>)[row.name];
+      const entry = row.entry ?? "core";
+      const file = ENTRY_FILES[entry];
+      expect(file, `${row.name} names an unknown entry "${entry}"`).toBeTruthy();
+      expect(exportedNames(file), `${row.name} is not exported by src/${file}`).toContain(row.name);
+      const actual = (ENTRY_MODULES[entry] as Record<string, unknown>)[row.name];
       const asString =
         typeof actual === "string" || typeof actual === "number" ? String(actual) : JSON.stringify(actual);
       expect(asString, `${row.name} drifted from the docs`).toBe(row.expect);
     }
+  });
+
+  it("keeps every documented constant off the entries it does not belong to", () => {
+    // The other half of the layer guard: a doc row marked `wager` must not also
+    // be reachable from the core entry, or the docs are lying about the split.
+    for (const row of TUNABLES) {
+      const entry = row.entry ?? "core";
+      for (const [other, names] of Object.entries(ENTRY_FILES)) {
+        if (other === entry) continue;
+        expect(exportedNames(names), `${row.name} is an export of the ${other} entry too`).not.toContain(row.name);
+      }
+    }
+    expect(exportedNames("index.ts")).not.toContain("PokerTable");
   });
 });

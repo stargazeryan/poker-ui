@@ -13,7 +13,9 @@
     "noEmit": true,
     "types": ["react", "node"],
     "paths": {
-      "@stargazeryan/poker-ui": ["./src/index.ts"]
+      "@stargazeryan/poker-ui": ["./src/index.ts"],
+      "@stargazeryan/poker-ui/wager": ["./src/wager/index.ts"],
+      "@stargazeryan/poker-ui/styles.css": ["./src/styles.css"]
     }
   },
   "include": ["src", "demo/src", "tests", "vitest.config.ts"]

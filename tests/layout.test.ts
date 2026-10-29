@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_BET_SCALE,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
-} from "../src/components/CardTable";
+} from "../src/layout";
 import { GLOW_GAP, RIM_GAP } from "../src/layout";
-import { minSeatSeparation, layoutSeats, type LayoutOptions } from "../src/layout";
+import { layoutSeats, layoutTable, minSeatSeparation, type LayoutOptions } from "../src/layout";
+import { perimeterFrames, ringFrames } from "../src/frames";
 
 const base: LayoutOptions = {
   count: 6,
@@ -78,20 +78,100 @@ describe("every drawn ellipse comes from one place", () => {
     expect(l.boxes.glow.top).toBeCloseTo(l.boxes.table.top + GLOW_GAP, 6);
   });
 
-  it("keeps the betting line and the bet radii telling the same story", () => {
-    // the bug this replaced: the line was drawn from a constant while the chips
-    // were placed from a prop, so they drifted apart
-    const l = layoutSeats({ ...base, betRadiusScale: 0.85 });
-    expect(l.betRx).toBeCloseTo(l.tableRx * 0.85, 6);
-    expect(l.betRy).toBeCloseTo(l.tableRy * 0.85, 6);
-    expect(l.boxes.bettingLine.top).toBeCloseTo(base.designHeight / 2 - l.betRy, 6);
-    expect(l.boxes.bettingLine.left).toBeCloseTo(base.designWidth / 2 - l.betRx, 6);
+  it("draws no ring of its own — the layout has no betting line in it", () => {
+    // 0.7.0 always computed `betRx` / `betRy` / `boxes.bettingLine`, so every
+    // game got a betting ring whether it had betting or not. The layout now
+    // carries the surface and the seats and nothing else; a ring is asked for.
+    expect(Object.keys(layoutTable(base).boxes).sort()).toEqual(["felt", "glow", "rim", "table"]);
+    expect("betRx" in layoutTable(base)).toBe(false);
   });
 
-  it("defaults and clamps betRadiusScale in the layout, not in the component", () => {
-    expect(layoutSeats(base).betRx).toBeCloseTo(layoutSeats(base).tableRx * DEFAULT_BET_SCALE, 6);
-    expect(layoutSeats({ ...base, betRadiusScale: 9 }).betRx).toBeCloseTo(layoutSeats(base).tableRx, 6);
-    expect(layoutSeats({ ...base, betRadiusScale: 0 }).betRx).toBeCloseTo(layoutSeats(base).tableRx * 0.2, 6);
+  it("traces a declared ring at the radius it was given", () => {
+    const l = layoutTable(base);
+    for (const radius of [0.2, 0.5, 0.72, 1]) {
+      const box = l.ringBox(radius);
+      expect((base.designWidth - box.left - box.right) / 2, `radius ${radius}`).toBeCloseTo(l.tableRx * radius, 6);
+      expect((base.designHeight - box.top - box.bottom) / 2, `radius ${radius}`).toBeCloseTo(l.tableRy * radius, 6);
+    }
+  });
+
+  it("clamps a nonsense ring radius instead of drawing off the table", () => {
+    const l = layoutTable(base);
+    expect(l.ringBox(9).top).toBeCloseTo(l.boxes.table.top, 6);
+    expect(l.ringBox(-3).top).toBeCloseTo(l.boxes.table.top + l.tableRy, 6);
+  });
+});
+
+describe("table shapes", () => {
+  it("defaults to an ellipse, drawn with a 50% border-radius", () => {
+    const l = layoutTable(base);
+    expect(l.shape).toBe("ellipse");
+    expect(l.radius).toBe("50%");
+    expect(l.seatPlacement).toBe("ring");
+  });
+
+  it("draws a rectangle with a real corner radius, and walks its perimeter", () => {
+    const l = layoutTable({ ...base, shape: "rect" });
+    expect(l.shape).toBe("rect");
+    expect(l.radius).toMatch(/^\d+(\.\d+)?px$/);
+    expect(l.seatPlacement).toBe("perimeter");
+    // Same surface as the ellipse: the shape changes the drawing, not the box.
+    expect(l.tableRx).toBeCloseTo(layoutTable(base).tableRx, 6);
+    // Corners are actually reached: the widest seat is left of the centre.
+    expect(Math.min(...l.seats.map((s) => s.x))).toBeLessThan(l.cx);
+    expect(Math.max(...l.seats.map((s) => s.x))).toBeGreaterThan(l.cx);
+  });
+
+  it("can draw no surface at all, and lays the seats out in a row instead", () => {
+    const l = layoutTable({ ...base, shape: "none" });
+    expect(l.radius).toBe("0px");
+    expect(l.seatPlacement).toBe("row");
+    // A row: every seat shares a baseline.
+    const ys = new Set(l.seats.map((s) => Math.round(s.y)));
+    expect(ys.size).toBe(1);
+    expect([...ys][0]).toBeGreaterThan(l.cy);
+  });
+
+  it("lets the placement be overridden independently of the shape", () => {
+    const row = layoutTable({ ...base, shape: "ellipse", seatPlacement: "row" });
+    expect(row.shape).toBe("ellipse");
+    expect(new Set(row.seats.map((s) => Math.round(s.y))).size).toBe(1);
+
+    const rectRing = layoutTable({ ...base, shape: "rect", seatPlacement: "ring" });
+    expect(rectRing.seatPlacement).toBe("ring");
+    expect(rectRing.seats[0].y).toBeCloseTo(rectRing.cy + rectRing.ringRy, 6);
+  });
+});
+
+describe("frame placement strategies", () => {
+  it("ringFrames and the layout's ring agree", () => {
+    const l = layoutTable(base);
+    const direct = ringFrames({
+      count: 6,
+      cx: l.cx,
+      cy: l.cy,
+      rx: l.ringRx,
+      ry: l.ringRy,
+      width: l.seatW,
+      height: l.seatH,
+      startAngle: 90,
+    });
+    expect(direct.map((s) => [s.x, s.y])).toEqual(l.seats.map((s) => [s.x, s.y]));
+  });
+
+  it("perimeterFrames spaces by arc length, so a corner does not bunch them up", () => {
+    // On a wide rectangle an angle-based walk would put four seats in the
+    // corners and none along the long edges.
+    const frames = perimeterFrames({ count: 4, cx: 600, cy: 450, halfW: 400, halfH: 250, width: 0, height: 0 });
+    // Seat 0 is the bottom edge's centre; seat 1 is halfway up the left edge.
+    expect(frames[0].x).toBeCloseTo(600, 6);
+    expect(frames[0].y).toBeCloseTo(700, 6);
+    expect(frames[1].x).toBeCloseTo(200, 6);
+    expect(frames[1].y).toBeCloseTo(450, 6);
+    expect(frames[2].x).toBeCloseTo(600, 6);
+    expect(frames[2].y).toBeCloseTo(200, 6);
+    expect(frames[3].x).toBeCloseTo(1000, 6);
+    expect(frames[3].y).toBeCloseTo(450, 6);
   });
 });
 

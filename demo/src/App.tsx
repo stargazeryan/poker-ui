@@ -2,30 +2,40 @@ import { useEffect, useState, type ComponentType } from "react";
 import { cn } from "@stargazeryan/poker-ui";
 import { FIRST_SLUG, NAV } from "./docs/registry";
 import { GettingStarted, KnownGaps, Theming } from "./docs/pages/guide";
+import { GamesPage } from "./docs/pages/games";
+import { DealerTablePage, RoundTablePage, SquareTablePage, TableTypesPage } from "./docs/pages/tables";
 import {
   CardBackPage,
+  CardRowPage,
+  CardSlotPage,
   CardTablePage,
   ChipsPage,
-  CommunityCardsPage,
-  HoleCardsPage,
+  CounterPage,
+  FitBoxPage,
   PlayingCardPage,
-  PotPage,
   SeatPage,
 } from "./docs/pages/components";
 import { LayoutPage, TurnOrderPage } from "./docs/pages/reference";
 
+/** Every slug in `NAV`, plus nothing else — `useSlug` falls back to `FIRST_SLUG`. */
 const PAGES: Record<string, ComponentType> = {
   "getting-started": GettingStarted,
+  "table-types": TableTypesPage,
+  games: GamesPage,
   theming: Theming,
   "known-gaps": KnownGaps,
   "card-table": CardTablePage,
+  "round-table": RoundTablePage,
+  "square-table": SquareTablePage,
+  "dealer-table": DealerTablePage,
+  "fit-box": FitBoxPage,
   seat: SeatPage,
-  "pot": PotPage,
-  "chips": ChipsPage,
+  counter: CounterPage,
   "playing-card": PlayingCardPage,
   "card-back": CardBackPage,
-  "hole-cards": HoleCardsPage,
-  "community-cards": CommunityCardsPage,
+  "card-row": CardRowPage,
+  "card-slot": CardSlotPage,
+  chips: ChipsPage,
   layout: LayoutPage,
   "turn-order": TurnOrderPage,
 };

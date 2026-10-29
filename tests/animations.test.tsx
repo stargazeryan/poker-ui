@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { HoleCards } from "../src/components/PlayingCard";
-import { Pot } from "../src/components/Pot";
+import { Counter } from "../src/components/Counter";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe("Pot count-up", () => {
+describe("Counter count-up", () => {
   // The counter used to hold its "from" value in a ref that was only updated
   // once an animation finished, so interrupting it restarted from the value the
   // previous animation began at: the number jumped backwards on screen.
@@ -15,10 +15,10 @@ describe("Pot count-up", () => {
       seen.push(n);
       return `${n}`;
     };
-    const { rerender } = render(<Pot amount={0} format={fmt} />);
-    rerender(<Pot amount={1000} format={fmt} />);
+    const { rerender } = render(<Counter amount={0} format={fmt} />);
+    rerender(<Counter amount={1000} format={fmt} />);
     await sleep(120); // interrupt mid-flight
-    rerender(<Pot amount={2000} format={fmt} />);
+    rerender(<Counter amount={2000} format={fmt} />);
     await waitFor(() => expect(seen[seen.length - 1]).toBe(2000), { timeout: 3000 });
 
     const drops = seen.filter((v, i) => i > 0 && v < seen[i - 1]);
@@ -31,12 +31,12 @@ describe("Pot count-up", () => {
       seen.push(n);
       return `${n}`;
     };
-    const { rerender } = render(<Pot amount={0} format={fmt} />);
-    rerender(<Pot amount={800} format={fmt} />);
+    const { rerender } = render(<Counter amount={0} format={fmt} />);
+    rerender(<Counter amount={800} format={fmt} />);
     await sleep(150);
     const midway = seen[seen.length - 1];
     expect(midway).toBeGreaterThan(0);
-    rerender(<Pot amount={40} format={fmt} />); // now count DOWN
+    rerender(<Counter amount={40} format={fmt} />); // now count DOWN
     await waitFor(() => expect(seen[seen.length - 1]).toBe(40), { timeout: 3000 });
     // it must pass through "midway" on the way down rather than snapping there
     expect(seen).toContain(midway);

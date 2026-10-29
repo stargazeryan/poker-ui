@@ -1,11 +1,17 @@
 /**
  * Chip denominations and the breakdown of an amount into chips. Pure functions,
- * no React — the same split as `geometry.ts` and `layout.ts`.
+ * no React.
+ *
+ * This is a **wagering** module, not a core one. Chips are how a game that bets
+ * moves value around: the games that want them (blackjack, a banking game, a
+ * no-limit game) take them, and a game that has no betting (most shedding and
+ * trick-taking games) never loads this file. Nothing in `src/` outside
+ * `src/wager/` imports it.
  *
  * Amounts are in **chip units** (the smallest chip is 1), not in big blinds.
  */
 
-import { mostVisible } from "./color";
+import { mostVisible } from "../color";
 
 export interface Denomination {
   /** Face value of the chip. */

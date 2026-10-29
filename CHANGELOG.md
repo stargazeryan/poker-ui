@@ -1,8 +1,155 @@
 # Changelog
 
 Newest first. Entries are grouped by what you have to do about them: **Changed**
-lists behaviour that differs from 0.5.0, so it is the section to read before
-upgrading.
+lists behaviour that differs from the previous release, so it is the section to
+read before upgrading.
+
+## 0.8.0 — the split
+
+The library no longer has a poker table in it. It has **table types** — shapes —
+and a separate `/wager` entry point for anything about money. Nothing in the main
+entry names a game any more.
+
+The reason is the one a consumer hits first: a table called `PokerTable` or
+`BlackjackTable` is no use to a game nobody has written yet. A round table, a
+square table and a dealer table are.
+
+### Changed (read this before upgrading)
+
+- **There is no `PokerTable`, `BigTwoTable`, `BlackjackTable` or
+  `DragonGateTable`.** `PokerTable` used to be an alias of `CardTable`; it is now
+  gone rather than repointed, because the thing that made a table "poker" was a
+  betting line — and a betting line is a `ring` the caller declares.
+
+  ```tsx
+  // 0.7.0 — the table knew
+  <PokerTable seatCount={6} renderBet={(i) => <ChipStack amount={bets[i]} />} betRadiusScale={0.72} />
+
+  // 0.8.0 — you know
+  <RoundTable
+    seatCount={6}
+    rings={[{ id: "betting-line", radius: 0.72 }]}
+    slots={[{ id: "bet", radius: 0.72, render: (i) => <ChipStack amount={bets[i]} /> }]}
+  />
+  ```
+
+  The four game compositions this release used to ship as components now live in
+  the docs' worked examples (`demo/src/examples/games.tsx`), where they are built
+  out of the same two entry points a consumer has.
+
+- **`CardTable` lost `bets`, `renderBet` and `betRadiusScale`, and no longer
+  draws a betting line.** The line was drawn unconditionally — a game with no
+  betting got a golden ring it never asked for — and it was computed inside the
+  layout, so "is there betting" had leaked into the geometry. It is now two
+  opt-in props: `rings` (outlines) and `slots` (content positioned between the
+  centre and each seat). A slot at radius `r` lands exactly on the ring at radius
+  `r` (`layout.ringBox(r)` / `layout.slotPoint(i, r)`), which is the drift this
+  library spent 0.7.0 fixing.
+
+- **The suit watermark is no longer painted for you.** `watermark` is a prop and
+  defaults to nothing: `♠♥♦♣` on the felt is a card-room decoration, not part of
+  a table.
+
+- **`shape` replaced the single hard-coded ellipse.** `shape` is
+  `"ellipse" | "rect" | "none"`, `cornerRadius` rounds a rectangle, and
+  `seatPlacement` (`"ring" | "perimeter" | "row"`) says where the seats go. With
+  `shape="none"` no rail, felt or rim is drawn at all — pass `deck={true}`
+  explicitly if you want a full-bleed backdrop anyway.
+
+- **`HoleCards` and `CommunityCards` are deprecated**: they are `CardRow` with an
+  animation. Both still work and are not going away this release.
+  **`Pot` is deprecated**: it is `Counter`, with the original as a live alias.
+
+  ```tsx
+  <CardRow cards={hand} size="lg" />                     {/* was HoleCards   */}
+  <CardRow cards={board} size="md" animation="flip" />   {/* was CommunityCards */}
+  <Counter label="Main" amount={240} />                  {/* was Pot         */}
+  ```
+
+  One behaviour change comes with it: inside `cards`, `null` now always means a
+  **face-down card**. `CommunityCards` rendered it as an empty position, so the
+  old behaviour is `placeholder="empty"` (which is what the wrapper passes for
+  you). Past the end of the array is always an empty position, which is what
+  `slots` already did.
+
+- **`Seat` lost `winnerCrown`.** A crown is a decoration, not a state — pass it
+  through `topLeft`.
+
+- **`layoutSeats` is now `layoutTable`** (the old name still works), and
+  `minSeatSeparation` is `minFrameSeparation`. `Layout.boxes` is
+  `{ table, felt, rim, glow }` — no `boxes.bettingLine`, no `betRx`, no `betRy`.
+  `Layout` gained `ringBox(radius)`, `ringRadius(radius)` and
+  `slotPoint(index, radius)`, and carries `shape`, `seatPlacement` and `radius`.
+
+- **`LayoutOptions`**: `betRadiusScale` is gone; `shape`, `cornerRadius`,
+  `seatPlacement`, `rimGap` and `glowGap` replaced it.
+
+### Moved — the `/wager` entry point
+
+Chips are about money, which is a property of the games that bet rather than of
+cards or tables. They are still here, one subpath over:
+
+```tsx
+import { ChipStack, formatBB } from "@stargazeryan/poker-ui/wager";
+```
+
+`Chip`, `ChipStack`, `chipBreakdown`, `chipCount`, `chipsTotal`,
+`chipSpotColor`, `DEFAULT_DENOMINATIONS`, `ChipProps`, `ChipStackProps`,
+`Denomination`, `ChipStackEntry`, `BB` and `formatBB` all moved there and are no
+longer exported from the main entry. A card game with no betting no longer pulls
+a chip set into its bundle.
+
+### Added
+
+- **`RoundTable`, `SquareTable`, `DealerTable` and `TABLE_TYPES`** — the table
+  types. Round and square are `CardTable` with the surface decided; `DealerTable`
+  is one frame at the head and a row opposite it, built from `FitBox` and
+  `rowFrames` and therefore with no surface in it to draw.
+- **`FitBox` / `useFitBox`** — the design box and the scale-to-fit, on their own.
+  `FitBox`'s `children` is **called** with `{ width, height, scale }`.
+- **`frames.ts`** — `ringFrames`, `rowFrames`, `gridFrames`, `perimeterFrames`,
+  `fitFrameScale`, `fitRowScale`, `minFrameSeparation`, `FRAME_SHRINK_FLOOR`.
+  Positioning strategies that return the same `FrameBox`, so a seat, a hand and a
+  meld are the same thing to them.
+- **`CardRow`**, **`CardFan`** (overlapping cards, optionally arced — thirteen
+  cards at any readable size are wider than a seat frame) and **`CardSlot`** (a
+  reserved position with a dashed outline, so a game's final shape can be laid
+  out before any card exists).
+- **`Counter`** — the amount pill, renamed. No unit is attached.
+- **`surface.ts`** — `tableSurface`, `scaledBox`, `scaledRadius`, `insetBox`,
+  `Box`, `TableShape`, `SeatPlacement`, `DEFAULT_CORNER_FRACTION`.
+- **`layoutTable`**, `defaultSeatPlacement`, `ROW_FRACTION`.
+- **`CARD_WIDTH` / `CARD_HEIGHT`** — the px table the artwork is drawn with, so a
+  fan and a slot stop re-deriving it from class names.
+- **`STAGGER_MS` / `FLIP_MS`**, with `DEAL_STAGGER_MS` / `FLIP_STAGGER_MS` kept as
+  aliases.
+- `CardRow`'s `animation` (`"deal" | "flip" | false`), `stagger`, `animationKey`,
+  `slots` and `placeholder`.
+
+### Fixed
+
+- `CardTable` drew a betting line whether or not the caller had any betting.
+- `CardTable` painted a hard-coded `♠♥♦♣` watermark on every table.
+- A row of frames (`seatPlacement="row"`, or `DealerTable`) kept its preferred
+  width however narrow the box was and ran off the edge. A ring is bounded by its
+  clamped radii; a row was bounded by nothing. `fitRowScale` bounds it now.
+- `FitBoxProps` inherited three of its five props, so the docs' prop table could
+  have documented a prop with no code behind it. They are declared out in full.
+
+### Verified in this release
+
+`npm test` (unit, component, docs routes and docs-vs-types), `npm run typecheck`,
+`npm run build`, `npm run docs:build` and `npm run test:consumer` — the last one
+packs the tarball, installs it into a throwaway Vite + Tailwind app that follows
+the README literally, and asserts both entry points arrive in the bundle.
+
+Two test files exist purely to keep this release honest:
+`tests/separation.test.ts` (the core has no chip, no big blind and no game name
+in it; the table types are built on the core and never the reverse; every worked
+example imports only the two published entries) and `tests/games.test.tsx` (four
+games, three table types, and the negative assertions: the shedding game draws no
+ring, no slot and no felt decoration, and the two dealer-table games draw no
+surface at all).
 
 ## 0.7.0 — 2026-10-27
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { Chip, ChipStack } from "../src/components/Chip";
+import { Chip, ChipStack } from "../src/wager/Chip";
 import {
   DEFAULT_DENOMINATIONS,
   chipBreakdown,
@@ -8,7 +8,7 @@ import {
   chipSpotColor,
   chipsTotal,
   type Denomination,
-} from "../src/chips";
+} from "../src/wager/chips";
 import { relativeLuminance } from "../src/color";
 
 const pairs = (amount: number, denominations?: Denomination[]) =>

@@ -166,59 +166,64 @@ describe("the seat frame size has one source", () => {
   });
 });
 
-describe("CardTable — the bet ring and the drawn betting line stay in sync", () => {
-  // Regression: the betting line was drawn from a module constant while the
-  // chips were positioned from `betRadiusScale`, so any non-default scale put
-  // the chips off the line (56.7px off at 0.85, 100.3px at 0.95).
-  it.each([0.5, 0.72, 0.85, 0.95, 1])("lands every bet on the line at betRadiusScale=%s", (scale) => {
+describe("CardTable — declared rings and slots", () => {
+  // Regression this now guards: the betting line used to be drawn from a module
+  // constant while the chips were positioned from a prop, so any non-default
+  // scale put the chips off the line (56.7px off at 0.85, 100.3px at 0.95).
+  // Both now come from `layout.slotPoint` / `layout.ringBox`.
+  it.each([0.5, 0.72, 0.85, 0.95, 1])("puts a slot exactly on the ring at radius %s", (radius) => {
     setElementSize(1200, 900);
     const { container } = render(
       <CardTable
         seatCount={6}
-        betRadiusScale={scale}
+        rings={[{ id: "line", radius }]}
         renderSeat={(i) => <div>{i}</div>}
-        renderBet={(i) => <span>{i}</span>}
+        slots={[{ id: "bet", radius, render: (i) => <span>{i}</span> }]}
       />,
     );
-    const line = insets(container);
-    const bet = (i: number) => container.querySelector(`[data-seat-bet="${i}"]`) as HTMLElement;
+    const line = ringInsets(container);
+    const slot = (i: number) => container.querySelector(`[data-slot-index="${i}"]`) as HTMLElement;
 
-    // Seat 0 sits at the bottom of the ellipse: on the line's lower edge.
-    expect(px(bet(0).style.left)).toBeCloseTo(600, 3);
-    expect(px(bet(0).style.top)).toBeCloseTo(900 - line.top, 3);
-    // Seat 3 sits at the top: on the line's upper edge.
-    expect(px(bet(3).style.top)).toBeCloseTo(line.top, 3);
-    // Seat 1 of 6 is at 210° -> left of centre, on the line's left edge.
-    const rx = (1200 - line.left - line.right) / 2;
-    const ry = (900 - line.top - line.bottom) / 2;
-    expect(rx).toBeCloseTo((1200 / 2 - 164) * scale, 3);
-    expect(ry).toBeCloseTo((900 / 2 - 196) * scale, 3);
+    // Seat 0 sits at the bottom of the ellipse: on the ring's lower edge.
+    expect(px(slot(0).style.left)).toBeCloseTo(600, 3);
+    expect(px(slot(0).style.top)).toBeCloseTo(900 - line.top, 3);
+    // Seat 3 sits at the top: on the ring's upper edge.
+    expect(px(slot(3).style.top)).toBeCloseTo(line.top, 3);
+    // and the ring itself is at `radius` of the surface
+    expect((1200 - line.left - line.right) / 2).toBeCloseTo((1200 / 2 - 164) * radius, 3);
+    expect((900 - line.top - line.bottom) / 2).toBeCloseTo((900 / 2 - 196) * radius, 3);
   });
 
-  it("clamps a nonsense betRadiusScale instead of drawing off-table", () => {
+  it("clamps a nonsense ring radius instead of drawing off-table", () => {
     const { container } = render(
-      <CardTable seatCount={4} betRadiusScale={9} renderSeat={(i) => <div>{i}</div>} renderBet={(i) => <span>{i}</span>} />,
+      <CardTable seatCount={4} rings={[{ id: "line", radius: 9 }]} renderSeat={(i) => <div>{i}</div>} />,
     );
-    const line = insets(container);
-    expect(line.left).toBeGreaterThanOrEqual(0);
-    expect(insets(container).top).toBeGreaterThanOrEqual(0);
+    expect(ringInsets(container).left).toBeGreaterThanOrEqual(0);
+    expect(ringInsets(container).top).toBeGreaterThanOrEqual(0);
   });
 
-  it("renders no bet layer at all when neither bets nor renderBet is given", () => {
+  it("draws no ring and places no slot when the caller declares none", () => {
     const { container } = render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
-    expect(container.querySelector("[data-seat-bet]")).toBeNull();
+    expect(container.querySelector('[data-part="ring"]')).toBeNull();
+    expect(container.querySelector('[data-part="slot"]')).toBeNull();
+    // the shape of the old bug: a betting line nobody asked for
+    expect(container.querySelector('[data-part="betting-line"]')).toBeNull();
   });
 
-  it("skips null bets", () => {
+  it("skips null slot content, per seat", () => {
     const { container } = render(
-      <CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} renderBet={(i) => (i % 2 ? null : <span>{i}</span>)} />,
+      <CardTable
+        seatCount={4}
+        renderSeat={(i) => <div>{i}</div>}
+        slots={[{ id: "bet", radius: 0.7, render: (i) => (i % 2 ? null : <span>{i}</span>) }]}
+      />,
     );
-    expect(container.querySelectorAll("[data-seat-bet]")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-slot-index]")).toHaveLength(2);
   });
 });
 
-function insets(container: HTMLElement) {
-  return insetPx(container.querySelector('[data-part="betting-line"]') as HTMLElement);
+function ringInsets(container: HTMLElement) {
+  return insetPx(container.querySelector('[data-ring="line"]') as HTMLElement);
 }
 
 describe("CardTable — scaling and fit", () => {
@@ -250,11 +255,61 @@ describe("CardTable — scaling and fit", () => {
   it("honours explicit designWidth/designHeight", () => {
     setElementSize(900, 1100);
     const { container } = render(
-      <CardTable designWidth={900} designHeight={1100} marginX={0.12} marginY={0.15} renderSeat={(i) => <div>{i}</div>} />,
+      <CardTable
+        designWidth={900}
+        designHeight={1100}
+        marginX={0.12}
+        marginY={0.15}
+        rings={[{ id: "line", radius: 0.72 }]}
+        renderSeat={(i) => <div>{i}</div>}
+      />,
     );
-    const line = insets(container);
-    // tableRx = 450 - 0.12*900 = 342 -> bet ring at 0.72
+    const line = ringInsets(container);
+    // tableRx = 450 - 0.12*900 = 342 -> the ring at 0.72
     expect((900 - line.left - line.right) / 2).toBeCloseTo(342 * 0.72, 3);
+  });
+});
+
+describe("CardTable — table shapes and the deck", () => {
+  const deckParts = (container: HTMLElement) => ({
+    ring: container.querySelectorAll('[data-part="ring"]').length,
+    felt: container.querySelectorAll(".animate-felt-shimmer").length,
+  });
+
+  it("draws an ellipse by default, and a rectangle on request", () => {
+    setElementSize(1200, 900);
+    const ellipse = render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    const round = ellipse.container.querySelector(".bg-gradient-to-b.from-rail") as HTMLElement;
+    expect(round.style.borderRadius).toBe("50%");
+
+    const rect = render(<CardTable seatCount={4} shape="rect" renderSeat={(i) => <div>{i}</div>} />);
+    const boxy = rect.container.querySelector(".bg-gradient-to-b.from-rail") as HTMLElement;
+    expect(boxy.style.borderRadius).toMatch(/px$/);
+  });
+
+  it("draws nothing behind the seats when deck={false}", () => {
+    const { container } = render(<CardTable seatCount={4} deck={false} renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelector(".bg-gradient-to-b.from-rail")).toBeNull();
+    expect(deckParts(container).felt).toBe(0);
+    // the seats are still there, and still positioned
+    expect(container.querySelectorAll('[data-part="seat"]')).toHaveLength(4);
+  });
+
+  it("draws no watermark at all unless the caller asks for one", () => {
+    // 0.7.0 painted ♠♥♦♣ on every table, whatever game it was for
+    expect(render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />).container.textContent).not.toContain("♠");
+    expect(
+      render(
+        <CardTable seatCount={4} watermark={<span>♠♥♦♣</span>} renderSeat={(i) => <div>{i}</div>} />,
+      ).container.textContent,
+    ).toContain("♠♥♦♣");
+  });
+
+  it("puts the seats in a row when there is no surface to ring", () => {
+    setElementSize(1200, 900);
+    const { container } = render(<CardTable seatCount={3} shape="none" renderSeat={(i) => <div>{i}</div>} />);
+    const tops = [...container.querySelectorAll('[data-part="seat"]')].map((el) => (el as HTMLElement).style.top);
+    expect(new Set(tops).size).toBe(1);
   });
 });
 

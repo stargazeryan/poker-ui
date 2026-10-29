@@ -10,8 +10,8 @@ import type { ApiRow } from "./registry";
  * | --- | --- |
  * | `TOKENS` | the `@theme` block in `src/styles.css` (name *and* value) |
  * | `LAYOUT_OPTIONS` | `LayoutOptions` in `src/layout.ts` |
- * | `CARD_TABLE_CONTROLS` | `CardTableProps` in `src/components/CardTable.tsx` |
- * | `TUNABLES` | the exported constants in `src` (name and value) |
+ * | `CARD_TABLE_CONTROLS` + `CONTENT_PROPS` | `CardTableProps` in `src/components/CardTable.tsx` |
+ * | `TUNABLES` | the named exports of the entry point each row names |
  *
  * So "the docs do not list every tunable parameter" is a failing test, not a
  * thing someone has to notice.
@@ -35,7 +35,7 @@ export const TOKENS: TokenRow[] = [
   { name: "--color-rail", kind: "colour", value: "#a5744a", controls: "the top of the wooden rail gradient" },
   { name: "--color-rail-dark", kind: "colour", value: "#6b3f22", controls: "the middle of the rail gradient" },
   { name: "--color-rail-deep", kind: "colour", value: "#38200f", controls: "the bottom of the rail gradient" },
-  { name: "--color-gold", kind: "colour", value: "#f39c12", controls: "the turn and winner glow, the pot pill, focus rings" },
+  { name: "--color-gold", kind: "colour", value: "#f39c12", controls: "the turn and winner glow, the counter pill, focus rings" },
   { name: "--color-gold-light", kind: "colour", value: "#f0c04a", controls: "the ambient glow behind the table" },
   { name: "--color-gold-glow", kind: "colour", value: "#ffd678", controls: "the breathing spotlight on the felt" },
   { name: "--color-card-back", kind: "colour", value: "#5a0c18", controls: "the card back, at the base of its gradient" },
@@ -48,9 +48,9 @@ export const TOKENS: TokenRow[] = [
   { name: "--color-chip-green", kind: "colour", value: "#27ae60", controls: "the green chip face (25 in the default set)" },
   { name: "--color-chip-black", kind: "colour", value: "#1a1a2e", controls: "the black chip face (100 in the default set)" },
   { name: "--color-chip-white", kind: "colour", value: "#ecf0f1", controls: "the white chip face (1 in the default set)" },
-  { name: "--animate-card-flip", kind: "animation", value: "card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "the 3D flip of each community card" },
-  { name: "--animate-deal-in", kind: "animation", value: "deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "hole cards dealing in, staggered by 100ms" },
-  { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive`, and any ring you draw in `CardTable`'s overlay" },
+  { name: "--animate-card-flip", kind: "animation", value: "card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "`CardRow animation=\"flip\"`" },
+  { name: "--animate-deal-in", kind: "animation", value: "deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "`CardRow animation=\"deal\"`, staggered by STAGGER_MS" },
+  { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive`, and any ring you draw in a table's overlay" },
   { name: "--animate-winner-glow", kind: "animation", value: "winner-glow 1.6s ease-in-out infinite", controls: "`Seat isWinner`" },
   { name: "--animate-felt-shimmer", kind: "animation", value: "felt-shimmer 22s linear infinite", controls: "the ambient sheen sweeping the felt" },
   { name: "--animate-spotlight", kind: "animation", value: "spotlight-breathe 7s ease-in-out infinite", controls: "the spotlight breathing on the felt" },
@@ -63,9 +63,9 @@ export const COLOUR_TOKENS = TOKENS.filter((t) => t.kind === "colour");
 /* ---------------------------------------------------------- LayoutOptions -- */
 
 /**
- * `layoutSeats()` is the pure form of the table's geometry, so its options are
- * the table's layout parameters. CardTable passes its own props straight into
- * them — the component computes no geometry of its own.
+ * `layoutTable()` is the pure form of every table's geometry, so its options are
+ * the layout parameters all three table types share. `CardTable` passes its own
+ * props straight into them — the component computes no geometry of its own.
  */
 export const LAYOUT_OPTIONS: ApiRow[] = [
   { name: "count", type: "number", description: "Number of seats. The same number as `CardTable`'s `seatCount`." },
@@ -78,7 +78,11 @@ export const LAYOUT_OPTIONS: ApiRow[] = [
   { name: "seatHeight", type: "number", default: "176", description: "Preferred (maximum) frame height." },
   { name: "seatGap", type: "number", default: "24", description: "Minimum clearance to keep between neighbouring frames; shrink until honoured, never below 50%. `0` disables it." },
   { name: "startAngle", type: "number", default: "90", description: "Angle of seat 0, in degrees. 90° is directly below the centre." },
-  { name: "betRadiusScale", type: "number", default: "0.72", description: "Where the betting line sits, as a fraction of the table radii." },
+  { name: "shape", type: '"ellipse" | "rect" | "none"', default: '"ellipse"', description: "The boundary to draw. `none` means the design box itself, with nothing painted in it." },
+  { name: "cornerRadius", type: "number", default: "45% of the short half-extent", description: "Corner radius of a `rect` surface." },
+  { name: "seatPlacement", type: '"ring" | "perimeter" | "row"', description: "The positioning strategy. Defaults to the shape's own." },
+  { name: "rimGap", type: "number", default: "6", description: "How far inside the rail the rim highlight sits." },
+  { name: "glowGap", type: "number", default: "2", description: "How far inside the rail a your-turn-style glow ring sits." },
 ];
 
 /* ----------------------------------------------------- CardTable controls -- */
@@ -97,11 +101,22 @@ export interface ControlSpec {
 }
 
 /**
- * Props that are seat/center *content* rather than tuning parameters, and so
- * have no control in the playground. The coverage test requires every other
+ * Props that are content or styling rather than tuning parameters, and so have
+ * no control in the playground. The coverage test requires every other
  * `CardTableProps` member to appear in `CARD_TABLE_CONTROLS`.
  */
-export const CONTENT_PROPS = ["seats", "renderSeat", "bets", "renderBet", "center", "overlay", "renderOverlay"] as const;
+export const CONTENT_PROPS = [
+  "seats",
+  "renderSeat",
+  "rings",
+  "slots",
+  "center",
+  "overlay",
+  "renderOverlay",
+  "watermark",
+  "railClassName",
+  "feltClassName",
+] as const;
 
 export const CONFETTI_PALETTES = [
   { label: "party", colors: ["#f39c12", "#e74c3c", "#2ecc71", "#3498db", "#f1c40f", "#9b59b6"] },
@@ -115,12 +130,15 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "seatWidth", kind: "number", min: 80, max: 240, step: 8, hint: "preferred frame width" },
   { prop: "seatHeight", kind: "number", min: 80, max: 260, step: 8, hint: "preferred frame height" },
   { prop: "seatGap", kind: "number", min: 0, max: 90, step: 2, hint: "0 disables the auto-shrink" },
-  { prop: "betRadiusScale", kind: "number", min: 0.2, max: 1, step: 0.02, hint: "the drawn betting line follows it" },
   { prop: "designWidth", kind: "number", min: 600, max: 2000, step: 20, hint: "design box width" },
   { prop: "designHeight", kind: "number", min: 450, max: 1500, step: 20, hint: "design box height" },
   { prop: "marginX", kind: "number", min: 0, max: 0.3, step: 0.005, hint: "rail inset, as a fraction" },
   { prop: "marginY", kind: "number", min: 0, max: 0.35, step: 0.005, hint: "rail inset, as a fraction" },
   { prop: "feltGap", kind: "number", min: 0, max: 60, step: 1, hint: "felt inset from the rail" },
+  { prop: "cornerRadius", kind: "number", min: 0, max: 260, step: 4, hint: "only drawn on a rect table" },
+  { prop: "shape", kind: "enum", options: ["ellipse", "rect", "none"] },
+  { prop: "seatPlacement", kind: "enum", options: ["ring", "perimeter", "row"] },
+  { prop: "deck", kind: "boolean", hint: "rail + felt + rim; off by default with shape=none" },
   { prop: "ambient", kind: "boolean", hint: "spotlight + felt shimmer" },
   { prop: "fit", kind: "enum", options: ["design", "container"] },
   { prop: "className", kind: "boolean", hint: "hangs a debug outline on the outer element" },
@@ -135,6 +153,8 @@ export interface TunableRow {
   /** What the test compares `String(imported)` against. */
   expect: string;
   description: string;
+  /** Which entry point exports it. Default `"core"`. */
+  entry?: "core" | "wager";
 }
 
 export const TUNABLES: TunableRow[] = [
@@ -146,17 +166,28 @@ export const TUNABLES: TunableRow[] = [
   { name: "DEFAULT_SEAT_W", value: "160", expect: "160", description: "Default preferred frame width." },
   { name: "DEFAULT_SEAT_H", value: "176", expect: "176", description: "Default preferred frame height." },
   { name: "DEFAULT_SEAT_GAP", value: "24", expect: "24", description: "Default minimum clearance between frames." },
-  { name: "DEFAULT_BET_SCALE", value: "0.72", expect: "0.72", description: "Default betting-line radius, as a fraction." },
-  { name: "SEAT_SHRINK_FLOOR", value: "0.5", expect: "0.5", description: "How far the auto-shrink will go before it gives up." },
+  { name: "SEAT_SHRINK_FLOOR", value: "0.5", expect: "0.5", description: "How far the seat auto-shrink will go before it gives up." },
+  { name: "FRAME_SHRINK_FLOOR", value: "0.5", expect: "0.5", description: "The same floor, for any arrangement that is not a seat ring." },
+  { name: "DEFAULT_CORNER_FRACTION", value: "0.45", expect: "0.45", description: "How round a rect table's corners are, as a fraction of its short half-extent." },
   { name: "RIM_GAP", value: "6", expect: "6", description: "How far inside the rail the rim highlight sits." },
-  { name: "GLOW_GAP", value: "2", expect: "2", description: "How far inside the rail the your-turn glow sits." },
+  { name: "GLOW_GAP", value: "2", expect: "2", description: "How far inside the rail a your-turn glow ring sits." },
+  { name: "DEFAULT_HEAD_W", value: "240", expect: "240", description: "Preferred head-frame width on a dealer table." },
+  { name: "DEFAULT_HEAD_H", value: "230", expect: "230", description: "Preferred head-frame height." },
+  { name: "DEFAULT_HEAD_Y", value: "0.16", expect: "0.16", description: "Where the head frame sits, as a fraction of the design height." },
+  { name: "DEFAULT_HAND_W", value: "220", expect: "220", description: "Preferred hand-frame width on a dealer table." },
+  { name: "DEFAULT_HAND_H", value: "280", expect: "280", description: "Preferred hand-frame height." },
+  { name: "DEFAULT_HAND_GAP", value: "24", expect: "24", description: "Minimum clearance between hand frames." },
+  { name: "DEFAULT_HAND_Y", value: "0.74", expect: "0.74", description: "Where the row of hands sits, as a fraction of the design height." },
+  { name: "CARD_WIDTH", value: "xs 32 · sm 40 · md 64 · lg 96", expect: JSON.stringify({ xs: 32, sm: 40, md: 64, lg: 96 }), description: "The px width of each card size — what a fan overlaps and a slot reserves." },
+  { name: "CARD_HEIGHT", value: "xs 44 · sm 56 · md 88 · lg 128", expect: JSON.stringify({ xs: 44, sm: 56, md: 88, lg: 128 }), description: "The px height of each card size." },
   { name: "SIZES", value: 'xs | sm | md | lg', expect: '["xs","sm","md","lg"]', description: "The size vocabulary every `size` prop draws from." },
-  { name: "COUNT_UP_MS", value: "500", expect: "500", description: "How long `Pot` counts up for." },
-  { name: "DEAL_STAGGER_MS", value: "100", expect: "100", description: "Delay between `HoleCards` dealing in." },
-  { name: "FLIP_STAGGER_MS", value: "70", expect: "70", description: "Delay between community cards flipping." },
-  { name: "BB", value: "20", expect: "20", description: "`formatBB`'s default big blind. A helper default, not something a component applies." },
+  { name: "COUNT_UP_MS", value: "500", expect: "500", description: "How long `Counter` counts up for." },
+  { name: "STAGGER_MS", value: "100", expect: "100", description: "Delay between the cards of a dealt row arriving." },
+  { name: "FLIP_MS", value: "70", expect: "70", description: "Delay between the cards of a flipping row." },
+  { name: "BB", value: "20", expect: "20", entry: "wager", description: "`formatBB`'s default big blind. A helper default, not something a component applies." },
   {
     name: "DEFAULT_DENOMINATIONS",
+    entry: "wager",
     value: "black 100 · green 25 · blue 10 · red 5 · white 1",
     expect: JSON.stringify([
       { value: 100, color: "#1a1a2e", className: "fill-chip-black" },

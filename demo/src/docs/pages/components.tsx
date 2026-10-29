@@ -1,30 +1,39 @@
 import { useState } from "react";
 import {
   CardBack,
+  CardFan,
+  CardRow,
+  CardSlot,
   CardTable,
-  Chip,
-  ChipStack,
   CommunityCards,
   Confetti,
-  DEFAULT_DENOMINATIONS,
+  Counter,
   DEFAULT_FELT_GAP,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DESIGN_H,
   DESIGN_W,
+  FitBox,
   HoleCards,
   PlayingCard,
-  Pot,
   Seat,
+  layoutTable,
+  minFrameSeparation,
+  seatAngle,
+  useFitBox,
+  type SeatPlacement,
+  type TableShape,
+} from "@stargazeryan/poker-ui";
+import {
+  Chip,
+  ChipStack,
+  DEFAULT_DENOMINATIONS,
   chipBreakdown,
   chipCount,
   chipsTotal,
   formatBB,
-  layoutSeats,
-  minSeatSeparation,
-  seatAngle,
   type Denomination,
-} from "@stargazeryan/poker-ui";
+} from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
@@ -50,6 +59,7 @@ function Api({ slug }: { slug: string }) {
   );
 }
 
+/** The content half of every table demo: a neutral seat with a couple of cards. */
 function Player({ i, isYou, width, height, active, winner }: { i: number; isYou: boolean; width: number; height: number; active?: boolean; winner?: boolean }) {
   return (
     <Seat
@@ -60,7 +70,7 @@ function Player({ i, isYou, width, height, active, winner }: { i: number; isYou:
       header={<span className="w-full truncate text-center font-semibold">{isYou ? "You" : `Seat ${i}`}</span>}
       footer={<span className="w-full text-center font-mono text-gold-light">{500 - i * 40}</span>}
     >
-      {i % 2 === 0 ? <HoleCards cards={["As", "Kh"]} size="sm" /> : <HoleCards cards={[null, null]} size="sm" />}
+      {i % 2 === 0 ? <CardRow cards={["As", "Kh"]} size="sm" /> : <CardRow cards={[null, null]} size="sm" />}
     </Seat>
   );
 }
@@ -88,6 +98,11 @@ export function ChipsPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Chips</h1>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+        Everything on this page lives in the{" "}
+        <Prop>@stargazeryan/poker-ui/wager</Prop> entry point, not the main one: chips are about money on the table,
+        which a game with no betting should not have to carry. Import them from the subpath.
+      </p>
       <Sec slug="chip-stack" />
 
       <Demo
@@ -99,7 +114,9 @@ export function ChipsPage() {
             whatever is left below the smallest chip is reported rather than rounded up.
           </>
         }
-        code={`const entries = chipBreakdown(487);
+        code={`import { ChipStack, chipBreakdown } from "@stargazeryan/poker-ui/wager";
+
+const entries = chipBreakdown(487);
 // [{ value: 100, count: 4 }, { value: 25, count: 3 },
 //  { value: 10, count: 1 }, { value: 1, count: 2 }]
 
@@ -203,9 +220,7 @@ export function ChipsPage() {
       <Demo
         title="Sizes"
         description="22 / 30 / 42px wide; the stack offsets itself in proportion."
-        code={`<ChipStack amount={60} size="sm" />
-<ChipStack amount={60} size="md" />
-<ChipStack amount={60} size="lg" />`}
+        code={`<ChipStack amount={60} size="sm" />\n<ChipStack amount={60} size="md" />\n<ChipStack amount={60} size="lg" />`}
       >
         <div className="flex items-end justify-center gap-10">
           {(["sm", "md", "lg"] as const).map((size) => (
@@ -251,7 +266,7 @@ export function ChipsPage() {
 function SeatGapDemo() {
   const [count, setCount] = useState(10);
   const [gap, setGap] = useState(24);
-  const geo = layoutSeats({
+  const geo = layoutTable({
     count,
     designWidth: DESIGN_W,
     designHeight: DESIGN_H,
@@ -263,7 +278,7 @@ function SeatGapDemo() {
     seatGap: gap,
     startAngle: 90,
   });
-  const actual = minSeatSeparation(geo.seats);
+  const actual = minFrameSeparation(geo.seats);
   const shrunk = geo.seatW < 160 || geo.seatH < 176;
 
   return (
@@ -284,7 +299,7 @@ function SeatGapDemo() {
           renderSeat={(i, box) => (
             <Player i={i} isYou={i === 0} width={box.width} height={box.height} active={i === 1} />
           )}
-          center={<Pot label="Main" amount={487} />}
+          center={<Counter label="Main" amount={487} />}
         />
       </div>
     </>
@@ -305,16 +320,19 @@ const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
   seatWidth: 160,
   seatHeight: 176,
   seatGap: 24,
-  betRadiusScale: 0.72,
   designWidth: DESIGN_W,
   designHeight: DESIGN_H,
   marginX: DEFAULT_MARGIN_X,
   marginY: DEFAULT_MARGIN_Y,
   feltGap: DEFAULT_FELT_GAP,
+  cornerRadius: 120,
+  shape: "ellipse",
+  seatPlacement: "ring",
+  deck: true,
   ambient: true,
   fit: "design",
   className: false,
-  // Not CardTable props: what the *caller* decides to put in the overlay slot.
+  // Not CardTable props: what the *caller* decides to declare and draw.
   glow: true,
   confetti: true,
   palette: CONFETTI_PALETTES[0].label,
@@ -331,7 +349,7 @@ function CardTablePlayground() {
   const choices = CARD_TABLE_CONTROLS.filter((c) => c.kind === "enum" || c.kind === "palette");
 
   const count = Math.max(1, Math.floor(num("seatCount")));
-  const geo = layoutSeats({
+  const geo = layoutTable({
     count,
     designWidth: num("designWidth"),
     designHeight: num("designHeight"),
@@ -342,9 +360,11 @@ function CardTablePlayground() {
     seatHeight: num("seatHeight"),
     seatGap: num("seatGap"),
     startAngle: num("startAngle"),
-    betRadiusScale: num("betRadiusScale"),
+    shape: v.shape as TableShape,
+    seatPlacement: v.seatPlacement as SeatPlacement,
+    cornerRadius: num("cornerRadius"),
   });
-  const gap = minSeatSeparation(geo.seats);
+  const gap = minFrameSeparation(geo.seats);
   const palette = CONFETTI_PALETTES.find((p) => p.label === v.palette) ?? CONFETTI_PALETTES[0];
   const frame = `${Math.round(geo.seatW)}×${Math.round(geo.seatH)}`;
 
@@ -415,15 +435,28 @@ function CardTablePlayground() {
           seatWidth={num("seatWidth")}
           seatHeight={num("seatHeight")}
           seatGap={num("seatGap")}
-          betRadiusScale={num("betRadiusScale")}
           designWidth={num("designWidth")}
           designHeight={num("designHeight")}
           marginX={num("marginX")}
           marginY={num("marginY")}
           feltGap={num("feltGap")}
+          cornerRadius={num("cornerRadius")}
+          shape={v.shape as TableShape}
+          seatPlacement={v.seatPlacement as SeatPlacement}
+          deck={bool("deck")}
           ambient={bool("ambient")}
           fit={v.fit as "design" | "container"}
           className={bool("className") ? "outline-dashed outline-1 outline-amber-400/60" : undefined}
+          /* The betting line is a ring the caller declares and the chips are a
+             slot — the table names neither. */
+          rings={[{ id: "betting-line", radius: 0.72 }]}
+          slots={[
+            {
+              id: "bet",
+              radius: 0.72,
+              render: (i) => (i === 1 ? <ChipStack amount={60} size="sm" /> : i === 3 ? <ChipStack amount={25} size="sm" /> : null),
+            },
+          ]}
           renderOverlay={({ layout }) => (
             <>
               {bool("glow") && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
@@ -439,14 +472,13 @@ function CardTablePlayground() {
               header={<span className="w-full text-center text-[11px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
               footer={<span className="w-full text-center font-mono text-[10px] text-amber-300">{i * 20} BB</span>}
             >
-              <HoleCards cards={["As", "Kh"]} size="xs" />
+              <CardRow cards={["As", "Kh"]} size="xs" />
             </Seat>
           )}
-          renderBet={(i) => (i === 1 ? <ChipStack amount={60} size="sm" /> : i === 3 ? <ChipStack amount={25} size="sm" /> : null)}
           center={
             <div className="flex flex-col items-center gap-2">
-              <CommunityCards cards={["Ah", "Kd", "7c"]} size="md" />
-              <Pot label="Main" amount={487} format={formatBB} />
+              <CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" />
+              <Counter label="Main" amount={487} format={formatBB} />
             </div>
           }
         />
@@ -459,7 +491,6 @@ export function CardTablePage() {
   const [count, setCount] = useState(6);
   const [turn, setTurn] = useState(true);
   const [winner, setWinner] = useState(false);
-  const [portrait, setPortrait] = useState(true);
 
   const angles = Array.from({ length: count }, (_, i) => `${seatAngle(i, count).toFixed(0)}°`).join(" / ");
 
@@ -477,10 +508,10 @@ export function CardTablePage() {
   startAngle={90}
   renderSeat={(i, box) => (
     <Seat width={box.width} height={box.height} header={<b>{i}</b>}>
-      <HoleCards cards={hands[i]} size="sm" />
+      <CardRow cards={hands[i]} size="sm" />
     </Seat>
   )}
-  center={<Pot label="Main" amount={487} />}
+  center={<Counter label="Main" amount={487} />}
 />`}
       >
         <div className="w-full">
@@ -495,29 +526,46 @@ export function CardTablePage() {
             <CardTable
               seatCount={count}
               renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
-              center={<Pot label="Main" amount={487} />}
+              center={<Counter label="Main" amount={487} />}
             />
           </div>
         </div>
       </Demo>
 
       <Demo
-        title="The bets layer"
-        description={<><Prop>bets</Prop> or <Prop>renderBet</Prop> places content on the betting line, auto-positioned toward the middle of the table. The drawn line follows <Prop>betRadiusScale</Prop> — they cannot drift apart.</>}
+        title="The betting line is a ring you declare"
+        description={
+          <>
+            The table draws no line of its own. A betting line is a <Prop>ring</Prop> at a radius, and the chips on it
+            are a <Prop>slot</Prop> that places content between the centre and each seat — declarative, and impossible
+            to drift apart, because both are positioned from the same layout. A game with no betting simply declares
+            none and gets neither.
+          </>
+        }
         previewClassName="p-0 overflow-hidden"
         code={`<CardTable
-  renderBet={(i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null)}
-  betRadiusScale={0.72}
+  rings={[{ id: "betting-line", radius: 0.72 }]}
+  slots={[{
+    id: "bet",
+    radius: 0.72,
+    render: (i) => bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null,
+  }]}
+  renderSeat={(i, box) => <Seat width={box.width} height={box.height} />}
 />`}
       >
         <div className="h-[400px] w-full">
           <CardTable
             seatCount={6}
+            rings={[{ id: "betting-line", radius: 0.72 }]}
+            slots={[
+              {
+                id: "bet",
+                radius: 0.72,
+                render: (i) => (CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null),
+              },
+            ]}
             renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
-            renderBet={(i) =>
-              CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null
-            }
-            center={<Pot label="Main" amount={487} />}
+            center={<Counter label="Main" amount={487} />}
           />
         </div>
       </Demo>
@@ -570,36 +618,41 @@ export function CardTablePage() {
                   winner={winner && i === 2}
                 />
               )}
-              center={<Pot label="Main" amount={487} />}
+              center={<Counter label="Main" amount={487} />}
             />
           </div>
         </div>
       </Demo>
 
       <Demo
-        title="fit: design vs container"
+        title="shape and seatPlacement"
         description={
           <>
-            The table lays out in a fixed design box and scales it to fit. In <Prop>fit=&quot;design&quot;</Prop> (the
-            default) a 390×700 phone scales the 4:3 box down and wastes ~58% of the space.{" "}
-            <Prop>fit=&quot;container&quot;</Prop> derives the width from the container&apos;s aspect ratio instead.
+            <Prop>shape</Prop> picks the boundary — <Prop>&quot;ellipse&quot;</Prop>, a <Prop>&quot;rect&quot;</Prop>{" "}
+            with <Prop>cornerRadius</Prop>, or <Prop>&quot;none&quot;</Prop> for no surface at all — and{" "}
+            <Prop>seatPlacement</Prop> picks where the seats go: a <Prop>ring</Prop>, a rectangle&apos;s{" "}
+            <Prop>perimeter</Prop>, or a <Prop>row</Prop>. Mixing them is allowed: a rectangle with its seats on a
+            ring, a rectangle with no felt. <Prop>deck</Prop> draws the rail and felt (on by default, except with{" "}
+            <Prop>shape=&quot;none&quot;</Prop>).
           </>
         }
         previewClassName="p-6 overflow-x-auto"
         align="start"
-        code={`<CardTable fit="container" />`}
+        code={`<CardTable shape="rect" seatPlacement="perimeter" cornerRadius={60} deck />
+<CardTable shape="none" seatPlacement="row" />`}
       >
         <div className="flex gap-6">
           {[
-            { label: 'fit="design"', fit: "design" as const },
-            { label: 'fit="container"', fit: "container" as const },
+            { label: 'shape="rect"', shape: "rect" as const, seatPlacement: "perimeter" as const },
+            { label: 'shape="none"', shape: "none" as const, seatPlacement: "row" as const },
           ].map((o) => (
             <div key={o.label}>
               <div className="mb-2 font-mono text-[11px] text-neutral-400">{o.label}</div>
-              <div className="h-[360px] w-[180px] overflow-hidden rounded-lg border border-white/10">
+              <div className="h-[320px] w-[240px] overflow-hidden rounded-lg border border-white/10">
                 <CardTable
                   seatCount={6}
-                  fit={o.fit}
+                  shape={o.shape}
+                  seatPlacement={o.seatPlacement}
                   renderSeat={(i, box) => (
                     <Seat
                       width={box.width}
@@ -614,17 +667,12 @@ export function CardTablePage() {
           ))}
         </div>
       </Demo>
-      <Row className="mt-3 justify-center">
-        <Btn onClick={() => setPortrait((v) => !v)} active={portrait}>
-          container: {portrait ? "portrait 180×360" : "landscape"}
-        </Btn>
-      </Row>
 
       <Demo
         title="Seat frames shrink to keep their distance"
         description={
           <>
-            Measured on the real layout helpers (<Prop>layoutSeats</Prop>, <Prop>minSeatSeparation</Prop> — both
+            Measured on the real layout helpers (<Prop>layoutTable</Prop>, <Prop>minFrameSeparation</Prop> — both
             exported). At 160×176 a 6-seat ring leaves 161px between neighbours, but a 10-seat ring leaves only 25.6px.
             Frames shrink uniformly (never below 50%) until <Prop>seatGap</Prop> is honoured, and{" "}
             <Prop>renderSeat</Prop> receives the size it settled on. The same mechanism is why 11–16 seats work at all;
@@ -635,7 +683,7 @@ export function CardTablePage() {
         code={`<CardTable
   seatCount={10}
   seatGap={24}          // 0 disables the shrink
-  renderSeat={(i, isYou, box) => (
+  renderSeat={(i, box) => (
     // box is the frame the ring was laid out for
     <Seat width={box.width} height={box.height} />
   )}
@@ -649,8 +697,8 @@ export function CardTablePage() {
         description={
           <>
             Every tunable <Prop>CardTable</Prop> prop, live: the design box, the rail and felt insets, the frame size,
-            the auto-shrink, the betting ring, seat 0&apos;s angle, the viewer, the decorations. The readout under the
-            controls comes from <Prop>layoutSeats</Prop> — the same call the component makes.
+            the auto-shrink, the shape and seat placement, the decorations. The readout under the controls comes from{" "}
+            <Prop>layoutTable</Prop> — the same call the component makes.
           </>
         }
         previewClassName="p-0 overflow-hidden"
@@ -658,12 +706,13 @@ export function CardTablePage() {
         code={`<CardTable
   seatCount={6} startAngle={90}            // ring
   seatWidth={160} seatHeight={176}         // preferred frame
-  seatGap={24} betRadiusScale={0.72}       // clearance, betting line
+  seatGap={24}                             // clearance, auto-shrink
   designWidth={1200} designHeight={900}    // the design box
   marginX={164 / 1200} marginY={196 / 900} // rail inset
   feltGap={11}                             // felt inset
-  fit="design"                             // or "container"
-  ambient                                  // spotlight + shimmer
+  shape="ellipse" cornerRadius={120}       // the boundary
+  seatPlacement="ring" deck                // where the seats go, draw the felt
+  fit="design" ambient                     // scaling, spotlight + shimmer
   renderOverlay={({ layout }) => (…)}      // the ring, the confetti — your call
 />`}
       >
@@ -674,14 +723,15 @@ export function CardTablePage() {
       <P>
         The table lays out and draws; it never decides. There is no <Prop>yourTurn</Prop> and no{" "}
         <Prop>winnerSeats</Prop> on it — it holds no game state at all. The caller passes <Prop>isActive</Prop> /{" "}
-        <Prop>isWinner</Prop> to the <Prop>Seat</Prop>s it renders, and puts edge effects and celebrations in{" "}
-        <Prop>overlay</Prop>. Everything the table knows is geometry, and <Prop>renderOverlay</Prop> hands you all of it
-        — which is why a your-turn ring is one line rather than a prop. The demo above shows exactly that, and its{" "}
-        <em>show code</em> has the snippet:
+        <Prop>isWinner</Prop> to the <Prop>Seat</Prop>s it renders, declares the rings and slots it wants, and puts
+        edge effects and celebrations in <Prop>overlay</Prop>. Everything the table knows is geometry, and{" "}
+        <Prop>renderOverlay</Prop> hands you all of it — which is why a your-turn ring is one line rather than a prop.
+        The demo above shows exactly that, and its <em>show code</em> has the snippet:
       </P>
       <P>
-        <Prop>geometry.layout</Prop> is exactly what <Prop>layoutSeats</Prop> returned: every ellipse box (table, felt,
-        rim, glow, betting line), every seat centre, and the frame size after the auto-shrink.
+        <Prop>geometry.layout</Prop> is exactly what <Prop>layoutTable</Prop> returned: every surface box (table, felt,
+        rim, glow), every seat centre and the frame size after the auto-shrink, plus <Prop>ringBox(radius)</Prop> and{" "}
+        <Prop>slotPoint(index, radius)</Prop> to place anything else on the real surface.
       </P>
 
       <H2>Confetti</H2>
@@ -722,8 +772,15 @@ export function SeatPage() {
 
       <Demo
         title="States"
-        description="Three generic states, all animated by default and all switchable."
-        code={`<Seat isActive /> <Seat isWinner winnerCrown /> <Seat isDimmed />`}
+        description={
+          <>
+            Three generic states, all animated by default and all switchable. A crown over the winner is a decoration,
+            not a state, so <Prop>isWinner</Prop> draws the frame and you pass the crown through <Prop>topLeft</Prop>.
+          </>
+        }
+        code={`<Seat isActive />
+<Seat isWinner topLeft={<span>👑</span>} />
+<Seat isDimmed />`}
       >
         <div className="flex flex-wrap items-start justify-center gap-6">
           <Seat
@@ -731,22 +788,22 @@ export function SeatPage() {
             header={<span className="w-full text-center font-semibold">isActive</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">100 BB</span>}
           >
-            <HoleCards cards={["As", "Kh"]} size="sm" deal={false} />
+            <CardRow cards={["As", "Kh"]} size="sm" animation={false} />
           </Seat>
           <Seat
             isWinner
-            winnerCrown
+            topLeft={<span className="text-base leading-none">👑</span>}
             header={<span className="w-full text-center font-semibold">isWinner</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">340 BB</span>}
           >
-            <HoleCards cards={["Ah", "Ad"]} size="sm" deal={false} />
+            <CardRow cards={["Ah", "Ad"]} size="sm" animation={false} />
           </Seat>
           <Seat
             isDimmed={dimmed}
             header={<span className="w-full text-center font-semibold">isDimmed</span>}
             footer={<span className="w-full text-center font-mono text-neutral-400">folded</span>}
           >
-            <HoleCards cards={[null, null]} size="sm" deal={false} />
+            <CardRow cards={[null, null]} size="sm" animation={false} />
           </Seat>
         </div>
       </Demo>
@@ -805,24 +862,24 @@ export function SeatPage() {
   );
 }
 
-/* ------------------------------------------------------------------- Pot -- */
+/* --------------------------------------------------------------- Counter -- */
 
-export function PotPage() {
+export function CounterPage() {
   const [amount, setAmount] = useState(240);
   const [animated, setAnimated] = useState(true);
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Pot</h1>
-      <Sec slug="pot" />
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">Counter</h1>
+      <Sec slug="counter" />
 
       <Demo
         title="Count-up"
-        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. The default rendering is the plain number ${amount.toLocaleString()}: no unit is invented, because the library does not know what your numbers mean.`}
-        code={`<Pot label="Main" amount={amount} />`}
+        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. The default rendering is the plain number ${amount.toLocaleString()}: no unit is invented, because the library does not know what your numbers mean. Pot is a deprecated alias of Counter.`}
+        code={`<Counter label="Main" amount={amount} />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <Pot label="Main" amount={amount} animate={animated} />
+          <Counter label="Main" amount={amount} animate={animated} />
           <Row className="justify-center">
             <Btn onClick={() => setAmount((a) => a + 100)}>+100</Btn>
             <Btn onClick={() => setAmount((a) => Math.max(0, a - 100))}>-100</Btn>
@@ -839,23 +896,23 @@ export function PotPage() {
         description={
           <>
             The default is a plain number. Pass <Prop>format</Prop> for anything else — including{" "}
-            <Prop>formatBB</Prop>, which takes the big blind as an argument because 20 is rarely the right
-            one for your table.
+            <Prop>formatBB</Prop> from <Prop>@stargazeryan/poker-ui/wager</Prop>, which takes the big blind as an
+            argument because 20 is rarely the right one for your table.
           </>
         }
-        code={`<Pot amount={1234} format={(n) => "$" + n.toLocaleString()} />
-<Pot amount={1234} format={formatBB} />                 // 61.7 BB
-<Pot amount={1234} format={(n) => formatBB(n, 100)} />  // 12.3 BB`}
+        code={`<Counter amount={1234} format={(n) => "$" + n.toLocaleString()} />
+<Counter amount={1234} format={formatBB} />                 // 61.7 BB
+<Counter amount={1234} format={(n) => formatBB(n, 100)} />  // 12.3 BB`}
       >
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Pot amount={1234} format={(n) => "$" + n.toLocaleString()} />
-          <Pot amount={1234} format={formatBB} />
-          <Pot amount={1234} format={(n) => formatBB(n, 100)} />
-          <Pot amount={1234} label="Main" format={(n) => `${n} chips`} />
+          <Counter amount={1234} format={(n) => "$" + n.toLocaleString()} />
+          <Counter amount={1234} format={formatBB} />
+          <Counter amount={1234} format={(n) => formatBB(n, 100)} />
+          <Counter amount={1234} label="Main" format={(n) => `${n} chips`} />
         </div>
       </Demo>
 
-      <Api slug="pot" />
+      <Api slug="counter" />
     </>
   );
 }
@@ -947,7 +1004,7 @@ export function CardBackPage() {
 
       <Demo
         title="Two cards, as a hand"
-        description="Wrap them in a flex row with a gap — that is exactly what HoleCards does for null cards."
+        description="Wrap them in a flex row with a gap — that is exactly what CardRow does for null cards."
         code={`<div className="flex gap-2">
   <CardBack size="sm" />
   <CardBack size="sm" />
@@ -964,10 +1021,16 @@ export function CardBackPage() {
   );
 }
 
-/* ----------------------------------------------------------- HoleCards -- */
+/* ------------------------------------------------------------- CardRow -- */
 
-export function HoleCardsPage() {
+const ROW_BOARD = ["Ah", "Kd", "7c", "2s", "9h"];
+const FAN_HAND = ["3s", "4h", "5d", "6c", "7s", "9h", "10d", "Jc", "Qs", "Kh", "2d", "2c", "2s"];
+
+export function CardRowPage() {
+  const [street, setStreet] = useState(3);
   const [round, setRound] = useState(1);
+  const [overlap, setOverlap] = useState(0.68);
+  const [arc, setArc] = useState(20);
   const hands = [
     ["As", "Kh"],
     ["Qd", "Jc"],
@@ -978,17 +1041,99 @@ export function HoleCardsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">HoleCards</h1>
-      <Sec slug="hole-cards" />
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">CardRow</h1>
+      <Sec slug="card-row" />
 
       <Demo
-        title="Dealing"
+        title="One component, three arrivals"
         description={
           <>
-            Cards deal in one after another, 100ms apart. Changing a card re-deals it — the wrapper is keyed on the card
-            itself, because React reuses an element whose key is unchanged and a reused element never restarts its CSS
-            animation. <Prop>dealKey</Prop> re-deals the whole hand even when the cards are identical, which is what the
-            button below uses.
+            The arrangement is the same in every card game; only the entrance differs.{" "}
+            <Prop>animation=&quot;deal&quot;</Prop> slides each card in, <Prop>&quot;flip&quot;</Prop> turns it over in
+            3D, and <Prop>false</Prop> renders the row static. The vocabulary a game uses — hole cards, a board, a
+            meld, up-cards — is the caller&apos;s, not the component&apos;s.
+          </>
+        }
+        code={`<CardRow cards={["As", "Kh"]} animation="deal" size="sm" />
+<CardRow cards={board.slice(0, street)} animation="flip" size="lg" />
+<CardRow cards={["As", "Kh"]} animation={false} size="sm" />`}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <CardRow cards={["As", "Kh"]} animation="deal" size="sm" />
+          <CardRow cards={ROW_BOARD.slice(0, street)} animation="flip" size="lg" />
+          <CardRow cards={["As", "Kh"]} animation={false} size="sm" />
+        </div>
+      </Demo>
+      <Row className="mt-3 justify-center">
+        {[0, 3, 4, 5].map((n) => (
+          <Btn key={n} onClick={() => setStreet(n)} active={street === n}>
+            {n} cards
+          </Btn>
+        ))}
+      </Row>
+
+      <Demo
+        title="Reserved positions"
+        description={
+          <>
+            <Prop>slots</Prop> reserves a fixed number of positions so the row&apos;s width never changes as cards
+            arrive — useful when something is centred next to it. A <Prop>null</Prop> <em>inside</em> the row is a
+            face-down card by default; pass <Prop>placeholder=&quot;empty&quot;</Prop> for an undealt position, and a
+            position past the end of the array is always empty.
+          </>
+        }
+        code={`<CardRow cards={board} slots={5} />
+<CardRow cards={board} slots={5} placeholder="empty" />`}
+      >
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-1">
+            <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="back"</span>
+            <CardRow cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} animation="flip" />
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="empty"</span>
+            <CardRow cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} animation={false} placeholder="empty" />
+          </div>
+        </div>
+      </Demo>
+
+      <Api slug="card-row" />
+
+      <H2>CardFan</H2>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["card-fan"].summary}</p>
+      <Demo
+        title="Overlap, and an arc"
+        description={
+          <>
+            <Prop>overlap</Prop> is how much of a card width the next one covers; <Prop>arc</Prop> splays the tops
+            apart by rotating each card about a pivot below the row. <Prop>arc=0</Prop> is a flat overlapping row.
+          </>
+        }
+        code={`<CardFan cards={hand} size="sm" overlap={0.68} arc={20} />`}
+      >
+        <div className="flex flex-col items-center gap-5">
+          <Row className="justify-center">
+            <Stepper label="overlap" value={overlap} min={0} max={0.95} step={0.05} format={(n) => n.toFixed(2)} onChange={setOverlap} />
+            <Stepper label="arc" value={arc} min={0} max={60} step={2} onChange={setArc} />
+          </Row>
+          <CardFan cards={FAN_HAND} size="sm" overlap={overlap} arc={arc} />
+        </div>
+      </Demo>
+      <Api slug="card-fan" />
+
+      <H2>Deprecated wrappers</H2>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+        <Prop>HoleCards</Prop> and <Prop>CommunityCards</Prop> are the names these used to have, and both are still
+        exported so existing code keeps working — they are thin presets of <Prop>CardRow</Prop> now.
+      </p>
+
+      <Demo
+        title="HoleCards"
+        description={
+          <>
+            <Prop>CardRow</Prop> with <Prop>size=&quot;lg&quot;</Prop> and <Prop>animation=&quot;deal&quot;</Prop>.{" "}
+            <Prop>dealKey</Prop> re-deals an unchanged hand, because React reuses an element whose key has not changed
+            and a reused element never restarts its CSS animation.
           </>
         }
         code={`<HoleCards cards={hand} size="lg" dealKey={round} />`}
@@ -1001,49 +1146,21 @@ export function HoleCardsPage() {
           <Field label="hand:" value={`${hand.join(" ")}  ·  dealKey=${round}`} />
         </div>
       </Demo>
-
-      <Demo
-        title="Face down"
-        description={<>A <Prop>null</Prop> entry renders a card back, so you can show an opponent's hand without knowing it.</>}
-        code={`<HoleCards cards={[null, null]} size="sm" />`}
-      >
-        <div className="flex items-end gap-6">
-          <HoleCards cards={[null, null]} size="xs" deal={false} />
-          <HoleCards cards={[null, null]} size="sm" deal={false} />
-          <HoleCards cards={[null, null]} size="md" deal={false} />
-          <HoleCards cards={[null, null]} size="lg" deal={false} />
-        </div>
-      </Demo>
-
-      <Callout tone="warn" title="A big hand is wider than a seat frame.">
-        <Prop>size=&quot;lg&quot;</Prop> is 200px across for two cards, and the default seat frame is 160px wide with no
-        overflow handling. Use <Prop>sm</Prop> or <Prop>xs</Prop> inside seats, or widen the frame.
-      </Callout>
-
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["hole-cards"].summary}</p>
       <Api slug="hole-cards" />
-    </>
-  );
-}
-
-/* ------------------------------------------------------ CommunityCards -- */
-
-export function CommunityCardsPage() {
-  const [street, setStreet] = useState(3);
-  const board = ["Ah", "Kd", "7c", "2s", "9h"];
-  const visible = board.slice(0, street);
-
-  return (
-    <>
-      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">CommunityCards</h1>
-      <Sec slug="community-cards" />
 
       <Demo
-        title="Streets"
-        description="Each card flips in with a 3D flip as it appears; the ones already on the board are not re-animated."
-        code={`<CommunityCards cards={board.slice(0, street)} size="lg" slots={5} />`}
+        title="CommunityCards"
+        description={
+          <>
+            <Prop>CardRow</Prop> with <Prop>animation=&quot;flip&quot;</Prop> and{" "}
+            <Prop>placeholder=&quot;empty&quot;</Prop>.
+          </>
+        }
+        code={`<CommunityCards cards={board.slice(0, street)} slots={5} />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CommunityCards cards={visible} size="lg" slots={5} />
+          <CommunityCards cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} />
           <Row className="justify-center">
             {[0, 3, 4, 5].map((n) => (
               <Btn key={n} onClick={() => setStreet(n)} active={street === n}>
@@ -1053,31 +1170,155 @@ export function CommunityCardsPage() {
           </Row>
         </div>
       </Demo>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["community-cards"].summary}</p>
+      <Api slug="community-cards" />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------ CardSlot -- */
+
+export function CardSlotPage() {
+  const [dealt, setDealt] = useState(1);
+  const board = ["Ah", "Kd", "7c"];
+
+  return (
+    <>
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">CardSlot</h1>
+      <Sec slug="card-slot" />
 
       <Demo
-        title="slots keeps the row from resizing"
+        title="A position before a card exists"
         description={
           <>
-            Without <Prop>slots</Prop> the row grows as cards arrive, which shifts anything centred next to it. With{" "}
-            <Prop>slots=5</Prop> the empty places are reserved from the start.
+            Each slot reserves the room a card of its size will take and draws a dashed outline while it is empty, so a
+            game&apos;s final shape can be laid out before anything is dealt. Put a <Prop>PlayingCard</Prop> (or
+            anything else) in it once there is one.
           </>
         }
-        code={`<CommunityCards cards={board} slots={5} />
-<CommunityCards cards={board} />`}
+        code={`<CardSlot size="md" label="goal, not dealt">
+  {card ? <PlayingCard card={card} size="md" /> : null}
+</CardSlot>`}
       >
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex flex-col items-center gap-1">
-            <span className="font-mono text-[11px] text-neutral-500">slots=5</span>
-            <CommunityCards cards={visible} size="lg" slots={5} animated={false} />
+        <div className="flex flex-col items-center gap-5">
+          <div className="flex items-end gap-3">
+            {board.map((card, i) => (
+              <CardSlot key={card} size="md" label={`position ${i + 1}, not dealt`}>
+                {i < dealt ? <PlayingCard card={card} size="md" /> : null}
+              </CardSlot>
+            ))}
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="font-mono text-[11px] text-neutral-500">no slots</span>
-            <CommunityCards cards={visible} size="lg" animated={false} />
-          </div>
+          <Row className="justify-center">
+            {[0, 1, 2, 3].map((n) => (
+              <Btn key={n} onClick={() => setDealt(n)} active={dealt === n}>
+                {n} dealt
+              </Btn>
+            ))}
+          </Row>
         </div>
       </Demo>
 
-      <Api slug="community-cards" />
+      <Demo
+        title="A highlight on the position that matters"
+        description={
+          <>
+            The slot takes a <Prop>className</Prop>, so a game can point at the one position under attention — here a
+            solid gold border and the turn glow. An empty slot announces itself for screen readers; once it holds a
+            card it is only a frame, so the card keeps its own accessible name.
+          </>
+        }
+        code={`<CardSlot size="lg" className="border-solid border-gold animate-turn-glow" />`}
+      >
+        <div className="flex items-end gap-4">
+          <CardSlot size="lg" />
+          <CardSlot size="lg" className="border-solid border-gold animate-turn-glow" />
+          <CardSlot size="lg">
+            <PlayingCard card="Qc" size="lg" />
+          </CardSlot>
+        </div>
+      </Demo>
+
+      <Api slug="card-slot" />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------- FitBox -- */
+
+function UseFitBoxDemo() {
+  const { outerRef, design } = useFitBox({ designWidth: 1200, designHeight: 900 });
+  return (
+    <div ref={outerRef} className="relative h-[220px] w-full">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+        <Field label="design:" value={`${design.width}×${design.height}`} />
+        <Field label="scale:" value={design.scale.toFixed(2)} />
+      </div>
+    </div>
+  );
+}
+
+export function FitBoxPage() {
+  return (
+    <>
+      <h1 className="text-2xl font-semibold tracking-tight text-neutral-50">FitBox</h1>
+      <Sec slug="fit-box" />
+
+      <Demo
+        title="Contents are called, not mounted"
+        description={
+          <>
+            The children are <strong>called</strong> with the design box that was settled on —{" "}
+            <Prop>{`{ width, height, scale }`}</Prop> — rather than mounted as a component. That keeps the contents a
+            function of the live geometry instead of a new component type on every render, which is what makes the
+            auto-shrink and the scaling reusable by anything.
+          </>
+        }
+        previewClassName="p-0 overflow-hidden"
+        code={`<FitBox designWidth={1200} designHeight={900}>
+  {({ width, height, scale }) => (
+    <div style={{ position: "absolute", inset: 0 }}>
+      laid out in a {width}×{height} box, drawn at {scale.toFixed(2)}×
+    </div>
+  )}
+</FitBox>`}
+      >
+        <div className="h-[360px] w-full">
+          <FitBox designWidth={1200} designHeight={900}>
+            {({ width, height, scale }) => (
+              <div className="absolute inset-0 rounded-xl border border-gold/40 bg-white/[0.02]">
+                <span className="absolute left-4 top-4 font-mono text-[11px] text-neutral-400">
+                  {`${width}×${height} @ ${scale.toFixed(2)}×`}
+                </span>
+                <div className="absolute left-4 top-4 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded bg-gold/20" />
+                <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/30" />
+                <div className="absolute bottom-4 right-4 rounded bg-gold/20 px-3 py-2 font-mono text-[11px] text-neutral-200">
+                  fixed coordinates, scaled
+                </div>
+              </div>
+            )}
+          </FitBox>
+        </div>
+      </Demo>
+
+      <H2>useFitBox</H2>
+      <P>
+        <Prop>FitBox</Prop> is <Prop>useFitBox</Prop> plus a wrapper element. Reach for the hook directly when you need
+        the design box without the element — e.g. to measure a container you already render, or to hand the geometry to
+        something else. It returns a ref to attach and the <Prop>design</Prop> box; before the container is measured it
+        reports the requested design size at a scale of 1.
+      </P>
+      <Demo
+        title="The hook on its own"
+        description="Resize the preview by resizing the window — the scale follows the container."
+        previewClassName="p-0 overflow-hidden"
+        code={`const { outerRef, design } = useFitBox({ designWidth: 1200, designHeight: 900 });
+
+return <div ref={outerRef} className="h-[220px] w-full">{/* … */}</div>;`}
+      >
+        <UseFitBoxDemo />
+      </Demo>
+
+      <Api slug="fit-box" />
     </>
   );
 }

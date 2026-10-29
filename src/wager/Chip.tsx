@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { cn } from "../cn";
-import { chipBreakdown, chipCount, chipSpotColor, DEFAULT_DENOMINATIONS, type Denomination } from "../chips";
+import { chipBreakdown, chipCount, chipSpotColor, DEFAULT_DENOMINATIONS, type Denomination } from "./chips";
 import { type ChipSize } from "../sizes";
 
 /*

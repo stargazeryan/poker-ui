@@ -6,9 +6,9 @@ import { COUNT_UP_MS } from "../motion";
  * The default rendering of an amount: the number, grouped by the locale, with no
  * unit attached.
  *
- * This library does not know whether your numbers are chips, dollars, big blinds
- * or points, so it does not invent a unit. `formatBB` is available as an opt-in
- * poker helper — `<Pot amount={n} format={(v) => formatBB(v, 100)} />`.
+ * The mechanism is "show a number, optionally animate it counting to a new
+ * value". This library does not know whether your numbers are chips, dollars,
+ * big blinds points or lives, so it does not invent a unit — pass `format`.
  */
 const defaultFormat = (amount: number): string => amount.toLocaleString();
 
@@ -18,9 +18,9 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export interface PotProps {
+export interface CounterProps {
   amount: number;
-  /** Optional label, e.g. "Main" / "Side". */
+  /** Optional label, e.g. "Main" / "Side" / "Bank" — whatever your game calls it. */
   label?: string;
   /**
    * Formatter for the amount. Defaults to a plain, locale-grouped number —
@@ -75,8 +75,11 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
   return <>{format(shown)}</>;
 }
 
-/** A small, standalone pot pill. Optional — the table does not require it. */
-export function Pot({ amount, label, format = defaultFormat, animate = true, className }: PotProps) {
+/**
+ * A labelled, optionally counting amount. Standalone and optional — no table
+ * requires it, and it attaches no unit.
+ */
+export function Counter({ amount, label, format = defaultFormat, animate = true, className }: CounterProps) {
   return (
     <div className={cn("flex items-center gap-2 font-mono text-sm text-gold", className)}>
       {label && <span className="text-neutral-400">{label}</span>}
@@ -86,3 +89,9 @@ export function Pot({ amount, label, format = defaultFormat, animate = true, cla
     </div>
   );
 }
+
+/** @deprecated Renamed to `Counter`. A pot is one game's use of an amount pill. */
+export const Pot = Counter;
+
+/** @deprecated Renamed to `CounterProps`. */
+export type PotProps = CounterProps;

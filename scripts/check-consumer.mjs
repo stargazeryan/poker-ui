@@ -100,19 +100,43 @@ try {
   writeFileSync(
     join(app, "src", "main.tsx"),
     `import { createRoot } from "react-dom/client";
-import { CardTable, Confetti, Seat, Pot, HoleCards, CommunityCards, PlayingCard, CardBack } from "@stargazeryan/poker-ui";
+/*
+ * Two entry points, exactly as the README says: the core, and the wager subpath
+ * for anything about money. If a chip ever needed the core entry, this file
+ * would not compile against the packed tarball.
+ */
+import {
+  CardTable,
+  Confetti,
+  Counter,
+  CardBack,
+  CardFan,
+  CardRow,
+  CardSlot,
+  DealerTable,
+  RoundTable,
+  Seat,
+  SquareTable,
+} from "@stargazeryan/poker-ui";
+import { ChipStack, formatBB } from "@stargazeryan/poker-ui/wager";
 import "./app.css";
+
+const bets = [40, 0, 120, 0, 0, 60];
 
 createRoot(document.getElementById("root")!).render(
   <div>
-    <CardTable
+    <RoundTable
       seatCount={6}
+      watermark={<span>♠♥♦♣</span>}
+      rings={[{ id: "betting-line", radius: 0.72 }]}
+      slots={[
+        { id: "bet", radius: 0.72, render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null) },
+      ]}
       renderSeat={(i, box) => (
         <Seat width={box.width} height={box.height} isActive={i === 0} header={<b>{i === 0 ? "you" : i}</b>}>
-          <HoleCards cards={["As", "Kh"]} size="sm" />
+          <CardRow cards={i === 0 ? ["As", "Kh"] : [null, null]} size="sm" />
         </Seat>
       )}
-      renderBet={(i) => (i === 0 ? <CardBack size="xs" /> : null)}
       renderOverlay={({ layout }) => (
         <>
           <div style={layout.boxes.glow} className="animate-turn-glow rounded-[50%]" />
@@ -121,12 +145,32 @@ createRoot(document.getElementById("root")!).render(
       )}
       center={
         <div>
-          <CommunityCards cards={["Ah", "Kd", "7c"]} size="md" />
-          <Pot label="Main" amount={240} />
-          <PlayingCard card="Qc" size="lg" />
+          <CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" slots={5} />
+          <Counter label="Main" amount={240} format={formatBB} />
+          <CardSlot>
+            <CardBack size="xs" />
+          </CardSlot>
         </div>
       }
     />
+
+    {/* The other two types, so the tarball is exercised end to end. */}
+    <SquareTable seatCount={4} renderSeat={(i, box) => (
+      <Seat width={box.width} height={box.height}>
+        <CardFan cards={["As", "Kh", "Qd", "Jc", "10s"]} size="xs" />
+      </Seat>
+    )} />
+
+    <DealerTable
+      head={<Seat><CardRow cards={["As", "9d"]} size="md" /></Seat>}
+      hands={[0, 1].map((i) => (
+        <Seat key={i} footer={<ChipStack amount={25 * (i + 1)} size="sm" />}>
+          <CardRow cards={["10h", "7s"]} size="sm" />
+        </Seat>
+      ))}
+    />
+
+    <CardTable seatCount={3} shape="none" renderSeat={(i) => <Seat>seat {i}</Seat>} />
   </div>,
 );
 `,
@@ -271,10 +315,20 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     }
   }
 
-  // Sanity: an unbuilt/unresolved import would leave the library out of the bundle.
-  js.includes("animate-turn-glow") && js.includes("betting-line")
-    ? ok("package code is in the consumer bundle")
-    : fail("package code missing from the consumer bundle");
+  /*
+   * Sanity: an unbuilt/unresolved import would leave the library out of the
+   * bundle. Two markers rather than one, because the point of the split is that
+   * the two entry points both arrive: the felt's gradient comes from the core,
+   * and the chip palette's `fill-*` class only exists in the wager entry.
+   */
+  const bundleMarkers = [
+    ["core table code", "radial-gradient(ellipse_at_50%_32%"],
+    ["a caller-declared ring lands", "data-ring"],
+    ["the wager entry's chip code", "fill-chip-black"],
+  ];
+  for (const [label, marker] of bundleMarkers) {
+    js.includes(marker) ? ok(`in the consumer bundle: ${label}`) : fail(`missing from the consumer bundle: ${label}`);
+  }
 
   notes.push(`build artefacts: ${assets}`);
 } catch (error) {

@@ -4,16 +4,17 @@ import { DEFAULT_SEAT_H, DEFAULT_SEAT_W } from "../layout";
 import { useSeatSize } from "./seatSize";
 
 export interface SeatProps {
-  /** Turn/active highlight (generic). Animated by default. */
+  /**
+   * Turn/current highlight. "Active" rather than "your turn": what makes a seat
+   * current is the game's business, and the frame only draws the state.
+   */
   isActive?: boolean;
-  /** Winner highlight (generic). Animated by default. */
+  /** Win highlight. */
   isWinner?: boolean;
-  /** Dimmed, e.g. folded or out (generic). */
+  /** Dimmed — out of the hand, disconnected, empty. */
   isDimmed?: boolean;
   /** Enable the turn/winner glow animations. Default true. */
   animated?: boolean;
-  /** Render a default 👑 in the top-left corner when `isWinner`. Default false. */
-  winnerCrown?: boolean;
   /** Optional click handler (e.g. "sit here"). */
   onClick?: () => void;
 
@@ -32,11 +33,11 @@ export interface SeatProps {
   above?: ReactNode;
   /** Slot: content below the frame, centered (e.g. countdown / bet pill). */
   below?: ReactNode;
-  /** Slot: floating content at the frame's top-left corner (e.g. a crown). */
+  /** Slot: floating content at the frame's top-left corner (e.g. a crown, a rank badge). */
   topLeft?: ReactNode;
   /** Slot: floating content at the frame's top-right corner (e.g. a kick button). */
   topRight?: ReactNode;
-  /** Slot: floating content centered above the top edge (e.g. D/SB/BB badges). */
+  /** Slot: floating content centered above the top edge (e.g. dealer / blind badges). */
   topCenter?: ReactNode;
 
   /**
@@ -55,17 +56,20 @@ export interface SeatProps {
 }
 
 /**
- * A neutral seat: a frame with generic visual states and named slots. Put
- * whatever you want into `header` / `children` / `footer`, and use
- * `above` / `below` / `topLeft` / `topRight` / `topCenter` / `overlay` for
- * floating bits. It knows nothing about any particular game.
+ * A neutral frame: three named rows with generic visual states, plus floating
+ * slots. It knows nothing about any particular game — put whatever you want into
+ * `header` / `children` / `footer`, and use `above` / `below` / `topLeft` /
+ * `topRight` / `topCenter` / `overlay` for floating bits.
+ *
+ * It draws no default decoration. A crown over the winner is a decoration, not a
+ * state, so `isWinner` draws the frame and the caller passes the crown through
+ * `topLeft`.
  */
 export function Seat({
   isActive = false,
   isWinner = false,
   isDimmed = false,
   animated = true,
-  winnerCrown = false,
   onClick,
   header,
   children,
@@ -94,19 +98,12 @@ export function Seat({
     ? "border-gold animate-winner-glow"
     : "border-gold shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)]";
 
-  const effTopLeft =
-    topLeft !== undefined
-      ? topLeft
-      : isWinner && winnerCrown
-        ? <span className="text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] animate-bounce">👑</span>
-        : undefined;
-
   return (
     <div className={cn("relative flex flex-col items-center", className)} style={{ width: frameWidth }}>
       {topCenter !== undefined && (
         <div className="absolute -top-2 left-1/2 z-20 flex -translate-x-1/2 gap-1">{topCenter}</div>
       )}
-      {effTopLeft !== undefined && <div className="absolute -top-3 -left-2 z-40">{effTopLeft}</div>}
+      {topLeft !== undefined && <div className="absolute -top-3 -left-2 z-40">{topLeft}</div>}
       {topRight !== undefined && <div className="absolute -top-2 -right-2 z-40">{topRight}</div>}
       {above !== undefined && (
         <div className="pointer-events-none absolute -top-12 left-1/2 z-30 -translate-x-1/2">{above}</div>

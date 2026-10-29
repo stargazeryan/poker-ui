@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextSeatIndex } from "../src/seat";
-import { BB, formatBB } from "../src/format";
+import { BB, formatBB } from "../src/wager/format";
 
 describe("nextSeatIndex", () => {
   it("steps forward and wraps around", () => {
