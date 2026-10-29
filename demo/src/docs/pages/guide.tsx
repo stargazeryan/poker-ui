@@ -1,8 +1,9 @@
 import { useState, type CSSProperties } from "react";
-import { CardRow, Counter, RoundTable, Seat } from "@stargazeryan/poker-ui";
+import { CardRow, Counter, RoundTable } from "@stargazeryan/poker-ui";
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, CodeBlock, Demo, Field, H2, P, Prop, Row } from "../ui";
 import { COLOUR_TOKENS, TOKENS } from "../inventory";
+import { SAMPLE, BET_RADIUS, BET_RING, PlayerSeat } from "../../examples/parts";
 
 /* --------------------------------------------------------- getting started -- */
 
@@ -44,9 +45,6 @@ export function Table({ hands, board, activeSeat }) {
   );
 }
 `;
-
-/** Bets for the live demo — a plain pill, so the guide needs no chip entry point. */
-const BETS = [0, 60, 0, 115, 0, 240];
 
 export function GettingStarted() {
   return (
@@ -101,33 +99,31 @@ export function GettingStarted() {
       >
         <RoundTable
           seatCount={6}
-          rings={[{ id: "betting-line", radius: 0.72 }]}
+          rings={[BET_RING]}
           slots={[
             {
               id: "bet",
-              radius: 0.72,
+              radius: BET_RADIUS,
               render: (i) =>
-                BETS[i] ? (
+                SAMPLE.bets[i] ? (
                   <span className="rounded-full border border-gold/50 bg-neutral-900/80 px-2 py-0.5 font-mono text-[10px] text-gold-light">
-                    {BETS[i]}
+                    {SAMPLE.bets[i]}
                   </span>
                 ) : null,
             },
           ]}
           renderSeat={(i, box) => (
-            <Seat
+            <PlayerSeat
+              index={i}
               width={box.width}
               height={box.height}
               isActive={i === 3}
-              header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
-              footer={<span className="w-full text-center font-mono text-gold-light">100 BB</span>}
-            >
-              {i % 2 === 0 ? <CardRow cards={["As", "Kh"]} size="sm" /> : <CardRow cards={[null, null]} size="sm" />}
-            </Seat>
+              cards={i % 2 === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+            />
           )}
           center={
             <div className="flex flex-col items-center gap-4">
-              <CardRow cards={["Ah", "Kd", "7c"]} size="lg" slots={5} animation="flip" />
+              <CardRow cards={SAMPLE.board.slice(0, 3)} size="lg" slots={5} animation="flip" />
               <Counter label="Main" amount={240} />
             </div>
           }
@@ -209,20 +205,11 @@ export function Theming() {
           <div style={tokens as CSSProperties} className="h-[420px] w-full">
             <RoundTable
               seatCount={6}
-              rings={[{ id: "betting-line", radius: 0.72 }]}
-              renderSeat={(i, box) => (
-                <Seat
-                  width={box.width}
-                  height={box.height}
-                  isActive={i === 3}
-                  header={<span className="w-full text-center font-semibold">{i === 0 ? "You" : i}</span>}
-                >
-                  <CardRow cards={["As", "Kh"]} size="sm" />
-                </Seat>
-              )}
+              rings={[BET_RING]}
+              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} />}
               center={
                 <div className="flex flex-col items-center gap-3">
-                  <CardRow cards={["Ah", "Kd", "7c"]} size="lg" animation="flip" />
+                  <CardRow cards={SAMPLE.board.slice(0, 3)} size="lg" animation="flip" />
                   <div className="flex items-center gap-3">
                     <Counter label="Main" amount={240} />
                     <ChipStack amount={65} size="sm" />

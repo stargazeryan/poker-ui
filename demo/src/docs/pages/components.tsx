@@ -37,6 +37,7 @@ import {
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
+import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
 
 function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
@@ -59,26 +60,7 @@ function Api({ slug }: { slug: string }) {
   );
 }
 
-/** The content half of every table demo: a neutral seat with a couple of cards. */
-function Player({ i, isYou, width, height, active, winner }: { i: number; isYou: boolean; width: number; height: number; active?: boolean; winner?: boolean }) {
-  return (
-    <Seat
-      width={width}
-      height={height}
-      isActive={active}
-      isWinner={winner}
-      header={<span className="w-full truncate text-center font-semibold">{isYou ? "You" : `Seat ${i}`}</span>}
-      footer={<span className="w-full text-center font-mono text-gold-light">{500 - i * 40}</span>}
-    >
-      {i % 2 === 0 ? <CardRow cards={["As", "Kh"]} size="sm" /> : <CardRow cards={[null, null]} size="sm" />}
-    </Seat>
-  );
-}
-
 /* ----------------------------------------------------------------- Chips -- */
-
-/** Bets for the table demo, in chip units, picked to need several colours. */
-const CHIP_BETS = [35, 0, 60, 115, 0, 240];
 
 export function ChipsPage() {
   const [amount, setAmount] = useState(487);
@@ -296,9 +278,7 @@ function SeatGapDemo() {
         <CardTable
           seatCount={count}
           seatGap={gap}
-          renderSeat={(i, box) => (
-            <Player i={i} isYou={i === 0} width={box.width} height={box.height} active={i === 1} />
-          )}
+          renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} />}
           center={<Counter label="Main" amount={487} />}
         />
       </div>
@@ -449,14 +429,8 @@ function CardTablePlayground() {
           className={bool("className") ? "outline-dashed outline-1 outline-amber-400/60" : undefined}
           /* The betting line is a ring the caller declares and the chips are a
              slot — the table names neither. */
-          rings={[{ id: "betting-line", radius: 0.72 }]}
-          slots={[
-            {
-              id: "bet",
-              radius: 0.72,
-              render: (i) => (i === 1 ? <ChipStack amount={60} size="sm" /> : i === 3 ? <ChipStack amount={25} size="sm" /> : null),
-            },
-          ]}
+          rings={[BET_RING]}
+          slots={betSlots(SAMPLE.bets)}
           renderOverlay={({ layout }) => (
             <>
               {bool("glow") && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
@@ -464,20 +438,18 @@ function CardTablePlayground() {
             </>
           )}
           renderSeat={(i, box) => (
-            <Seat
+            <PlayerSeat
+              index={i}
               width={box.width}
               height={box.height}
               isActive={i === 0 && bool("glow")}
               isWinner={bool("confetti") && i === 0}
-              header={<span className="w-full text-center text-[11px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
-              footer={<span className="w-full text-center font-mono text-[10px] text-amber-300">{i * 20} BB</span>}
-            >
-              <CardRow cards={["As", "Kh"]} size="xs" />
-            </Seat>
+              cardSize="xs"
+            />
           )}
           center={
             <div className="flex flex-col items-center gap-2">
-              <CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" />
+              <CardRow cards={SAMPLE.board.slice(0, 3)} size="md" animation="flip" />
               <Counter label="Main" amount={487} format={formatBB} />
             </div>
           }
@@ -525,7 +497,7 @@ export function CardTablePage() {
           <div className="h-[400px] w-full">
             <CardTable
               seatCount={count}
-              renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
+              renderSeat={renderPlayers()}
               center={<Counter label="Main" amount={487} />}
             />
           </div>
@@ -556,15 +528,9 @@ export function CardTablePage() {
         <div className="h-[400px] w-full">
           <CardTable
             seatCount={6}
-            rings={[{ id: "betting-line", radius: 0.72 }]}
-            slots={[
-              {
-                id: "bet",
-                radius: 0.72,
-                render: (i) => (CHIP_BETS[i] ? <ChipStack amount={CHIP_BETS[i]} size="sm" /> : null),
-              },
-            ]}
-            renderSeat={(i, box) => <Player i={i} isYou={i === 0} width={box.width} height={box.height} />}
+            rings={[BET_RING]}
+            slots={betSlots(SAMPLE.bets)}
+            renderSeat={renderPlayers()}
             center={<Counter label="Main" amount={487} />}
           />
         </div>
@@ -609,13 +575,12 @@ export function CardTablePage() {
                 </>
               )}
               renderSeat={(i, box) => (
-                <Player
-                  i={i}
-                  isYou={i === 0}
+                <PlayerSeat
+                  index={i}
                   width={box.width}
                   height={box.height}
-                  active={turn && i === 2}
-                  winner={winner && i === 2}
+                  isActive={turn && i === 2}
+                  isWinner={winner && i === 2}
                 />
               )}
               center={<Counter label="Main" amount={487} />}
@@ -788,7 +753,7 @@ export function SeatPage() {
             header={<span className="w-full text-center font-semibold">isActive</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">100 BB</span>}
           >
-            <CardRow cards={["As", "Kh"]} size="sm" animation={false} />
+            <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
           </Seat>
           <Seat
             isWinner
@@ -803,7 +768,7 @@ export function SeatPage() {
             header={<span className="w-full text-center font-semibold">isDimmed</span>}
             footer={<span className="w-full text-center font-mono text-neutral-400">folded</span>}
           >
-            <CardRow cards={[null, null]} size="sm" animation={false} />
+            <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
           </Seat>
         </div>
       </Demo>
@@ -1023,7 +988,6 @@ export function CardBackPage() {
 
 /* ------------------------------------------------------------- CardRow -- */
 
-const ROW_BOARD = ["Ah", "Kd", "7c", "2s", "9h"];
 const FAN_HAND = ["3s", "4h", "5d", "6c", "7s", "9h", "10d", "Jc", "Qs", "Kh", "2d", "2c", "2s"];
 
 export function CardRowPage() {
@@ -1032,7 +996,7 @@ export function CardRowPage() {
   const [overlap, setOverlap] = useState(0.68);
   const [arc, setArc] = useState(20);
   const hands = [
-    ["As", "Kh"],
+    SAMPLE.hand,
     ["Qd", "Jc"],
     ["9s", "9d"],
     ["Ah", "Ad"],
@@ -1054,14 +1018,14 @@ export function CardRowPage() {
             meld, up-cards — is the caller&apos;s, not the component&apos;s.
           </>
         }
-        code={`<CardRow cards={["As", "Kh"]} animation="deal" size="sm" />
+        code={`<CardRow cards={hand} animation="deal" size="sm" />
 <CardRow cards={board.slice(0, street)} animation="flip" size="lg" />
-<CardRow cards={["As", "Kh"]} animation={false} size="sm" />`}
+<CardRow cards={hand} animation={false} size="sm" />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CardRow cards={["As", "Kh"]} animation="deal" size="sm" />
-          <CardRow cards={ROW_BOARD.slice(0, street)} animation="flip" size="lg" />
-          <CardRow cards={["As", "Kh"]} animation={false} size="sm" />
+          <CardRow cards={SAMPLE.hand} animation="deal" size="sm" />
+          <CardRow cards={SAMPLE.board.slice(0, street)} animation="flip" size="lg" />
+          <CardRow cards={SAMPLE.hand} animation={false} size="sm" />
         </div>
       </Demo>
       <Row className="mt-3 justify-center">
@@ -1088,11 +1052,11 @@ export function CardRowPage() {
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-1">
             <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="back"</span>
-            <CardRow cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} animation="flip" />
+            <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation="flip" />
           </div>
           <div className="flex flex-col items-center gap-1">
             <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="empty"</span>
-            <CardRow cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} animation={false} placeholder="empty" />
+            <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation={false} placeholder="empty" />
           </div>
         </div>
       </Demo>
@@ -1160,7 +1124,7 @@ export function CardRowPage() {
         code={`<CommunityCards cards={board.slice(0, street)} slots={5} />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CommunityCards cards={ROW_BOARD.slice(0, street)} size="lg" slots={5} />
+          <CommunityCards cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} />
           <Row className="justify-center">
             {[0, 3, 4, 5].map((n) => (
               <Btn key={n} onClick={() => setStreet(n)} active={street === n}>

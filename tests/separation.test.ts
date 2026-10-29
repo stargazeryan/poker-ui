@@ -137,6 +137,9 @@ describe("nothing reaches across a layer", () => {
     expect(examples.length).toBeGreaterThan(0);
     for (const file of examples) {
       for (const specifier of importsOf(file)) {
+        // Siblings are allowed and are themselves checked, so a relative import
+        // cannot be a way out of the folder.
+        if (specifier.startsWith("./")) continue;
         const ok = ["react", "@stargazeryan/poker-ui", "@stargazeryan/poker-ui/wager"];
         expect(ok, `${file.replace(DEMO, "demo/src")} imports ${specifier}`).toContain(specifier);
       }
@@ -174,6 +177,20 @@ describe("a table type knows nothing but its shape", () => {
     const table = readFileSync(join(SRC, "components", "CardTable.tsx"), "utf8");
     expect(table).toMatch(/renderSeat\?:\s*\(index: number, box: SeatBox\) => ReactNode/);
     expect(table).toMatch(/renderOverlay\?:\s*\(geometry: TableOverlayGeometry\) => ReactNode/);
+  });
+
+  it("keeps the demo's sample data in one place", () => {
+    // The pages used to each carry their own copy of the sample hand, the wager
+    // array and the pot — twelve copies of `["As", "Kh"]` and two of the same
+    // banking example. Anything the demo shares lives in `examples/parts.tsx`.
+    const pages = sourceFiles(join(DEMO, "docs"));
+    expect(pages.length).toBeGreaterThan(3);
+    const sampleOnly = /\[\s*"As"\s*,\s*"Kh"\s*\]|\[\s*50\s*,\s*100\s*,\s*25\s*,\s*0\s*\]/;
+    for (const file of pages) {
+      expect(readFileSync(file, "utf8"), `${file.replace(DEMO, "demo/src")} keeps its own sample`).not.toMatch(
+        sampleOnly,
+      );
+    }
   });
 
   it("knows nothing about betting in the geometry", () => {

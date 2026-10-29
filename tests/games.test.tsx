@@ -76,7 +76,9 @@ describe("the flop example", () => {
   });
 
   it("formats the stacks as big blinds, because the example asked for it", () => {
-    const { container } = render(<FlopPokerExample stacks={[1000, 940, 1000, 885, 760, 1000]} />);
+    // The stacks come from the demo's shared sample, so this also fails if the
+    // seat markup stops reading it.
+    const { container } = render(<FlopPokerExample />);
     expect(container.textContent).toContain("50 BB");
     expect(container.textContent).toContain("38 BB");
   });

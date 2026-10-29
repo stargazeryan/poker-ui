@@ -1,10 +1,8 @@
 import { useState } from "react";
 import {
   CardRow,
-  CardSlot,
   Counter,
   DealerTable,
-  PlayingCard,
   RoundTable,
   Seat,
   SquareTable,
@@ -14,6 +12,22 @@ import {
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
 import { DOC_BY_SLUG, type ApiRow } from "../registry";
+import { BankingExample } from "../../examples/games";
+import { BET_RING, PlayerSeat, SAMPLE, betSlots, renderHands, renderPlayers } from "../../examples/parts";
+
+/**
+ * The three table types, plus the overview that puts them side by side.
+ *
+ * Everything a demo draws about a seat, a wager or a sample hand comes from
+ * `./parts`, and the banking demo *is* `BankingExample` from `./games` — the
+ * same worked example the guide renders. A page that spelled its own seat
+ * markup out again was a second copy waiting to drift from the examples it is
+ * supposed to be showing.
+ *
+ * A demo that is genuinely about `DealerTable`'s own knobs (`headY`, `handY`,
+ * `handGap`, `fit`, `handCount`) still writes its own frames: those are the
+ * props under discussion, and wrapping them in a shared helper would hide them.
+ */
 
 /**
  * One caption per name in `TABLE_TYPES`, so the overview table is generated from
@@ -31,9 +45,6 @@ const TABLE_TYPE_ROWS: ApiRow[] = (Object.keys(TABLE_TYPES) as TableTypeName[]).
   description: TABLE_TYPE_NOTES[name],
 }));
 
-/** One wager per position, in chip units. 0 means the position is out. */
-const WAGERS = [50, 100, 25, 0];
-
 function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
@@ -41,21 +52,6 @@ function Sec({ slug }: { slug: string }) {
       <p className="mt-3 text-sm leading-relaxed text-neutral-300">{doc.summary}</p>
       <H2>Examples</H2>
     </>
-  );
-}
-
-/** A small seat for the overview previews — the content half of a table type. */
-function MiniSeat({ i, box, active }: { i: number; box: { width: number; height: number }; active?: boolean }) {
-  return (
-    <Seat
-      width={box.width}
-      height={box.height}
-      isActive={active}
-      header={<span className="w-full truncate text-center text-[10px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
-      footer={<span className="w-full text-center font-mono text-[10px] text-gold-light">{i * 20} BB</span>}
-    >
-      <CardRow cards={["As", "Kh"]} size="xs" />
-    </Seat>
   );
 }
 
@@ -87,25 +83,18 @@ export function TableTypesPage() {
       <ApiTable rows={TABLE_TYPE_ROWS} caption="The three types" />
 
       <H2>Side by side</H2>
-      <P>The same three, live, each carrying the same seat content:</P>
+      <P>The same three, live, each carrying the same seat content — one seat component, three arrangements:</P>
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">RoundTable</div>
           <div className="h-[300px] overflow-hidden rounded-lg border border-white/10">
-            <RoundTable
-              seatCount={6}
-              renderSeat={(i, box) => <MiniSeat i={i} box={box} active={i === 0} />}
-            />
+            <RoundTable seatCount={6} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">SquareTable</div>
           <div className="h-[300px] overflow-hidden rounded-lg border border-white/10">
-            <SquareTable
-              cornerRadius={70}
-              seatCount={4}
-              renderSeat={(i, box) => <MiniSeat i={i} box={box} active={i === 0} />}
-            />
+            <SquareTable cornerRadius={70} seatCount={4} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
@@ -118,19 +107,11 @@ export function TableTypesPage() {
               handHeight={170}
               head={
                 <Seat width={190} height={140} header={<span className="w-full text-center text-[10px] font-semibold">dealer</span>}>
-                  <CardRow cards={["As", "9d"]} size="xs" />
+                  <CardRow cards={SAMPLE.hand} size="xs" />
                 </Seat>
               }
               handCount={3}
-              renderHand={(i) => (
-                <Seat
-                  width={140}
-                  height={170}
-                  header={<span className="w-full text-center text-[10px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
-                >
-                  <CardRow cards={["10h", "7s"]} size="xs" />
-                </Seat>
-              )}
+              renderHand={renderHands()}
             />
           </div>
         </div>
@@ -155,8 +136,6 @@ function CardTablePropsFor({ parent }: { parent: string }) {
 export function RoundTablePage() {
   const [count, setCount] = useState(6);
   const [line, setLine] = useState(true);
-
-  const bets = [0, 60, 0, 115, 0, 240];
 
   return (
     <>
@@ -190,7 +169,10 @@ export function RoundTablePage() {
             ))}
           </Row>
           <div className="h-[420px] w-full">
-            <RoundTable seatCount={count} renderSeat={(i, box) => <MiniSeat i={i} box={box} active={i === 0} />} />
+            <RoundTable
+              seatCount={count}
+              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 0} />}
+            />
           </div>
         </div>
       </Demo>
@@ -207,12 +189,8 @@ export function RoundTablePage() {
         previewClassName="p-0 overflow-hidden"
         code={`<RoundTable
   seatCount={6}
-  rings={[{ id: "betting-line", radius: 0.72 }]}
-  slots={[{
-    id: "bet",
-    radius: 0.72,
-    render: (i) => bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null,
-  }]}
+  rings={[BET_RING]}
+  slots={betSlots(bets)}
   renderSeat={(i, box) => <Seat isActive={activeSeat === i} width={box.width} height={box.height} />}
 />`}
       >
@@ -225,14 +203,10 @@ export function RoundTablePage() {
           <div className="h-[420px] w-full">
             <RoundTable
               seatCount={6}
-              rings={line ? [{ id: "betting-line", radius: 0.72 }] : undefined}
-              slots={
-                line
-                  ? [{ id: "bet", radius: 0.72, render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null) }]
-                  : undefined
-              }
-              renderSeat={(i, box) => <MiniSeat i={i} box={box} active={i === 3} />}
-              center={<Counter label="Main" amount={415} />}
+              rings={line ? [BET_RING] : undefined}
+              slots={line ? betSlots(SAMPLE.bets) : undefined}
+              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} />}
+              center={<Counter label="Main" amount={SAMPLE.pot} />}
             />
           </div>
         </div>
@@ -289,7 +263,7 @@ export function SquareTablePage() {
             ))}
           </Row>
           <div className="h-[420px] w-full">
-            <SquareTable cornerRadius={corner} seatCount={count} renderSeat={(i, box) => <MiniSeat i={i} box={box} active={i === 0} />} />
+            <SquareTable cornerRadius={corner} seatCount={count} renderSeat={renderPlayers()} />
           </div>
         </div>
       </Demo>
@@ -347,19 +321,21 @@ export function DealerTablePage() {
               handCount={handCount}
               head={
                 <Seat width={240} height={200} header={<span className="w-full text-center font-semibold">Dealer</span>}>
-                  <CardRow cards={["As", "9d"]} size="md" />
+                  <CardRow cards={SAMPLE.hand} size="md" />
                 </Seat>
               }
               renderHand={(i, box) => (
-                <Seat
+                <PlayerSeat
+                  index={i}
                   width={box.width}
                   height={box.height}
                   isActive={i === 0}
-                  header={<span className="w-full truncate text-center text-[11px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
-                  footer={<span className="w-full text-center"><ChipStack amount={(i + 1) * 25} size="sm" /></span>}
-                >
-                  <CardRow cards={["10h", "7s"]} size="sm" />
-                </Seat>
+                  footer={
+                    <span className="w-full text-center">
+                      <ChipStack amount={(i + 1) * 25} size="sm" />
+                    </span>
+                  }
+                />
               )}
             />
           </div>
@@ -376,47 +352,11 @@ export function DealerTablePage() {
           </>
         }
         previewClassName="p-0 overflow-hidden"
-        code={`<DealerTable
-  head={
-    <div className="...">
-      {gate.map((card, i) => (
-        <CardSlot key={i} size="md" label="not dealt">
-          {card ? <PlayingCard card={card} size="md" /> : null}
-        </CardSlot>
-      ))}
-    </div>
-  }
-  handCount={4}
-/>`}
+        code={`/* the worked example from examples/games.tsx, not a second copy */
+<BankingExample highlight={1} />`}
       >
         <div className="h-[420px] w-full">
-          <DealerTable
-            headWidth={420}
-            headHeight={200}
-            handWidth={210}
-            handHeight={240}
-            head={
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-neutral-700 bg-neutral-900/80 p-3">
-                <span className="text-[11px] uppercase tracking-wider text-neutral-400">the gate</span>
-                <div className="flex items-end gap-3">
-                  {(["As", undefined, "Qc"] as const).map((card, i) => (
-                    <CardSlot key={i} size="md" label={`position ${i + 1}, not dealt`}>
-                      {card ? <PlayingCard card={card} size="md" /> : null}
-                    </CardSlot>
-                  ))}
-                </div>
-              </div>
-            }
-            handCount={WAGERS.length}
-            renderHand={(i) => (
-              <Seat
-                header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
-                footer={WAGERS[i] > 0 ? <span className="w-full text-center"><ChipStack amount={WAGERS[i]} size="sm" /></span> : undefined}
-              >
-                <span className="text-xs text-neutral-500">{WAGERS[i] > 0 ? "in" : "out"}</span>
-              </Seat>
-            )}
-          />
+          <BankingExample highlight={1} />
         </div>
       </Demo>
 

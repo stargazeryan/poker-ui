@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  CardFan,
   CardRow,
   CardSlot,
   Counter,
@@ -9,10 +10,10 @@ import {
   RoundTable,
   Seat,
   SquareTable,
-  CardFan,
   type CardSize,
 } from "@stargazeryan/poker-ui";
-import { ChipStack, formatBB } from "@stargazeryan/poker-ui/wager";
+import { ChipStack } from "@stargazeryan/poker-ui/wager";
+import { BET_RING, SAMPLE, WATERMARK, PlayerSeat, betSlots } from "./parts";
 
 /**
  * Four games, built out of the table types and nothing else.
@@ -36,11 +37,10 @@ import { ChipStack, formatBB } from "@stargazeryan/poker-ui/wager";
  * twenty-one are *your* rules, and these files hold no rules at all — no hand
  * evaluation, no betting legality, no dealer draw. They are what a consumer's
  * own game file looks like.
+ *
+ * The sample data and the seat markup they share with the docs pages live in
+ * `./parts`, so a change to how a seat looks happens once.
  */
-
-const SUIT_WATERMARK = (
-  <span className="text-white/[0.05] text-[110px] font-black tracking-[0.2em] select-none leading-none">♠♥♦♣</span>
-);
 
 /* --------------------------------------------------------------- flop poker -- */
 
@@ -53,60 +53,38 @@ export interface FlopPokerExampleProps {
   activeSeat?: number | null;
   /** The board. */
   board?: string[];
-  /** Per-seat stacks, in chip units, displayed as big blinds. */
-  stacks?: number[];
 }
-
-const POKER_HANDS: (string | null)[][] = [
-  ["As", "Kh"],
-  [null, null],
-  [null, null],
-  [null, null],
-  [null, null],
-  [null, null],
-];
 
 export function FlopPokerExample({
   street = 3,
-  bets = [0, 60, 0, 115, 240, 0],
+  bets = SAMPLE.bets,
   activeSeat = 3,
-  board = ["Ah", "Kd", "7c", "2s", "9h"],
-  stacks = [1000, 940, 1000, 885, 760, 1000],
+  board = SAMPLE.board,
 }: FlopPokerExampleProps) {
-  const pot = 415;
-  const betRadius = 0.72;
-
   return (
     <RoundTable
       seatCount={6}
-      watermark={SUIT_WATERMARK}
+      watermark={WATERMARK}
       /* The betting line is a ring this file declares. A game with no betting
          would simply not declare one — and nothing would be drawn. */
-      rings={[{ id: "betting-line", radius: betRadius }]}
-      slots={[
-        {
-          id: "bet",
-          radius: betRadius,
-          render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null),
-        },
-      ]}
+      rings={[BET_RING]}
+      slots={betSlots(bets)}
       renderSeat={(i, box) => (
-        <Seat
+        <PlayerSeat
+          index={i}
           width={box.width}
           height={box.height}
           isActive={activeSeat === i}
-          header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
-          footer={
-            <span className="w-full text-center font-mono text-gold-light">{formatBB(stacks[i] ?? 0, 20)}</span>
-          }
-        >
-          <CardRow cards={POKER_HANDS[i]} size="sm" />
-        </Seat>
+          // Yours is face up; nobody else's is. `PlayerSeat` handles the name
+          // and the stack, which is the part every demo wants identically.
+          cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+          label={i === 0 ? "You" : `Seat ${i}`}
+        />
       )}
       center={
         <div className="flex flex-col items-center gap-3">
           <CardRow cards={board.slice(0, street)} size="lg" slots={5} animation="flip" />
-          <Counter label="Main" amount={pot} />
+          <Counter label="Main" amount={SAMPLE.pot} />
         </div>
       }
       renderOverlay={({ layout }) =>
@@ -196,6 +174,8 @@ export interface BankingExampleProps {
   won?: boolean;
 }
 
+const GATE_LABELS = ["left gate, not dealt", "goal, not dealt", "right gate, not dealt"] as const;
+
 export function BankingExample({
   gate = ["As", undefined, "Qc"],
   wagers = [50, 100, 25, 0],
@@ -216,7 +196,7 @@ export function BankingExample({
               <CardSlot
                 key={i}
                 size="md"
-                label={["left gate, not dealt", "goal, not dealt", "right gate, not dealt"][i]}
+                label={GATE_LABELS[i]}
                 className={highlight === i ? "border-solid border-gold animate-turn-glow" : undefined}
               >
                 {card ? <PlayingCard card={card} size="md" /> : null}
@@ -227,19 +207,21 @@ export function BankingExample({
       }
       handCount={wagers.length}
       renderHand={(i) => (
-        <Seat
+        <PlayerSeat
+          index={i}
           isWinner={won && wagers[i] > 0}
-          header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
+          cards={SAMPLE.faceDown}
+          cardSize="md"
           footer={
             wagers[i] > 0 ? (
               <span className="w-full text-center">
                 <ChipStack amount={wagers[i]} size="sm" />
               </span>
-            ) : undefined
+            ) : (
+              <span className="w-full text-center text-neutral-500">out</span>
+            )
           }
-        >
-          <span className="text-xs text-neutral-500">{wagers[i] > 0 ? "in" : "out"}</span>
-        </Seat>
+        />
       )}
       renderOverlay={() => (won ? <Confetti count={30} colors={["#f39c12", "#2ecc71", "#f0c04a"]} /> : null)}
     />
@@ -299,11 +281,13 @@ export function TwentyOneExample({
         const hand = hands[i];
         if (!hand) return null;
         return (
-          <Seat
+          <PlayerSeat
+            index={i}
             isActive={hand.isActive}
             isWinner={hand.isWinner}
             isDimmed={hand.isDimmed}
-            header={<span className="w-full truncate text-center font-semibold">{hand.label ?? `Hand ${i + 1}`}</span>}
+            cards={hand.cards}
+            label={hand.label}
             footer={
               hand.bet !== undefined ? (
                 <span className="w-full text-center">
@@ -311,9 +295,7 @@ export function TwentyOneExample({
                 </span>
               ) : undefined
             }
-          >
-            <CardRow cards={hand.cards} size="sm" />
-          </Seat>
+          />
         );
       }}
     />
@@ -332,8 +314,6 @@ export function GameGallery() {
   const [handsLeft, setHandsLeft] = useState(3);
   const [dealerHidden, setDealerHidden] = useState(true);
   const [won, setWon] = useState(false);
-
-  const board = ["Ah", "Kd", "7c", "2s", "9h"];
 
   return (
     <div className="flex flex-col gap-10">
@@ -354,7 +334,7 @@ export function GameGallery() {
           ))}
         </div>
         <div className="h-[460px] w-full">
-          <FlopPokerExample street={street} board={board} />
+          <FlopPokerExample street={street} />
         </div>
       </section>
 
@@ -411,10 +391,7 @@ export function GameGallery() {
           </span>
         </div>
         <div className="h-[460px] w-full">
-          <TwentyOneExample
-            dealerHidden={dealerHidden}
-            hands={DEFAULT_HANDS.slice(0, handsLeft)}
-          />
+          <TwentyOneExample dealerHidden={dealerHidden} hands={DEFAULT_HANDS.slice(0, handsLeft)} />
         </div>
       </section>
     </div>
