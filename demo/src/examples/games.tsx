@@ -225,17 +225,23 @@ export function BankingExample({
           </div>
         </div>
       }
-      hands={wagers.map((wager, i) => (
+      handCount={wagers.length}
+      renderHand={(i) => (
         <Seat
-          key={i}
-          isWinner={won && wager > 0}
+          isWinner={won && wagers[i] > 0}
           header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
-          footer={wager > 0 ? <span className="w-full text-center"><ChipStack amount={wager} size="sm" /></span> : undefined}
+          footer={
+            wagers[i] > 0 ? (
+              <span className="w-full text-center">
+                <ChipStack amount={wagers[i]} size="sm" />
+              </span>
+            ) : undefined
+          }
         >
-          <span className="text-xs text-neutral-500">{wager > 0 ? "in" : "out"}</span>
+          <span className="text-xs text-neutral-500">{wagers[i] > 0 ? "in" : "out"}</span>
         </Seat>
-      ))}
-      overlay={won ? <Confetti count={30} colors={["#f39c12", "#2ecc71", "#f0c04a"]} /> : undefined}
+      )}
+      renderOverlay={() => (won ? <Confetti count={30} colors={["#f39c12", "#2ecc71", "#f0c04a"]} /> : null)}
     />
   );
 }
@@ -288,24 +294,28 @@ export function TwentyOneExample({
           <CardRow cards={shown} size="md" />
         </Seat>
       }
-      hands={hands.map((hand, i) => (
-        <Seat
-          key={i}
-          isActive={hand.isActive}
-          isWinner={hand.isWinner}
-          isDimmed={hand.isDimmed}
-          header={<span className="w-full truncate text-center font-semibold">{hand.label ?? `Hand ${i + 1}`}</span>}
-          footer={
-            hand.bet !== undefined ? (
-              <span className="w-full text-center">
-                <ChipStack amount={hand.bet} size="sm" />
-              </span>
-            ) : undefined
-          }
-        >
-          <CardRow cards={hand.cards} size="sm" />
-        </Seat>
-      ))}
+      handCount={hands.length}
+      renderHand={(i) => {
+        const hand = hands[i];
+        if (!hand) return null;
+        return (
+          <Seat
+            isActive={hand.isActive}
+            isWinner={hand.isWinner}
+            isDimmed={hand.isDimmed}
+            header={<span className="w-full truncate text-center font-semibold">{hand.label ?? `Hand ${i + 1}`}</span>}
+            footer={
+              hand.bet !== undefined ? (
+                <span className="w-full text-center">
+                  <ChipStack amount={hand.bet} size="sm" />
+                </span>
+              ) : undefined
+            }
+          >
+            <CardRow cards={hand.cards} size="sm" />
+          </Seat>
+        );
+      }}
     />
   );
 }

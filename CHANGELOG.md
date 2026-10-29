@@ -75,6 +75,34 @@ square table and a dealer table are.
 - **`Seat` lost `winnerCrown`.** A crown is a decoration, not a state — pass it
   through `topLeft`.
 
+- **One prop per slot: the array and node forms are gone.** A slot that has
+  geometry to hand over is a render function and nothing else. `CardTable` lost
+  `seats` and `overlay`; `DealerTable` lost `hands` and its plain-node `overlay`.
+
+  ```tsx
+  // 0.7.0 — two ways, and an array cannot see the geometry
+  <CardTable seats={hands.map((h) => <Seat />)} overlay={<Confetti />} />
+
+  // 0.8.0 — one way, and it gets the geometry
+  <CardTable
+    renderSeat={(i, box) => <Seat width={box.width} height={box.height} />}
+    renderOverlay={() => <Confetti />}
+  />
+  ```
+
+  Why the function survives: it hands you `box` (the laid-out centre and the
+  frame size after the auto-shrink), which an array of nodes cannot reach, and
+  `renderOverlay` hands you `layout`. The array form's only advantage was a
+  shorter call site, and it cost a precedence rule (`seats` won when both were
+  passed), two things to document and two paths to test. `DealerTable`'s
+  `overlay` became `renderOverlay(geometry)` so both tables spell that slot the
+  same way — a caller switching table types changes a prop's value, not its
+  name. `tests/separation.test.ts` fails if any of the removed spellings grows
+  back.
+
+  `Pot`, `HoleCards` and `CommunityCards` are unaffected: they are deprecated
+  aliases, not removed.
+
 - **`layoutSeats` is now `layoutTable`** (the old name still works), and
   `minSeatSeparation` is `minFrameSeparation`. `Layout.boxes` is
   `{ table, felt, rim, glow }` — no `boxes.bettingLine`, no `betRx`, no `betRy`.

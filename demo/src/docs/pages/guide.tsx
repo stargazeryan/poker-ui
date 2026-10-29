@@ -88,7 +88,7 @@ export function GettingStarted() {
 
       <H2>A table</H2>
       <P>
-        Everything is presentational. Supply seat content through <Prop>renderSeat</Prop> or <Prop>seats</Prop>, and put
+        Everything is presentational. Supply seat content through <Prop>renderSeat</Prop>, and put
         whatever you like in <Prop>center</Prop>. Turn order, betting and legality are your engine&apos;s job.
       </P>
       <CodeBlock code={MINIMAL} />

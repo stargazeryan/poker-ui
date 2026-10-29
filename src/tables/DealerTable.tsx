@@ -28,12 +28,13 @@ import { DESIGN_H, DESIGN_W, ROW_FRACTION } from "../layout";
  *
  * ```tsx
  * <DealerTable
+ *   handCount={hands.length}
  *   head={<Seat header="Dealer"><CardRow cards={dealer} /></Seat>}
- *   hands={hands.map((h) => (
- *     <Seat isActive={h.active} footer={<ChipStack amount={h.bet} />}>
- *       <CardRow cards={h.cards} />
+ *   renderHand={(i) => (
+ *     <Seat isActive={hands[i].active} footer={<ChipStack amount={hands[i].bet} />}>
+ *       <CardRow cards={hands[i].cards} />
  *     </Seat>
- *   ))}
+ *   )}
  * />
  * ```
  */
@@ -60,14 +61,18 @@ export interface DealerTableProps {
   headHeight?: number;
   /** Centre of the head frame, as a fraction of the design height. Default 0.16. */
   headY?: number;
-  /** Content per player position. `null` skips that position. */
-  hands?: (ReactNode | null)[];
   /**
-   * Alternative to `hands`: render a position by index, and size a shrunk frame
-   * to the row — `<Seat width={box.width} height={box.height} />`.
+   * Render a player position by index. Return `null` to skip it.
+   *
+   * **This is the only way to render a position.** A function rather than an
+   * array of nodes because it hands you `box` — the frame size the row was laid
+   * out for after the auto-shrink — which an array of nodes cannot reach, and
+   * because a row whose length changes mid-round (a split) is one `handCount`
+   * away rather than an array that has to be rebuilt. `tests/separation.test.ts`
+   * fails if an array form grows back next to it.
    */
   renderHand?: (index: number, box: FrameBox) => ReactNode;
-  /** How many player positions there are. Defaults to `hands.length`. */
+  /** How many player positions there are. Default 1. */
   handCount?: number;
   /** Preferred hand frame width. Default 220. */
   handWidth?: number;
@@ -83,9 +88,26 @@ export interface DealerTableProps {
   designHeight?: number;
   /** `"design"` (default) scales the fixed box; `"container"` fills the box. */
   fit?: "design" | "container";
-  /** Content over the whole design box, `pointer-events-none`. */
-  overlay?: ReactNode;
+  /**
+   * Content over the whole design box, `pointer-events-none` — a settlement
+   * banner, confetti. **Called**, like `CardTable`'s, so both tables spell this
+   * slot the same way and a caller switching between them changes a prop's
+   * value rather than its name.
+   *
+   * The geometry is the design box and its scale; there is no surface here to
+   * position a ring against.
+   */
+  renderOverlay?: (geometry: DealerOverlayGeometry) => ReactNode;
   className?: string;
+}
+
+/** What `DealerTable`'s `renderOverlay` is handed. */
+export interface DealerOverlayGeometry {
+  /** Design box the overlay is scaled with. */
+  designWidth: number;
+  designHeight: number;
+  /** Multiplier the design box is drawn at. */
+  scale: number;
 }
 
 /** Round a frame dimension at a scale, never below 1. */
@@ -96,9 +118,8 @@ export function DealerTable({
   headWidth = DEFAULT_HEAD_W,
   headHeight = DEFAULT_HEAD_H,
   headY = DEFAULT_HEAD_Y,
-  hands,
   renderHand,
-  handCount,
+  handCount = 1,
   handWidth = DEFAULT_HAND_W,
   handHeight = DEFAULT_HAND_H,
   handGap = DEFAULT_HAND_GAP,
@@ -106,13 +127,13 @@ export function DealerTable({
   designWidth = DESIGN_W,
   designHeight = DESIGN_H,
   fit = "design",
-  overlay,
+  renderOverlay,
   className,
 }: DealerTableProps) {
   return (
     <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
-      {({ width, height }) => {
-        const requested = Math.floor(handCount ?? hands?.length ?? 1);
+      {({ width, height, scale: boxScale }) => {
+        const requested = Math.floor(handCount);
         const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
 
         // Two constraints, and a row needs both: the gap between neighbours (the
@@ -160,7 +181,7 @@ export function DealerTable({
 
             <SeatSizeContext.Provider value={{ width: w, height: h }}>
               {frames.map((frame, index) => {
-                const content = hands ? (hands[index] ?? null) : renderHand ? renderHand(index, frame) : null;
+                const content = renderHand ? renderHand(index, frame) : null;
                 if (content === null || content === undefined) return null;
                 return (
                   <div
@@ -176,12 +197,9 @@ export function DealerTable({
               })}
             </SeatSizeContext.Provider>
 
-            {overlay !== undefined && (
-              <div
-                data-part="overlay"
-                className={cn("pointer-events-none absolute inset-0 z-30")}
-              >
-                {overlay}
+            {renderOverlay !== undefined && (
+              <div data-part="overlay" className={cn("pointer-events-none absolute inset-0 z-30")}>
+                {renderOverlay({ designWidth: width, designHeight: height, scale: boxScale })}
               </div>
             )}
           </>

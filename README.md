@@ -116,6 +116,24 @@ you have not written yet can use it today.
 | What unit is `240`? | **You** — pass `format` to `Counter`; `formatBB(amount, bb)` is the opt-in poker helper in `/wager` |
 | What goes inside a seat? | **You** — slots: 0 cards, 13 cards, an avatar, buttons, anything |
 
+### One way to do each thing
+
+A table has exactly **one** prop per slot, and where the table has geometry to
+hand over, that prop is a function:
+
+| Slot | The one prop | Not |
+| --- | --- | --- |
+| seat content | `renderSeat(index, box)` | ~~`seats={[…]}`~~ |
+| overlay / decorations | `renderOverlay(geometry)` | ~~`overlay={<X/>}`~~ |
+| dealer-table positions | `renderHand(index, box)` | ~~`hands={[…]}`~~ |
+| rings, per-seat slot content | `rings`, `slots` | — |
+
+The array-and-node forms were the function forms with less information, a
+precedence rule nobody knew, and a second thing to document. `renderSeat` and
+`renderHand` hand you `box`, which an array of nodes cannot reach;
+`renderOverlay` hands you the layout. `tests/separation.test.ts` fails if any of
+the removed spellings grows back.
+
 ### Rings and slots
 
 A `ring` is an outline drawn at `radius` (a fraction of the surface). A `slot` is
@@ -171,9 +189,9 @@ tables cannot drift. The short version:
 
 | Component | Props |
 | --- | --- |
-| `CardTable` | `seatCount`, `seats` or `renderSeat(i, box)`, `startAngle`, `shape`, `cornerRadius`, `seatPlacement`, `deck`, `watermark`, `railClassName`, `feltClassName`, `rings`, `slots`, `center`, `ambient`, `overlay` or `renderOverlay(geometry)`, `seatWidth`, `seatHeight`, `seatGap`, `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
+| `CardTable` | `seatCount`, `renderSeat(i, box)`, `startAngle`, `shape`, `cornerRadius`, `seatPlacement`, `deck`, `watermark`, `railClassName`, `feltClassName`, `rings`, `slots`, `center`, `ambient`, `renderOverlay(geometry)`, `seatWidth`, `seatHeight`, `seatGap`, `designWidth`, `designHeight`, `marginX`, `marginY`, `feltGap`, `fit`, `className` |
 | `RoundTable` / `SquareTable` | the same minus the shape knobs they already decided |
-| `DealerTable` | `head`, `headWidth`, `headHeight`, `headY`, `hands` or `renderHand(i, box)`, `handCount`, `handWidth`, `handHeight`, `handGap`, `handY`, `designWidth`, `designHeight`, `fit`, `overlay`, `className` |
+| `DealerTable` | `head`, `headWidth`, `headHeight`, `headY`, `renderHand(i, box)`, `handCount`, `handWidth`, `handHeight`, `handGap`, `handY`, `designWidth`, `designHeight`, `fit`, `renderOverlay(geometry)`, `className` |
 | `FitBox` | `designWidth`, `designHeight`, `fit`, `children` (**called** with `{ width, height, scale }`), `className` |
 | `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
 | `Counter` | `amount`, `label`, `format`, `animate` |
@@ -257,10 +275,9 @@ Because the insets are fractions, a custom design box stays in proportion.
   ratio (clamped to 0.5–2.5) instead.
 - **Frames shrink to keep their distance.** At 160×176 a 6-seat ring leaves
   161px between neighbours, but a 10-seat ring leaves only 25.6px. Frames shrink
-  uniformly (never below 50%) until `seatGap` is honoured. Every `Seat` inside a
-  table is told the size that was settled on, so a bare `<Seat />` matches
-  whether you pass `renderSeat` or a `seats` array; an explicit `width`/`height`
-  still wins.
+  uniformly (never below 50%) until `seatGap` is honoured. Every `Seat` a table
+  renders is told the size that was settled on, so a bare `<Seat />` matches the
+  ring on its own; an explicit `width`/`height` still wins.
 - **A row shrinks to fit the box.** A ring is kept inside the design box by its
   clamped radii; a row of frames is bounded by the width of the box itself
   (`fitRowScale`), which is why a dealer table with six hands does not run off
@@ -285,7 +302,7 @@ All on by default, each toggleable:
 | Winner glow | `Seat isWinner` | `animated={false}` |
 | Counter count-up | `Counter` | `animate={false}` |
 | Ambient felt + spotlight | `CardTable` | `ambient={false}` |
-| Your-turn edge glow | your own ring in the table's `overlay` | render it conditionally |
+| Your-turn edge glow | your own ring in the table's `renderOverlay` | render it conditionally |
 | Confetti | `<Confetti />` | render it conditionally |
 
 The CSS animations are disabled automatically under `prefers-reduced-motion`. The
@@ -296,7 +313,7 @@ that media query — it checks for itself instead.
 
 Turn order is game logic, not UI. Compute it in your engine, pass the result into
 `Seat`'s `isActive`, and draw whatever the table edge should show through
-`overlay`. One generic helper walks the ring:
+`renderOverlay`. One generic helper walks the ring:
 
 ```ts
 import { nextSeatIndex } from "@stargazeryan/poker-ui";

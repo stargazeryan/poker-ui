@@ -86,15 +86,29 @@ export interface CardTableProps {
    * overlap — that is the caller's call, not something to clamp silently.
    */
   seatCount?: number;
-  /** Optional per-seat content. Length should equal `seatCount`. */
-  seats?: (ReactNode | null)[];
   /**
-   * Alternative to `seats`: render a seat by index, and size a shrunk frame to
-   * the ring: `<Seat width={box.width} height={box.height} />`.
+   * Render a seat by index. Return `null` to skip that position.
+   *
+   * **This is the only way to render a seat**, and a function rather than an
+   * array of nodes because it is strictly the more capable form: it hands you
+   * `box`, the centre and the frame size the ring was laid out for (after the
+   * auto-shrink), which an array of nodes cannot reach. There used to be a
+   * `seats` array next to it; it was the same call site with less information,
+   * one precedence rule nobody knew, and two things to document.
+   *
+   * ```tsx
+   * renderSeat={(i, box) => (
+   *   <Seat width={box.width} height={box.height} isActive={activeSeat === i} />
+   * )}
+   * ```
+   *
+   * A bare `<Seat />` needs no props at all: the table tells every `Seat`
+   * inside it the frame size through context, so `box` is only for content you
+   * position yourself.
    *
    * The table tells you *where* the seat is, never *what it is*: no `isYou`, no
-   * active/winner flag. Those are yours to pass to `Seat` — see the `overlay`
-   * prop for the decorations that used to live here.
+   * active/winner flag. Those are yours to pass to `Seat` — see `renderOverlay`
+   * for the decorations that used to live here.
    */
   renderSeat?: (index: number, box: SeatBox) => ReactNode;
   /**
@@ -169,17 +183,15 @@ export interface CardTableProps {
    * (`pointer-events-none`). This is where the caller puts table-edge effects
    * and celebrations — the table does not know why anything is happening.
    *
-   * ```tsx
-   * <CardTable overlay={isMyTurn ? <TableGlow /> : null} />
-   * ```
-   */
-  overlay?: ReactNode;
-  /**
-   * Alternative to `overlay`: render it with the geometry the table laid out,
-   * so a decoration can be positioned on the real surface instead of guessed
-   * at. Continues to work if the design box is resized:
+   * It is **called** with the geometry the table laid out, so a decoration can
+   * be positioned on the real surface instead of guessed at, and keeps working
+   * when the design box is resized. Ignore the argument when you do not need it;
+   * there used to be a plain-node `overlay` prop next to this one, which
+   * rendered into exactly the same layer with exactly the same wrapper and only
+   * differed by being unable to see the geometry.
    *
    * ```tsx
+   * renderOverlay={() => (isMyTurn ? <TableGlow /> : null)}
    * renderOverlay={({ layout }) => (
    *   <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
    * )}
@@ -258,7 +270,6 @@ export function CardTable(props: CardTableProps) {
 function Table({
   design,
   seatCount = 6,
-  seats,
   renderSeat,
   startAngle = 90,
   shape = "ellipse",
@@ -274,7 +285,6 @@ function Table({
   slots,
   center,
   ambient = true,
-  overlay,
   renderOverlay,
   seatWidth = DEFAULT_SEAT_W,
   seatHeight = DEFAULT_SEAT_H,
@@ -303,7 +313,6 @@ function Table({
   });
 
   const { seatW, seatH, boxes } = layout;
-  const hasOverlay = overlay !== undefined || renderOverlay !== undefined;
 
   return (
     <>
@@ -388,7 +397,7 @@ function Table({
         <SeatSizeContext.Provider value={{ width: seatW, height: seatH }}>
           {layout.seats.map(({ index, x, y }) => {
             const box: SeatBox = { index, x, y, width: seatW, height: seatH };
-            const content = seats ? (seats[index] ?? null) : renderSeat ? renderSeat(index, box) : null;
+            const content = renderSeat ? renderSeat(index, box) : null;
             if (content === null || content === undefined) return null;
             return (
               <div
@@ -427,9 +436,9 @@ function Table({
       ))}
 
       {/* caller-drawn overlay: edge effects, celebrations, annotations */}
-      {hasOverlay && (
+      {renderOverlay !== undefined && (
         <div data-part="overlay" className="pointer-events-none absolute inset-0 z-30">
-          {overlay !== undefined ? overlay : renderOverlay?.({ designWidth: design.width, designHeight: design.height, layout })}
+          {renderOverlay({ designWidth: design.width, designHeight: design.height, layout })}
         </div>
       )}
 

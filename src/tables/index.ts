@@ -45,6 +45,7 @@ export {
   DEFAULT_HEAD_H,
   DEFAULT_HEAD_W,
   DEFAULT_HEAD_Y,
+  type DealerOverlayGeometry,
   type DealerTableProps,
 } from "./DealerTable";
 

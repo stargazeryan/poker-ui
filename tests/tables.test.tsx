@@ -93,7 +93,7 @@ describe("DealerTable", () => {
   const hand = (i: number) => <Seat header={<b>hand {i}</b>} />;
 
   it("draws no table surface at all — no rail, no felt, no shimmer, no rim", () => {
-    const { container } = render(<DealerTable hands={[hand(0), hand(1)]} />);
+    const { container } = render(<DealerTable handCount={2} renderHand={hand} />);
     expect(railOf(container)).toBeNull();
     expect(container.querySelectorAll(".animate-felt-shimmer")).toHaveLength(0);
     expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(0);
@@ -102,7 +102,7 @@ describe("DealerTable", () => {
 
   it("puts the head above and the hands in a row below it", () => {
     setElementSize(1200, 900);
-    const { container } = render(<DealerTable head={<Seat header={<b>Dealer</b>} />} hands={[hand(0), hand(1), hand(2)]} />);
+    const { container } = render(<DealerTable head={<Seat header={<b>Dealer</b>} />} handCount={3} renderHand={hand} />);
 
     const head = container.querySelector('[data-part="head"]') as HTMLElement;
     const hands = [...container.querySelectorAll('[data-part="hand"]')] as HTMLElement[];
@@ -114,8 +114,10 @@ describe("DealerTable", () => {
     expect(container.textContent).toContain("Dealer");
   });
 
-  it("skips null positions and counts a sparse array by handCount", () => {
-    const { container } = render(<DealerTable handCount={4} hands={[hand(0), null, null, hand(3)]} />);
+  it("skips a position whose renderHand returns null", () => {
+    const { container } = render(
+      <DealerTable handCount={4} renderHand={(i) => (i === 1 || i === 2 ? null : hand(i))} />,
+    );
     const hands = [...container.querySelectorAll('[data-part="hand"]')] as HTMLElement[];
     expect(hands).toHaveLength(2);
     expect(hands.map((h) => h.getAttribute("data-hand"))).toEqual(["0", "3"]);
@@ -173,18 +175,18 @@ describe("DealerTable", () => {
   });
 
   it("draws nothing behind the hands unless the caller puts something there", () => {
-    const bare = render(<DealerTable hands={[hand(0)]} />);
+    const bare = render(<DealerTable renderHand={hand} />);
     expect(bare.container.querySelectorAll('[data-part="overlay"]')).toHaveLength(0);
     expect(bare.container.querySelectorAll(".animate-confetti")).toHaveLength(0);
 
-    const withOverlay = render(<DealerTable hands={[hand(0)]} overlay={<span data-testid="fx" />} />);
+    const withOverlay = render(<DealerTable renderHand={hand} renderOverlay={() => <span data-testid="fx" />} />);
     const layer = withOverlay.container.querySelector('[data-part="overlay"]') as HTMLElement;
     expect(layer.className).toContain("pointer-events-none");
     expect(layer.querySelector('[data-testid="fx"]')).toBeTruthy();
   });
 
   it("shows its content, whatever that content is", () => {
-    const { container } = render(<DealerTable head={<CardRow cards={["As", "9d"]} animation={false} />} hands={[hand(0)]} />);
+    const { container } = render(<DealerTable head={<CardRow cards={["As", "9d"]} animation={false} />} renderHand={hand} />);
     expect([...container.querySelectorAll('[role="img"]')].map((el) => el.getAttribute("aria-label"))).toEqual([
       "Ace of spades",
       "Nine of diamonds",

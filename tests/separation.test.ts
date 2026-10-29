@@ -162,6 +162,20 @@ describe("a table type knows nothing but its shape", () => {
     }
   });
 
+  it("offers one way to render a seat and one way to render an overlay", () => {
+    // `seats` / `hands` / `overlay` were the array-or-node forms of the render
+    // functions, with less information, a precedence rule nobody knew and two
+    // things to document. This fails if any of them grows back.
+    const arrayOrNodeForm = /^\s*(seats|hands|overlay)\??:/m;
+    for (const name of ["components/CardTable.tsx", "tables/DealerTable.tsx"]) {
+      expect(readFileSync(join(SRC, name), "utf8"), `${name} declares one`).not.toMatch(arrayOrNodeForm);
+    }
+    // and the surviving spelling is a function that gets the geometry
+    const table = readFileSync(join(SRC, "components", "CardTable.tsx"), "utf8");
+    expect(table).toMatch(/renderSeat\?:\s*\(index: number, box: SeatBox\) => ReactNode/);
+    expect(table).toMatch(/renderOverlay\?:\s*\(geometry: TableOverlayGeometry\) => ReactNode/);
+  });
+
   it("knows nothing about betting in the geometry", () => {
     // 0.7.0's `LayoutOptions` carried `betRadiusScale` and a `Layout` carried
     // `betRx` / `betRy` / `boxes.bettingLine`, so the game leaked into the maths.

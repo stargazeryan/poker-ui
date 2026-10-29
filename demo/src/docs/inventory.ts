@@ -106,12 +106,10 @@ export interface ControlSpec {
  * `CardTableProps` member to appear in `CARD_TABLE_CONTROLS`.
  */
 export const CONTENT_PROPS = [
-  "seats",
   "renderSeat",
   "rings",
   "slots",
   "center",
-  "overlay",
   "renderOverlay",
   "watermark",
   "railClassName",

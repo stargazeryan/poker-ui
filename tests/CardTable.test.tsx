@@ -50,9 +50,9 @@ describe("CardTable — seats", () => {
     }
   });
 
-  it("skips null entries in the `seats` array but keeps the other indices in place", () => {
+  it("skips a position whose renderSeat returns null, and keeps the other indices in place", () => {
     const { container } = render(
-      <CardTable seatCount={4} seats={[<div key="0">a</div>, null, null, <div key="3">d</div>]} />,
+      <CardTable seatCount={4} renderSeat={(i) => (i === 0 || i === 3 ? <div>{i}</div> : null)} />,
     );
     const seats = container.querySelectorAll('[data-part="seat"]');
     expect(seats).toHaveLength(2);
@@ -137,14 +137,9 @@ describe("the seat frame size has one source", () => {
     expect(expected.seatW).toBeLessThan(200);
   });
 
-  it("shrinks the ring for a seats array too, now that the size is shared", () => {
+  it("positions the ring from the shrunk frame size, whatever the callback returns", () => {
     const { container } = render(
-      <CardTable
-        seatCount={10}
-        seatWidth={200}
-        seatHeight={220}
-        seats={Array.from({ length: 10 }, (_, i) => <div key={i}>{i}</div>)}
-      />,
+      <CardTable seatCount={10} seatWidth={200} seatHeight={220} renderSeat={(i) => <div>{i}</div>} />,
     );
     // seat 0 sits directly below the centre, so left = cx - seatW / 2
     const left = parseFloat((container.querySelector('[data-seat="0"]') as HTMLElement).style.left);
@@ -323,7 +318,7 @@ describe("CardTable — overlay and decorations", () => {
 
   it("renders an overlay element above the seats, non-interactive by default", () => {
     const { container } = render(
-      <CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} overlay={<span data-testid="glow" />} />,
+      <CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} renderOverlay={() => <span data-testid="glow" />} />,
     );
     const layer = container.querySelector('[data-part="overlay"]') as HTMLElement;
     expect(layer).toBeTruthy();

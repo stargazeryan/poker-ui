@@ -162,12 +162,13 @@ createRoot(document.getElementById("root")!).render(
     )} />
 
     <DealerTable
+      handCount={2}
       head={<Seat><CardRow cards={["As", "9d"]} size="md" /></Seat>}
-      hands={[0, 1].map((i) => (
-        <Seat key={i} footer={<ChipStack amount={25 * (i + 1)} size="sm" />}>
+      renderHand={(i) => (
+        <Seat footer={<ChipStack amount={25 * (i + 1)} size="sm" />}>
           <CardRow cards={["10h", "7s"]} size="sm" />
         </Seat>
-      ))}
+      )}
     />
 
     <CardTable seatCount={3} shape="none" renderSeat={(i) => <Seat>seat {i}</Seat>} />

@@ -171,6 +171,7 @@ export {
   RoundTable,
   SquareTable,
   TABLE_TYPES,
+  type DealerOverlayGeometry,
   type DealerTableProps,
   type RoundTableProps,
   type SquareTableProps,

@@ -724,7 +724,7 @@ export function CardTablePage() {
         The table lays out and draws; it never decides. There is no <Prop>yourTurn</Prop> and no{" "}
         <Prop>winnerSeats</Prop> on it — it holds no game state at all. The caller passes <Prop>isActive</Prop> /{" "}
         <Prop>isWinner</Prop> to the <Prop>Seat</Prop>s it renders, declares the rings and slots it wants, and puts
-        edge effects and celebrations in <Prop>overlay</Prop>. Everything the table knows is geometry, and{" "}
+        edge effects and celebrations in <Prop>renderOverlay</Prop>. Everything the table knows is geometry, and{" "}
         <Prop>renderOverlay</Prop> hands you all of it — which is why a your-turn ring is one line rather than a prop.
         The demo above shows exactly that, and its <em>show code</em> has the snippet:
       </P>
@@ -742,7 +742,7 @@ export function CardTablePage() {
         description={
           <>
             Fills whatever box it is rendered into — here a plain <Prop>relative</Prop> div, in the table it is the
-            design box via <Prop>overlay</Prop>. It animates for as long as it is mounted, so unmount it to stop it.
+            design box via <Prop>renderOverlay</Prop>. It animates for as long as it is mounted, so unmount it to stop it.
           </>
         }
         previewClassName="p-0 overflow-hidden"

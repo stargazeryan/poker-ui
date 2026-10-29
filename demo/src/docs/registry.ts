@@ -93,12 +93,11 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           "Number of seats. No upper limit: the frames shrink to keep `seatGap`, so 11–16 lay out fine and past ~16 they overlap.",
       },
-      { name: "seats", type: "(ReactNode | null)[]", description: "Per-seat content by index; `null` leaves that slot empty. Pass either this or `renderSeat`." },
       {
         name: "renderSeat",
         type: "(index: number, box: SeatBox) => ReactNode",
         description:
-          "Render a seat by index. `box` carries the laid-out frame size and centre, so an auto-shrunk seat can match the ring — and nothing about the game: pass `isActive` / `isWinner` to `Seat` yourself.",
+          "Render a seat by index. The only way to render one, and a function because it hands you `box` — the laid-out centre and frame size — which an array of nodes cannot reach. Return `null` to skip the position. Nothing about the game: pass `isActive` / `isWinner` to `Seat` yourself.",
       },
       { name: "startAngle", type: "number", default: "90", description: "Angle of seat 0, in degrees. 90° is directly below the centre. On a rectangle the seats walk the perimeter from the bottom edge's centre instead." },
       {
@@ -145,16 +144,10 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "center", type: "ReactNode", description: "Content in the middle of the table (cards, a counter, anything)." },
       { name: "ambient", type: "boolean", default: "true", description: "Breathing spotlight and felt shimmer." },
       {
-        name: "overlay",
-        type: "ReactNode",
-        description:
-          "Content drawn above the seats inside the scaled design box, `pointer-events-none` by default. Where table-edge effects and celebrations go — the table does not know why anything is happening.",
-      },
-      {
         name: "renderOverlay",
         type: "(geometry: TableOverlayGeometry) => ReactNode",
         description:
-          "Alternative to `overlay`, handed the design box and the layout: `layout.ringBox(r)` is the box a ring at that radius traces, `layout.slotPoint(i, r)` where a slot lands, and `layout.seats` every seat centre and frame size.",
+          "Content drawn above the seats inside the scaled design box, `pointer-events-none`. Where table-edge effects and celebrations go — the table does not know why anything is happening. **Called** with the geometry: `layout.ringBox(r)` is the box a ring at that radius traces, `layout.slotPoint(i, r)` where a slot lands, and `layout.seats` every seat centre and frame size. Ignore the argument when you do not need it.",
       },
       { name: "seatWidth", type: "number", default: "160", description: "Preferred seat frame width, in design-space px." },
       { name: "seatHeight", type: "number", default: "176", description: "Preferred seat frame height." },
@@ -208,13 +201,13 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "headWidth", type: "number", default: "240", description: "Preferred head frame width." },
       { name: "headHeight", type: "number", default: "230", description: "Preferred head frame height." },
       { name: "headY", type: "number", default: "0.16", description: "Centre of the head frame, as a fraction of the design height." },
-      { name: "hands", type: "(ReactNode | null)[]", description: "Content per player position. `null` skips that position. Pass either this or `renderHand`." },
       {
         name: "renderHand",
         type: "(index: number, box: FrameBox) => ReactNode",
-        description: "Render a position by index, and size a shrunk frame to the row: `<Seat width={box.width} height={box.height} />`.",
+        description:
+          "Render a player position by index. The only way to render one, and a function because it hands you `box`, the frame size the row was laid out for. Return `null` to skip it.",
       },
-      { name: "handCount", type: "number", description: "How many player positions there are. Defaults to `hands.length`." },
+      { name: "handCount", type: "number", default: "1", description: "How many player positions there are. A row whose length changes mid-round is one number, not a rebuilt array." },
       { name: "handWidth", type: "number", default: "220", description: "Preferred hand frame width." },
       { name: "handHeight", type: "number", default: "280", description: "Preferred hand frame height." },
       {
@@ -227,7 +220,12 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
       { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
       { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the box instead of letterboxing a fixed aspect ratio.' },
-      { name: "overlay", type: "ReactNode", description: "Content over the whole design box, `pointer-events-none`. Edge effects and celebrations, same as `CardTable`'s." },
+      {
+        name: "renderOverlay",
+        type: "(geometry: DealerOverlayGeometry) => ReactNode",
+        description:
+          "Content over the whole design box, `pointer-events-none` — a settlement banner, confetti. **Called**, like `CardTable`'s, so both tables spell this slot the same way; the geometry is the design box and its scale, since there is no surface here to position a ring against.",
+      },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
     ],
   },

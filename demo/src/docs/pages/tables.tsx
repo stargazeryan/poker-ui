@@ -31,6 +31,9 @@ const TABLE_TYPE_ROWS: ApiRow[] = (Object.keys(TABLE_TYPES) as TableTypeName[]).
   description: TABLE_TYPE_NOTES[name],
 }));
 
+/** One wager per position, in chip units. 0 means the position is out. */
+const WAGERS = [50, 100, 25, 0];
+
 function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
@@ -118,16 +121,16 @@ export function TableTypesPage() {
                   <CardRow cards={["As", "9d"]} size="xs" />
                 </Seat>
               }
-              hands={[0, 1, 2].map((i) => (
+              handCount={3}
+              renderHand={(i) => (
                 <Seat
-                  key={i}
                   width={140}
                   height={170}
                   header={<span className="w-full text-center text-[10px] font-semibold">{i === 0 ? "you" : `seat ${i}`}</span>}
                 >
                   <CardRow cards={["10h", "7s"]} size="xs" />
                 </Seat>
-              ))}
+              )}
             />
           </div>
         </div>
@@ -326,12 +329,13 @@ export function DealerTablePage() {
         }
         previewClassName="p-0 overflow-hidden"
         code={`<DealerTable
+  handCount={hands.length}
   head={<Seat header="Dealer"><CardRow cards={dealer} /></Seat>}
-  hands={hands.map((h) => (
-    <Seat isActive={h.active} footer={<ChipStack amount={h.bet} />}>
-      <CardRow cards={h.cards} />
+  renderHand={(i) => (
+    <Seat isActive={hands[i].active} footer={<ChipStack amount={hands[i].bet} />}>
+      <CardRow cards={hands[i].cards} />
     </Seat>
-  ))}
+  )}
 />`}
       >
         <div className="w-full">
@@ -403,15 +407,15 @@ export function DealerTablePage() {
                 </div>
               </div>
             }
-            hands={[50, 100, 25, 0].map((wager, i) => (
+            handCount={WAGERS.length}
+            renderHand={(i) => (
               <Seat
-                key={i}
                 header={<span className="w-full truncate text-center font-semibold">{i === 0 ? "You" : `Seat ${i}`}</span>}
-                footer={wager > 0 ? <span className="w-full text-center"><ChipStack amount={wager} size="sm" /></span> : undefined}
+                footer={WAGERS[i] > 0 ? <span className="w-full text-center"><ChipStack amount={WAGERS[i]} size="sm" /></span> : undefined}
               >
-                <span className="text-xs text-neutral-500">{wager > 0 ? "in" : "out"}</span>
+                <span className="text-xs text-neutral-500">{WAGERS[i] > 0 ? "in" : "out"}</span>
               </Seat>
-            ))}
+            )}
           />
         </div>
       </Demo>
@@ -443,9 +447,9 @@ export function DealerTablePage() {
                   head={
                     <Seat width={160} height={120} header={<span className="w-full text-center text-[9px]">dealer</span>} />
                   }
-                  hands={[0, 1, 2].map((i) => (
-                    <Seat key={i} width={120} height={150} header={<span className="w-full text-center text-[9px]">{i}</span>} />
-                  ))}
+                  renderHand={(i) => (
+                    <Seat width={120} height={150} header={<span className="w-full text-center text-[9px]">{i}</span>} />
+                  )}
                 />
               </div>
             </div>
