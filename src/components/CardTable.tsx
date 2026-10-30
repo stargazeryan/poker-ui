@@ -177,8 +177,18 @@ export interface CardTableProps {
   slots?: TableSlot[];
   /** Optional content in the middle of the table (cards, a counter, anything). */
   center?: ReactNode;
-  /** Ambient spotlight + felt shimmer. Default true. */
+  /** Ambient spotlight + felt sheen. Default true. */
   ambient?: boolean;
+  /**
+   * Draw the edge glow — a golden halo hugging the rail, at the layer
+   * `boxes.glow` describes. Default false.
+   *
+   * `glow={isMyTurn}` is what this is for, and the table still does not know
+   * what a turn is. Draw it here rather than in `renderOverlay`: the overlay
+   * layer is above the seats, so a halo drawn there sits on top of the seat
+   * frames instead of behind them.
+   */
+  glow?: boolean;
   /**
    * Content drawn above the seats, inside the scaled design box
    * (`pointer-events-none`). This is where the caller puts table-edge effects
@@ -192,11 +202,13 @@ export interface CardTableProps {
    * differed by being unable to see the geometry.
    *
    * ```tsx
-   * renderOverlay={() => (isMyTurn ? <TableGlow /> : null)}
-   * renderOverlay={({ layout }) => (
-   *   <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
-   * )}
+   * renderOverlay={() => (won ? <Confetti /> : null)}
+   * renderOverlay={({ layout }) => <div style={layout.boxes.felt}>Muck</div>}
    * ```
+   *
+   * **Not** the edge glow. That used to be the example here, and it is why every
+   * caller's "your turn" halo sat on top of the seat frames: this layer is above
+   * the seats. Use `glow` instead — the table draws it behind them.
    */
   renderOverlay?: (geometry: TableOverlayGeometry) => ReactNode;
   /** Preferred seat frame width. Default 160. */
@@ -286,6 +298,7 @@ function Table({
   slots,
   center,
   ambient = true,
+  glow = false,
   renderOverlay,
   seatWidth = DEFAULT_SEAT_W,
   seatHeight = DEFAULT_SEAT_H,
@@ -322,6 +335,7 @@ function Table({
           layout={layout}
           watermark={watermark}
           ambient={ambient}
+          glow={glow}
           railClassName={railClassName}
           feltClassName={feltClassName}
         />

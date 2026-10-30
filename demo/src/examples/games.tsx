@@ -88,11 +88,9 @@ export function FlopPokerExample({
           <Counter label="Main" amount={SAMPLE.pot} />
         </div>
       }
-      renderOverlay={({ layout }) =>
-        activeSeat === null ? null : (
-          <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
-        )
-      }
+      /* the edge glow, from the table — behind the seats. Drawn here it used to
+         be an overlay, which is a layer above the seats. */
+      glow={activeSeat !== null}
     />
   );
 }

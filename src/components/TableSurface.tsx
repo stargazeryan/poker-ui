@@ -51,6 +51,16 @@ interface TableSurfaceProps {
    * Default true.
    */
   ambient?: boolean;
+  /**
+   * The edge glow: a golden halo hugging the rail, at `boxes.glow`. Default
+   * false, because when it is on is the caller's business ("it is your turn").
+   *
+   * It is drawn *here*, in the surface layer, and that is the whole point. The
+   * layout has always computed `boxes.glow` and the library never drew it, so
+   * every caller drew it themselves in `renderOverlay` — which is a layer
+   * *above* the seats, and put the halo over the seat frames.
+   */
+  glow?: boolean;
   /** Extra classes for the rail. */
   railClassName?: string;
   /** Extra classes for the felt. */
@@ -68,6 +78,7 @@ export function TableSurface({
   layout,
   watermark,
   ambient = true,
+  glow = false,
   railClassName,
   feltClassName,
 }: TableSurfaceProps) {
@@ -123,6 +134,18 @@ export function TableSurface({
             <div className="absolute inset-0 animate-felt-shimmer bg-[linear-gradient(115deg,transparent_35%,rgba(255,255,255,0.05)_50%,transparent_65%)]" />
           </div>
         </>
+      )}
+
+      {/*
+       * The edge glow, behind the seats and the caller's content — the layer
+       * `boxes.glow` was always computed for.
+       */}
+      {glow && (
+        <div
+          className="pointer-events-none absolute animate-turn-glow"
+          style={{ borderRadius: radius, ...px(boxes.glow) }}
+          aria-hidden="true"
+        />
       )}
 
       {watermark !== undefined && (

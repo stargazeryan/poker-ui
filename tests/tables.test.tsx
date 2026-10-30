@@ -137,6 +137,49 @@ describe("DealerTable", () => {
     expect(container.querySelectorAll('[data-part="seat"]')).toHaveLength(0);
   });
 
+  it("draws the edge glow behind the seats, not over them", () => {
+    /*
+     * `boxes.glow` was computed by the layout and drawn by nobody, so callers
+     * drew it in `renderOverlay` — a layer above the seats — and the halo landed
+     * on the seat frames. The table draws it now, in the surface layer.
+     *
+     * jsdom has no paint order, so this asserts the structure that decides it:
+     * the glow element comes after the surface it hugs and *before* every seat
+     * and every overlay, in document order.
+     */
+    setElementSize(1200, 900);
+    const seats = (root: HTMLElement) => [...root.querySelectorAll('[data-part="seat"]')];
+    const glowOf = (root: HTMLElement) => root.querySelector("div.animate-turn-glow") as HTMLElement | null;
+
+    const off = render(<SquareTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    expect(glowOf(off.container)).toBeNull();
+
+    const on = render(<SquareTable seatCount={4} glow renderSeat={(i) => <div>{i}</div>} />);
+    const glow = glowOf(on.container);
+    expect(glow).toBeTruthy();
+    // it hugs the rail, and it is a rectangle like the table it hugs
+    expect(glow?.style.borderRadius).toMatch(/px$/);
+    expect(glow?.style.borderRadius).not.toBe("50%");
+    expect(parseFloat(glow!.style.top)).toBeGreaterThan(0);
+
+    const order = [...on.container.querySelectorAll("*")];
+    const glowAt = order.indexOf(glow as Element);
+    for (const seat of seats(on.container)) expect(order.indexOf(seat)).toBeGreaterThan(glowAt);
+  });
+
+  it("draws an edge glow on a dealer table too, also behind the hands", () => {
+    setElementSize(1200, 900);
+    const { container } = render(<DealerTable handCount={2} glow renderHand={hand} />);
+    const glow = container.querySelector("div.animate-turn-glow") as HTMLElement;
+    expect(glow).toBeTruthy();
+    expect(glow.style.borderRadius).toMatch(/px$/);
+
+    const order = [...container.querySelectorAll("*")];
+    for (const el of container.querySelectorAll('[data-part="hand"]')) {
+      expect(order.indexOf(el)).toBeGreaterThan(order.indexOf(glow));
+    }
+  });
+
   it("still paints nothing when asked not to", () => {
     setElementSize(1200, 900);
 

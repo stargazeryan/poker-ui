@@ -118,6 +118,12 @@ export interface DealerTableProps {
   deck?: boolean;
   /** Ambient spotlight + felt sheen. Default true. */
   ambient?: boolean;
+  /**
+   * Draw the edge glow — a golden halo hugging the rail, behind the hands.
+   * Default false. `glow={isDealersTurn}` is what this is for; the table does
+   * not know what a turn is.
+   */
+  glow?: boolean;
   /** Decoration across the middle of the felt. Nothing is drawn by default. */
   watermark?: ReactNode;
   /** Extra classes for the rail. */
@@ -175,6 +181,7 @@ export function DealerTable({
   // means nothing to paint.
   deck = shape !== "none",
   ambient = true,
+  glow = false,
   watermark,
   railClassName,
   feltClassName,
@@ -251,6 +258,7 @@ export function DealerTable({
                 layout={surface}
                 watermark={watermark}
                 ambient={ambient}
+                glow={glow}
                 railClassName={railClassName}
                 feltClassName={feltClassName}
               />

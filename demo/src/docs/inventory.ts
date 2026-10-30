@@ -137,7 +137,8 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "shape", kind: "enum", options: ["ellipse", "rect", "none"] },
   { prop: "seatPlacement", kind: "enum", options: ["ring", "perimeter", "row"] },
   { prop: "deck", kind: "boolean", hint: "rail + felt + rim; off by default with shape=none" },
-  { prop: "ambient", kind: "boolean", hint: "spotlight + felt shimmer" },
+  { prop: "ambient", kind: "boolean", hint: "spotlight + felt sheen" },
+  { prop: "glow", kind: "boolean", hint: "the rail halo, behind the seats" },
   { prop: "fit", kind: "enum", options: ["design", "container"] },
   { prop: "className", kind: "boolean", hint: "hangs a debug outline on the outer element" },
 ];

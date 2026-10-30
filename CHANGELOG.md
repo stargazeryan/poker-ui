@@ -41,6 +41,19 @@ theoretical.
   `felt-shimmer 7s ease-in-out infinite`. If you had overridden it, note that it
   no longer animates `background-position`.
 
+### Fixed
+
+- **The edge glow no longer covers the seat frames, and there is a prop for it.**
+  The layout has always computed `boxes.glow` and the library never drew it, so
+  every caller drew it themselves in `renderOverlay` — which is a layer *above*
+  the seats — and the "your turn" halo landed on top of the seat frames. Every
+  call site copied `rounded-[50%]` while doing it, which is a circle on a square
+  table again.
+
+  `CardTable` and `DealerTable` take `glow` now, and the table draws it in the
+  surface layer, behind the seats: `glow={isMyTurn}`. The table still does not
+  know what a turn is — it knows where the rail is.
+
 ### Added
 
 - **`DealerTable` takes the surface props `CardTable` has** — `shape`,

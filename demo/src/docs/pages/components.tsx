@@ -431,12 +431,8 @@ function CardTablePlayground() {
              slot — the table names neither. */
           rings={[BET_RING]}
           slots={betSlots(SAMPLE.bets)}
-          renderOverlay={({ layout }) => (
-            <>
-              {bool("glow") && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
-              {bool("confetti") && <Confetti colors={[...palette.colors]} />}
-            </>
-          )}
+          glow={bool("glow")}
+          renderOverlay={() => (bool("confetti") ? <Confetti colors={[...palette.colors]} /> : null)}
           renderSeat={(i, box) => (
             <PlayerSeat
               index={i}
@@ -541,18 +537,15 @@ export function CardTablePage() {
         description={
           <>
             The table has no <Prop>yourTurn</Prop> and no <Prop>winnerSeats</Prop> — it does not know that anything is
-            happening. <Prop>renderOverlay</Prop> hands you the geometry, and <em>you</em> draw the ring and drop the
-            confetti when your own state says so.
+            happening. <Prop>glow</Prop> draws the rail halo when <em>your</em> state says so, and it is drawn behind the
+            seats; <Prop>renderOverlay</Prop> hands you the geometry for everything that belongs on top — confetti, a
+            settlement banner.
           </>
         }
         previewClassName="p-0 overflow-hidden"
         code={`<CardTable
-  renderOverlay={({ layout }) => (
-    <>
-      {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
-      {showdown && <Confetti colors={["#f39c12", "#e74c3c"]} />}
-    </>
-  )}
+  glow={isMyTurn}
+  renderOverlay={() => (showdown ? <Confetti colors={["#f39c12", "#e74c3c"]} /> : null)}
   renderSeat={(i, box) => <Seat isActive={myTurnSeat === i} width={box.width} height={box.height} />}
 />`}
       >
@@ -568,12 +561,8 @@ export function CardTablePage() {
           <div className="h-[400px] w-full">
             <CardTable
               seatCount={6}
-              renderOverlay={({ layout }) => (
-                <>
-                  {turn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
-                  {winner && <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} />}
-                </>
-              )}
+              glow={turn}
+              renderOverlay={() => (winner ? <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} /> : null)}
               renderSeat={(i, box) => (
                 <PlayerSeat
                   index={i}

@@ -142,7 +142,8 @@ export const COMPONENTS: ComponentDoc[] = [
           "Content positioned between the centre and each seat: `{ id, radius, render(index) }`. This is the mechanism a betting line's chips, a bid pill or a muck pile all need, with none of them named. Empty by default.",
       },
       { name: "center", type: "ReactNode", description: "Content in the middle of the table (cards, a counter, anything)." },
-      { name: "ambient", type: "boolean", default: "true", description: "Breathing spotlight and felt shimmer." },
+      { name: "ambient", type: "boolean", default: "true", description: "Breathing spotlight and felt sheen." },
+      { name: "glow", type: "boolean", default: "false", description: "The edge glow — a halo hugging the rail, drawn behind the seats. `glow={isMyTurn}`. Draw it here, not in `renderOverlay`, which is above the seats." },
       {
         name: "renderOverlay",
         type: "(geometry: TableOverlayGeometry) => ReactNode",
@@ -202,6 +203,7 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "cornerRadius", type: "number", default: "45% of the short half-extent", description: "Corner radius of a `rect` surface, in design-space px." },
       { name: "deck", type: "boolean", default: 'true (false with shape="none")', description: "Draw the rail, the felt and the rim." },
       { name: "ambient", type: "boolean", default: "true", description: "Ambient spotlight + felt sheen." },
+      { name: "glow", type: "boolean", default: "false", description: "The edge glow — a halo hugging the rail, drawn behind the hands." },
       { name: "watermark", type: "ReactNode", description: "Decoration across the middle of the felt. Nothing is drawn by default." },
       { name: "railClassName", type: "string", description: "Extra classes for the rail." },
       { name: "feltClassName", type: "string", description: "Extra classes for the felt." },
