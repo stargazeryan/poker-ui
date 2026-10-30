@@ -4,10 +4,21 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
-## Unreleased
+## 0.8.1 — the first published release of the split
 
-Three fixes to what the table actually draws, all of them visible rather than
-theoretical.
+**0.8.0 was tagged but never published**, so if you are upgrading from 0.7.0 this
+is the first version you can install from npm — and the **0.8.0 entry below is
+part of this release**. Read it too: that is where the renamed props, the removed
+game tables and the `/wager` entry point are explained. This release's own changes
+sit on top of it.
+
+Because 0.8.0 never shipped, nothing in here is a second breaking step: for
+anyone on 0.7.0 the whole move to table types is one minor bump, and the middle
+number already carries it.
+
+Three fixes to what the table actually draws — one of them a missing prop rather
+than a wrong pixel, all of them found by looking at the table, which is the part a
+type check cannot see.
 
 ### Changed
 
