@@ -78,6 +78,30 @@ describe("SquareTable", () => {
     expect(borderRadii(round.container)).toContain("60px");
   });
 
+  it("draws no circle anywhere: the decorations follow the corner radius too", () => {
+    /*
+     * The shape bug this guards. The rail, the felt, the rim and the watermark
+     * always took their radius from the layout, but the outer glow, the
+     * spotlight and the sheen mask were written as `rounded-[50%]`. That is
+     * invisible on a round table and obvious on a square one: a gold circle
+     * sitting behind a rounded rectangle, and a sheen clipped to an ellipse that
+     * cut the felt's corners off.
+     */
+    setElementSize(1200, 900);
+    const square = render(<SquareTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    const radii = borderRadii(square.container);
+    expect(radii.length).toBeGreaterThanOrEqual(5);
+    expect(radii).not.toContain("50%");
+    expect(
+      [...square.container.querySelectorAll("div")].some((d) => (d as HTMLElement).className.includes("rounded-[50%]")),
+    ).toBe(false);
+
+    // and this is a claim about shape, not a ban on circles: the round table
+    // still is one
+    const round = render(<RoundTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    expect(borderRadii(round.container)).toContain("50%");
+  });
+
   it("keeps its seats off the corners rather than bunching them there", () => {
     setElementSize(1600, 900); // a wide rectangle: an angle-based walk would fail here
     const { container } = render(<SquareTable seatCount={8} renderSeat={(i) => <div>{i}</div>} />);
@@ -92,12 +116,39 @@ describe("SquareTable", () => {
 describe("DealerTable", () => {
   const hand = (i: number) => <Seat header={<b>hand {i}</b>} />;
 
-  it("draws no table surface at all — no rail, no felt, no shimmer, no rim", () => {
+  it("draws a rounded-rectangle surface — and what makes it a dealer table is the row, not the absence", () => {
+    /*
+     * This table used to paint nothing, on the reasoning that it has no ellipse.
+     * Not being a poker oval is not the same as having no surface, so it now
+     * draws one — from the same `layoutTable` call `CardTable` uses. The claim
+     * that separates the two is the *arrangement*: a ring seat layer must not
+     * exist here.
+     */
+    setElementSize(1200, 900);
     const { container } = render(<DealerTable handCount={2} renderHand={hand} />);
-    expect(railOf(container)).toBeNull();
-    expect(container.querySelectorAll(".animate-felt-shimmer")).toHaveLength(0);
-    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(0);
-    expect(borderRadii(container)).toEqual([]);
+
+    expect(railOf(container)).toBeTruthy();
+    expect(railOf(container)?.style.borderRadius).toMatch(/px$/);
+    expect(borderRadii(container)).not.toContain("50%");
+    expect(container.querySelectorAll(".animate-felt-shimmer")).toHaveLength(1);
+    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(1);
+
+    // no ring of seats, ever
+    expect(container.querySelectorAll('[data-part="seat"]')).toHaveLength(0);
+  });
+
+  it("still paints nothing when asked not to", () => {
+    setElementSize(1200, 900);
+
+    const bare = render(<DealerTable handCount={2} renderHand={hand} deck={false} />);
+    expect(railOf(bare.container)).toBeNull();
+    expect(borderRadii(bare.container)).toEqual([]);
+
+    // `shape="none"` is what this table used to be unconditionally: no boundary
+    // was asked for, so none is drawn.
+    const none = render(<DealerTable handCount={2} renderHand={hand} shape="none" />);
+    expect(railOf(none.container)).toBeNull();
+    expect(borderRadii(none.container)).toEqual([]);
   });
 
   it("puts the head above and the hands in a row below it", () => {

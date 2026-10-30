@@ -28,8 +28,9 @@ import { BET_RING, SAMPLE, WATERMARK, PlayerSeat, betSlots } from "./parts";
  * - the shedding game has no line, no felt decoration and no chip anywhere,
  *   because it declared none — it is the same round/square machinery with the
  *   opinions left out;
- * - the twenty-one and banking games draw no felt at all, because a table type
- *   that cannot draw one is the only way to be sure;
+ * - the twenty-one and banking games never draw a ring of positions, because the
+ *   arrangement is what a dealer table differs by — and they still sit on a
+ *   surface, because a dealer table is a table;
  * - the banking game and the twenty-one game use the *same* table type, which is
  *   the point: a table type serves many games, a game-specific table serves one.
  *

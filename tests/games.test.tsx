@@ -15,15 +15,21 @@ import { setElementSize } from "./setup";
  *
  * The assertions that matter are the negative ones. An example rendering proves
  * nothing about the primitives unless the table's own opinions are genuinely
- * absent from it: no betting ring on a game with no betting, and no surface at
- * all on a game that is not played around one.
+ * absent from it: no betting ring on a game with no betting, and no ring of
+ * positions at all on a game whose players line up in a row.
  */
 
 const railOf = (container: HTMLElement) => container.querySelector(".bg-gradient-to-b.from-rail");
-const noSurface = (container: HTMLElement) =>
-  railOf(container) === null &&
-  container.querySelector(".animate-felt-shimmer") === null &&
-  container.querySelector(".animate-spotlight") === null;
+/*
+ * A dealer table's *arrangement*, not its paint: the positions are a head and a
+ * row, never a ring — a ring of seats or of chips is what `CardTable` adds.
+ *
+ * This used to assert that no surface was drawn at all. That was never the
+ * separation: a dealer table is a table, and it draws one.
+ */
+const noRing = (container: HTMLElement) =>
+  container.querySelectorAll('[data-part="seat"]').length === 0 &&
+  container.querySelectorAll('[data-part="ring"]').length === 0;
 
 const labels = (container: HTMLElement) =>
   [...container.querySelectorAll('[role="img"]')].map((el) => el.getAttribute("aria-label"));
@@ -130,8 +136,8 @@ describe("the banking example", () => {
     const { container } = render(<BankingExample />);
     expect(container.querySelectorAll('[data-part="hand"]')).toHaveLength(4);
     expect(container.querySelector('[data-part="head"]')).toBeTruthy();
-    // and still no felt, because the type it used has none
-    expect(noSurface(container)).toBe(true);
+    // and still no ring, because a dealer table's positions are a row
+    expect(noRing(container)).toBe(true);
   });
 
   it("shows the wager as chips and the result as a highlight and confetti", () => {
@@ -148,10 +154,11 @@ describe("the banking example", () => {
 });
 
 describe("the twenty-one example", () => {
-  it("keeps the dealer above a row of hands, with no felt anywhere", () => {
+  it("keeps the dealer above a row of hands, on a table with no ring", () => {
     setElementSize(1200, 900);
     const { container } = render(<TwentyOneExample />);
-    expect(noSurface(container)).toBe(true);
+    expect(noRing(container)).toBe(true);
+    expect(railOf(container)).toBeTruthy();
     expect(container.querySelectorAll('[data-part="ring"]')).toHaveLength(0);
     expect(container.querySelectorAll('[data-part="slot"]')).toHaveLength(0);
     expect(container.querySelectorAll('[data-part="hand"]')).toHaveLength(3);
@@ -182,8 +189,7 @@ describe("the twenty-one example", () => {
     // client writes, and the deliverable is a game with no library component
     // named after it.
     const { container } = render(<TwentyOneExample />);
-    expect(container.querySelectorAll('[data-part="seat"]')).toHaveLength(0);
-    expect(noSurface(container)).toBe(true);
+    expect(noRing(container)).toBe(true);
   });
 });
 

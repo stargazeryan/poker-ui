@@ -4,6 +4,51 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## Unreleased
+
+Three fixes to what the table actually draws, all of them visible rather than
+theoretical.
+
+### Changed
+
+- **`DealerTable` draws a table.** It used to paint nothing at all — no rail, no
+  felt, no rim — on the reasoning that a dealer table has no ellipse to draw.
+  Not being a poker oval is not the same as having no surface, so it draws one
+  now, from the same `layoutTable` call `CardTable` uses, which is what stops the
+  two tables' felt from drifting apart. The default is a rounded rectangle;
+  `shape="none"` gives you the old bare version back, and `deck={false}` paints
+  nothing.
+
+  What separates it from `CardTable` is the **arrangement**, and that is
+  unchanged: its positions are a head and a row, never a ring.
+
+- **A square table is drawn as a rectangle, not a circle.** The outer glow, the
+  spotlight and the sheen mask were written as `rounded-[50%]` while the rail,
+  the felt, the rim and the watermark followed the surface's own radius. On a
+  round table that is invisible; on a square one it was a gold circle sitting
+  behind a rounded rectangle, and a sheen clipped to an ellipse that cut the
+  felt's corners off.
+
+- **The felt's ambient light is one light, not two.** The sheen swept across the
+  felt on a 22s linear loop while the spotlight breathed on a 7s one: two
+  unrelated periods, so the felt spent most of its time in a combination nobody
+  chose (their least common multiple is 154s) and a few of those read as a
+  lighting glitch. The sheen is static now and only its opacity moves, on the
+  same 7s `ease-in-out` cycle as the spotlight.
+
+  `--animate-felt-shimmer` keeps its name and its keyframe name; only the value
+  changed, from `felt-shimmer 22s linear infinite` to
+  `felt-shimmer 7s ease-in-out infinite`. If you had overridden it, note that it
+  no longer animates `background-position`.
+
+### Added
+
+- **`DealerTable` takes the surface props `CardTable` has** — `shape`,
+  `cornerRadius`, `deck`, `ambient`, `watermark`, `railClassName`,
+  `feltClassName`, `marginX`, `marginY`, `feltGap` — so a dealer table can be
+  restyled to the same degree a round one can. All optional; the defaults are
+  what most callers want.
+
 ## 0.8.0 — the split
 
 The library no longer has a poker table in it. It has **table types** — shapes —

@@ -178,8 +178,10 @@ to place.
 `seatPlacement` (`"ring" | "perimeter" | "row"`) can be set independently, e.g. a
 rectangle with its seats on a ring.
 
-A **dealer table** is not an ellipse in a costume: it is `FitBox` plus
-`rowFrames`, which is why it cannot draw a surface even by accident.
+A **dealer table** is not an ellipse in a costume: its positions are a head and a
+row, laid out with `rowFrames`, never a ring. It draws the same surface
+`CardTable` does — a rounded rectangle by default, `shape="none"` for the bare
+version — because not being a poker oval is not the same as having no table.
 
 ## Components and their props
 
