@@ -149,12 +149,8 @@ same `radius`, and they cannot drift apart: a slot on a ring lands on the point
   slots={[
     { id: "bet", radius: 0.72, render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null) },
   ]}
-  renderOverlay={({ layout }) => (
-    <>
-      {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
-      {showdown && <Confetti colors={["#f39c12", "#e74c3c"]} />}
-    </>
-  )}
+  glow={isMyTurn}
+  renderOverlay={() => (showdown ? <Confetti colors={["#f39c12", "#e74c3c"]} /> : null)}
   renderSeat={(i, box) => <Seat isActive={activeSeat === i} width={box.width} height={box.height} />}
 />
 ```
