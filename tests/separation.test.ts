@@ -14,8 +14,9 @@ import * as WAGER from "../src/wager";
  *
  * 1. **The core is game-free.** A card game with no betting must not pull a chip
  *    set into its bundle, and the API must not name a game.
- * 2. **The table types are shapes, not games.** `RoundTable` knows it is round
- *    and nothing else; `DealerTable` cannot draw a felt because it has none.
+ * 2. **The table types are arrangements, not games.** `RoundTable` knows it is
+ *    round and nothing else; `DealerTable`'s positions are a head and a row,
+ *    never a ring.
  *
  * These tests read the real module graph, the real export surfaces and the real
  * source, so both claims are enforced rather than described in a README.

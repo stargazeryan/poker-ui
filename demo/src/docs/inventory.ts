@@ -52,7 +52,7 @@ export const TOKENS: TokenRow[] = [
   { name: "--animate-deal-in", kind: "animation", value: "deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "`CardRow animation=\"deal\"`, staggered by STAGGER_MS" },
   { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive`, and any ring you draw in a table's overlay" },
   { name: "--animate-winner-glow", kind: "animation", value: "winner-glow 1.6s ease-in-out infinite", controls: "`Seat isWinner`" },
-  { name: "--animate-felt-shimmer", kind: "animation", value: "felt-shimmer 22s linear infinite", controls: "the ambient sheen sweeping the felt" },
+  { name: "--animate-felt-shimmer", kind: "animation", value: "felt-shimmer 7s ease-in-out infinite", controls: "the ambient sheen breathing on the felt, in phase with --animate-spotlight" },
   { name: "--animate-spotlight", kind: "animation", value: "spotlight-breathe 7s ease-in-out infinite", controls: "the spotlight breathing on the felt" },
   { name: "--animate-confetti", kind: "animation", value: "confetti 2s ease-in forwards", controls: "one piece of `<Confetti />`, falling" },
 ];
@@ -137,7 +137,8 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "shape", kind: "enum", options: ["ellipse", "rect", "none"] },
   { prop: "seatPlacement", kind: "enum", options: ["ring", "perimeter", "row"] },
   { prop: "deck", kind: "boolean", hint: "rail + felt + rim; off by default with shape=none" },
-  { prop: "ambient", kind: "boolean", hint: "spotlight + felt shimmer" },
+  { prop: "ambient", kind: "boolean", hint: "spotlight + felt sheen" },
+  { prop: "glow", kind: "boolean", hint: "the rail halo, behind the seats" },
   { prop: "fit", kind: "enum", options: ["design", "container"] },
   { prop: "className", kind: "boolean", hint: "hangs a debug outline on the outer element" },
 ];

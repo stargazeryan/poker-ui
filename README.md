@@ -149,12 +149,8 @@ same `radius`, and they cannot drift apart: a slot on a ring lands on the point
   slots={[
     { id: "bet", radius: 0.72, render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null) },
   ]}
-  renderOverlay={({ layout }) => (
-    <>
-      {isMyTurn && <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />}
-      {showdown && <Confetti colors={["#f39c12", "#e74c3c"]} />}
-    </>
-  )}
+  glow={isMyTurn}
+  renderOverlay={() => (showdown ? <Confetti colors={["#f39c12", "#e74c3c"]} /> : null)}
   renderSeat={(i, box) => <Seat isActive={activeSeat === i} width={box.width} height={box.height} />}
 />
 ```
@@ -178,8 +174,10 @@ to place.
 `seatPlacement` (`"ring" | "perimeter" | "row"`) can be set independently, e.g. a
 rectangle with its seats on a ring.
 
-A **dealer table** is not an ellipse in a costume: it is `FitBox` plus
-`rowFrames`, which is why it cannot draw a surface even by accident.
+A **dealer table** is not an ellipse in a costume: its positions are a head and a
+row, laid out with `rowFrames`, never a ring. It draws the same surface
+`CardTable` does — a rounded rectangle by default, `shape="none"` for the bare
+version — because not being a poker oval is not the same as having no table.
 
 ## Components and their props
 

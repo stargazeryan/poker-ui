@@ -294,11 +294,11 @@ export function DealerTablePage() {
         title="A head, and a row of hands"
         description={
           <>
-            The third table type: one frame at the head and a row of frames for the players, with no felt and no rail.
+            The third table type: one frame at the head and a row of frames for the players, on a rounded rectangle.
             For the many card games that are not played <em>around</em> anything — twenty-one, the banking games,
             baccarat, dragon-tiger — where one position holds something everybody else acts against. It is built from{" "}
-            <Prop>FitBox</Prop> and <Prop>rowFrames</Prop> rather than <Prop>CardTable</Prop>, so it cannot draw a
-            surface even by accident.
+            <Prop>FitBox</Prop> and <Prop>rowFrames</Prop> rather than a ring, so its positions can never be one by
+            accident — and it paints the same surface <Prop>CardTable</Prop> does, so the felt cannot drift.
           </>
         }
         previewClassName="p-0 overflow-hidden"
@@ -402,7 +402,7 @@ export function DealerTablePage() {
 
       <Row className="mt-4">
         <Field label="head:" value="a position, not a role" />
-        <Field label="no felt:" value="it has none to draw" />
+        <Field label="arrangement:" value="a head and a row, never a ring" />
       </Row>
     </>
   );

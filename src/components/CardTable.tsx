@@ -16,6 +16,7 @@ import {
 import type { SeatPlacement, TableShape } from "../surface";
 import { FitBox, type DesignBox } from "./FitBox";
 import { SeatSizeContext } from "./seatSize";
+import { TableRim, TableSurface } from "./TableSurface";
 
 /* Re-exported so an import from this module keeps working; the constants live
  * in `layout.ts` and `surface.ts` with the rest of the geometry. */
@@ -176,8 +177,18 @@ export interface CardTableProps {
   slots?: TableSlot[];
   /** Optional content in the middle of the table (cards, a counter, anything). */
   center?: ReactNode;
-  /** Ambient spotlight + felt shimmer. Default true. */
+  /** Ambient spotlight + felt sheen. Default true. */
   ambient?: boolean;
+  /**
+   * Draw the edge glow — a golden halo hugging the rail, at the layer
+   * `boxes.glow` describes. Default false.
+   *
+   * `glow={isMyTurn}` is what this is for, and the table still does not know
+   * what a turn is. Draw it here rather than in `renderOverlay`: the overlay
+   * layer is above the seats, so a halo drawn there sits on top of the seat
+   * frames instead of behind them.
+   */
+  glow?: boolean;
   /**
    * Content drawn above the seats, inside the scaled design box
    * (`pointer-events-none`). This is where the caller puts table-edge effects
@@ -191,11 +202,13 @@ export interface CardTableProps {
    * differed by being unable to see the geometry.
    *
    * ```tsx
-   * renderOverlay={() => (isMyTurn ? <TableGlow /> : null)}
-   * renderOverlay={({ layout }) => (
-   *   <div style={layout.boxes.glow} className="absolute animate-turn-glow rounded-[50%]" />
-   * )}
+   * renderOverlay={() => (won ? <Confetti /> : null)}
+   * renderOverlay={({ layout }) => <div style={layout.boxes.felt}>Muck</div>}
    * ```
+   *
+   * **Not** the edge glow. That used to be the example here, and it is why every
+   * caller's "your turn" halo sat on top of the seat frames: this layer is above
+   * the seats. Use `glow` instead — the table draws it behind them.
    */
   renderOverlay?: (geometry: TableOverlayGeometry) => ReactNode;
   /** Preferred seat frame width. Default 160. */
@@ -285,6 +298,7 @@ function Table({
   slots,
   center,
   ambient = true,
+  glow = false,
   renderOverlay,
   seatWidth = DEFAULT_SEAT_W,
   seatHeight = DEFAULT_SEAT_H,
@@ -312,61 +326,19 @@ function Table({
     seatPlacement,
   });
 
-  const { seatW, seatH, boxes } = layout;
+  const { seatW, seatH } = layout;
 
   return (
     <>
       {deck && (
-        <>
-          <div
-            className="absolute -inset-6 rounded-[50%] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-gold-light)_16%,transparent),transparent_72%)] blur-3xl"
-            aria-hidden="true"
-          />
-
-          {/* the rail */}
-          <div
-            className={cn(
-              "absolute bg-gradient-to-b from-rail via-rail-dark to-rail-deep shadow-[0_26px_70px_-12px_rgba(0,0,0,0.85),inset_0_3px_0_rgba(255,255,255,0.20),inset_0_-6px_16px_rgba(0,0,0,0.5)]",
-              railClassName,
-            )}
-            style={{ borderRadius: layout.radius, ...px(boxes.table) }}
-            aria-hidden="true"
-          />
-
-          {/* the felt */}
-          <div
-            className={cn(
-              "absolute bg-[radial-gradient(ellipse_at_50%_32%,var(--color-felt-light),var(--color-felt)_55%,var(--color-felt-dark))] shadow-[inset_0_0_90px_rgba(0,0,0,0.55),inset_0_3px_10px_rgba(255,255,255,0.06)]",
-              feltClassName,
-            )}
-            style={{ borderRadius: layout.radius, ...px(boxes.felt) }}
-            aria-hidden="true"
-          />
-
-          {/* ambient: breathing spotlight + felt shimmer */}
-          {ambient && (
-            <>
-              <div
-                className="absolute animate-spotlight rounded-[50%] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-gold-glow)_14%,transparent),transparent_70%)] blur-2xl"
-                style={px(boxes.felt)}
-                aria-hidden="true"
-              />
-              <div className="absolute overflow-hidden rounded-[50%]" style={px(boxes.felt)} aria-hidden="true">
-                <div className="absolute inset-0 animate-felt-shimmer bg-[linear-gradient(115deg,transparent_42%,rgba(255,255,255,0.06)_50%,transparent_58%)] bg-[length:220%_100%]" />
-              </div>
-            </>
-          )}
-
-          {watermark !== undefined && (
-            <div
-              className="absolute flex items-center justify-center pointer-events-none"
-              style={{ borderRadius: layout.radius, ...px(boxes.felt) }}
-              aria-hidden="true"
-            >
-              {watermark}
-            </div>
-          )}
-        </>
+        <TableSurface
+          layout={layout}
+          watermark={watermark}
+          ambient={ambient}
+          glow={glow}
+          railClassName={railClassName}
+          feltClassName={feltClassName}
+        />
       )}
 
       {/* caller-declared outlines: a betting line, a muck ring, a target zone */}
@@ -443,13 +415,7 @@ function Table({
       )}
 
       {/* outer rim highlight */}
-      {deck && (
-        <div
-          className="absolute border border-white/10 pointer-events-none"
-          style={{ borderRadius: layout.radius, ...px(boxes.rim) }}
-          aria-hidden="true"
-        />
-      )}
+      {deck && <TableRim layout={layout} />}
     </>
   );
 }

@@ -78,6 +78,30 @@ describe("SquareTable", () => {
     expect(borderRadii(round.container)).toContain("60px");
   });
 
+  it("draws no circle anywhere: the decorations follow the corner radius too", () => {
+    /*
+     * The shape bug this guards. The rail, the felt, the rim and the watermark
+     * always took their radius from the layout, but the outer glow, the
+     * spotlight and the sheen mask were written as `rounded-[50%]`. That is
+     * invisible on a round table and obvious on a square one: a gold circle
+     * sitting behind a rounded rectangle, and a sheen clipped to an ellipse that
+     * cut the felt's corners off.
+     */
+    setElementSize(1200, 900);
+    const square = render(<SquareTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    const radii = borderRadii(square.container);
+    expect(radii.length).toBeGreaterThanOrEqual(5);
+    expect(radii).not.toContain("50%");
+    expect(
+      [...square.container.querySelectorAll("div")].some((d) => (d as HTMLElement).className.includes("rounded-[50%]")),
+    ).toBe(false);
+
+    // and this is a claim about shape, not a ban on circles: the round table
+    // still is one
+    const round = render(<RoundTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    expect(borderRadii(round.container)).toContain("50%");
+  });
+
   it("keeps its seats off the corners rather than bunching them there", () => {
     setElementSize(1600, 900); // a wide rectangle: an angle-based walk would fail here
     const { container } = render(<SquareTable seatCount={8} renderSeat={(i) => <div>{i}</div>} />);
@@ -92,12 +116,82 @@ describe("SquareTable", () => {
 describe("DealerTable", () => {
   const hand = (i: number) => <Seat header={<b>hand {i}</b>} />;
 
-  it("draws no table surface at all — no rail, no felt, no shimmer, no rim", () => {
+  it("draws a rounded-rectangle surface — and what makes it a dealer table is the row, not the absence", () => {
+    /*
+     * This table used to paint nothing, on the reasoning that it has no ellipse.
+     * Not being a poker oval is not the same as having no surface, so it now
+     * draws one — from the same `layoutTable` call `CardTable` uses. The claim
+     * that separates the two is the *arrangement*: a ring seat layer must not
+     * exist here.
+     */
+    setElementSize(1200, 900);
     const { container } = render(<DealerTable handCount={2} renderHand={hand} />);
-    expect(railOf(container)).toBeNull();
-    expect(container.querySelectorAll(".animate-felt-shimmer")).toHaveLength(0);
-    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(0);
-    expect(borderRadii(container)).toEqual([]);
+
+    expect(railOf(container)).toBeTruthy();
+    expect(railOf(container)?.style.borderRadius).toMatch(/px$/);
+    expect(borderRadii(container)).not.toContain("50%");
+    expect(container.querySelectorAll(".animate-felt-shimmer")).toHaveLength(1);
+    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(1);
+
+    // no ring of seats, ever
+    expect(container.querySelectorAll('[data-part="seat"]')).toHaveLength(0);
+  });
+
+  it("draws the edge glow behind the seats, not over them", () => {
+    /*
+     * `boxes.glow` was computed by the layout and drawn by nobody, so callers
+     * drew it in `renderOverlay` — a layer above the seats — and the halo landed
+     * on the seat frames. The table draws it now, in the surface layer.
+     *
+     * jsdom has no paint order, so this asserts the structure that decides it:
+     * the glow element comes after the surface it hugs and *before* every seat
+     * and every overlay, in document order.
+     */
+    setElementSize(1200, 900);
+    const seats = (root: HTMLElement) => [...root.querySelectorAll('[data-part="seat"]')];
+    const glowOf = (root: HTMLElement) => root.querySelector("div.animate-turn-glow") as HTMLElement | null;
+
+    const off = render(<SquareTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
+    expect(glowOf(off.container)).toBeNull();
+
+    const on = render(<SquareTable seatCount={4} glow renderSeat={(i) => <div>{i}</div>} />);
+    const glow = glowOf(on.container);
+    expect(glow).toBeTruthy();
+    // it hugs the rail, and it is a rectangle like the table it hugs
+    expect(glow?.style.borderRadius).toMatch(/px$/);
+    expect(glow?.style.borderRadius).not.toBe("50%");
+    expect(parseFloat(glow!.style.top)).toBeGreaterThan(0);
+
+    const order = [...on.container.querySelectorAll("*")];
+    const glowAt = order.indexOf(glow as Element);
+    for (const seat of seats(on.container)) expect(order.indexOf(seat)).toBeGreaterThan(glowAt);
+  });
+
+  it("draws an edge glow on a dealer table too, also behind the hands", () => {
+    setElementSize(1200, 900);
+    const { container } = render(<DealerTable handCount={2} glow renderHand={hand} />);
+    const glow = container.querySelector("div.animate-turn-glow") as HTMLElement;
+    expect(glow).toBeTruthy();
+    expect(glow.style.borderRadius).toMatch(/px$/);
+
+    const order = [...container.querySelectorAll("*")];
+    for (const el of container.querySelectorAll('[data-part="hand"]')) {
+      expect(order.indexOf(el)).toBeGreaterThan(order.indexOf(glow));
+    }
+  });
+
+  it("still paints nothing when asked not to", () => {
+    setElementSize(1200, 900);
+
+    const bare = render(<DealerTable handCount={2} renderHand={hand} deck={false} />);
+    expect(railOf(bare.container)).toBeNull();
+    expect(borderRadii(bare.container)).toEqual([]);
+
+    // `shape="none"` is what this table used to be unconditionally: no boundary
+    // was asked for, so none is drawn.
+    const none = render(<DealerTable handCount={2} renderHand={hand} shape="none" />);
+    expect(railOf(none.container)).toBeNull();
+    expect(borderRadii(none.container)).toEqual([]);
   });
 
   it("puts the head above and the hands in a row below it", () => {

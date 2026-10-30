@@ -61,7 +61,7 @@
   --animate-deal-in: deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-turn-glow: turn-glow 1.3s ease-in-out infinite;
   --animate-winner-glow: winner-glow 1.6s ease-in-out infinite;
-  --animate-felt-shimmer: felt-shimmer 22s linear infinite;
+  --animate-felt-shimmer: felt-shimmer 7s ease-in-out infinite;
   --animate-spotlight: spotlight-breathe 7s ease-in-out infinite;
   --animate-confetti: confetti 2s ease-in forwards;
 
@@ -123,12 +123,26 @@
     }
   }
 
+  /*
+   * Two lights, one clock.
+   *
+   * This used to translate a white band across the felt on a 22s linear loop
+   * while the spotlight breathed on a 7s one. Two unrelated periods beat against
+   * each other (their least common multiple is 154s), so the felt spent most of
+   * its time in a state nobody chose, and a few of those read as a glitch; the
+   * band itself also read as a scan line rather than as light.
+   *
+   * The sheen is static now, and only its opacity moves — on the same 7s
+   * `ease-in-out` cycle as `spotlight-breathe`, so in phase. One slow pulse of
+   * the felt instead of two lights drifting apart.
+   */
   @keyframes felt-shimmer {
-    0% {
-      background-position: -60% 50%;
-    }
+    0%,
     100% {
-      background-position: 160% 50%;
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 0.75;
     }
   }
 
