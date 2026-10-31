@@ -159,8 +159,8 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           "Minimum clearance between neighbouring frames. Frames shrink uniformly (never below 50%) until it is honoured; `0` disables it. Every `Seat` inside the table is told the size that was settled on.",
       },
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — **a maximum, not a target**. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
       { name: "marginX", type: "number", default: "164 / 1200", description: "Rail inset as a fraction of the design box width." },
       { name: "marginY", type: "number", default: "196 / 900", description: "Rail inset as a fraction of the design box height." },
       { name: "feltGap", type: "number", default: "11", description: "Felt inset from the rail, in design-space px." },
@@ -168,7 +168,7 @@ export const COMPONENTS: ComponentDoc[] = [
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the box instead of letterboxing.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.',
       },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
     ],
@@ -230,9 +230,9 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Minimum clearance between hand frames. Frames shrink uniformly until it is honoured; `0` disables it.",
       },
       { name: "handY", type: "number", default: "0.74", description: "Centre of the row of hands, as a fraction of the design height." },
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
-      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the box instead of letterboxing a fixed aspect ratio.' },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — **a maximum, not a target**. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
+      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.' },
       {
         name: "renderOverlay",
         type: "(geometry: DealerOverlayGeometry) => ReactNode",
@@ -247,15 +247,15 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "FitBox",
     interfaceName: "FitBoxProps",
     summary:
-      "A container that lays its contents out in a fixed design box and scales that box to fit. It is the whole responsive half of every table type, on its own — so a layout that is none of them (a circle of options, a card you flip, a custom arrangement) still gets the scaling and the auto-shrink for free.",
+      "A container that lays its contents out in a fixed design box and scales that box **down** to fit. The design box is a maximum: a larger container adds empty space rather than enlarging the table. It is the whole responsive half of every table type, on its own — so a layout that is none of them (a circle of options, a card you flip, a custom arrangement) still gets the scaling and the auto-shrink for free.",
     props: [
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box your content is laid out in." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — a maximum. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
       {
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of letterboxing a fixed one.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of leaving that space empty. Neither mode scales above 1 — the design box is a maximum.',
       },
       {
         name: "children",

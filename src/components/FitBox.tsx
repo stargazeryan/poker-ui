@@ -10,6 +10,12 @@ import { DESIGN_H, DESIGN_W } from "../layout";
  * without a media query per element. It is extracted here so a layout that is
  * not a ring of seats (a dealer zone and a row of hands, a square for four
  * players, a single row of card slots) can use it and nothing else.
+ *
+ * The design box is a **maximum**. A container larger than it does not enlarge
+ * the table — the box is drawn at 1:1 and centred — and a smaller one scales the
+ * whole box down by a single factor. So the design size is a real size, and the
+ * numbers measured in it are real sizes at 1:1, rather than an arbitrary unit
+ * that whatever container happens to be present then rewrites.
  */
 
 export type FitMode = "design" | "container";
@@ -28,14 +34,20 @@ export interface DesignBox {
 }
 
 export interface FitBoxOptions {
+  /** Width your content is designed for, in CSS px. A maximum — see `FitBoxProps`. */
   designWidth?: number;
+  /** Height your content is designed for, in CSS px. A maximum — see `FitBoxProps`. */
   designHeight?: number;
   /**
    * How the design box relates to the container.
-   * - `"design"` (default): scale the fixed design box to fit — preserves the
-   *   proportions but letterboxes non-matching containers.
-   * - `"container"`: derive the design width from the container's aspect ratio
-   *   (clamped to 0.5–2.5) so the layout fills the box instead of letterboxing.
+   * - `"design"` (default): keep the design ratio, so a container with a
+   *   different ratio leaves empty space around the table.
+   * - `"container"`: derive the design width from the container's ratio
+   *   (clamped to 0.5–2.5), so the layout fills the space instead of leaving it
+   *   empty. The ratio changes here; the height does not.
+   *
+   * Neither mode scales above 1 — the design box is a maximum, see
+   * `designWidth`.
    */
   fit?: FitMode;
 }
@@ -74,7 +86,9 @@ export function useFitBox({ designWidth = DESIGN_W, designHeight = DESIGN_H, fit
       fit === "container" && box.w > 0 && box.h > 0
         ? dh * Math.min(MAX_FIT_ASPECT, Math.max(MIN_FIT_ASPECT, box.w / box.h))
         : designWidth;
-    const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh) : 1;
+    // `1` is the cap: the design box is the largest the table is ever drawn, so
+    // a bigger container adds empty space instead of enlarging the table.
+    const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh, 1) : 1;
     return { width: dw, height: dh, scale };
   }, [designWidth, designHeight, fit, box.w, box.h]);
 
@@ -87,16 +101,28 @@ export function useFitBox({ designWidth = DESIGN_W, designHeight = DESIGN_H, fit
  * check — which is how a documented prop ends up with no code behind it.
  */
 export interface FitBoxProps {
-  /** Design-space width your content is laid out in. Default 1200. */
+  /**
+   * The width your content is designed for, in CSS px — **a maximum, not a
+   * target**. A container wider than this does not make the table bigger: the
+   * box is drawn at 1:1 and centred. A narrower container scales the whole box
+   * down by one factor, so every proportion holds. Default 1200.
+   */
   designWidth?: number;
-  /** Design-space height. Default 900. */
+  /**
+   * The height your content is designed for, in CSS px. A maximum, like
+   * `designWidth`. Default 900.
+   */
   designHeight?: number;
   /**
    * How the design box relates to the container.
-   * - `"design"` (default): scale the fixed design box to fit — preserves the
-   *   proportions but letterboxes non-matching containers.
-   * - `"container"`: derive the design width from the container's aspect ratio
-   *   (clamped to 0.5–2.5) so the layout fills the box instead of letterboxing.
+   * - `"design"` (default): keep the design ratio, so a container with a
+   *   different ratio leaves empty space around the table.
+   * - `"container"`: derive the design width from the container's ratio
+   *   (clamped to 0.5–2.5), so the layout fills the space instead of leaving it
+   *   empty. The ratio changes here; the height does not.
+   *
+   * Neither mode scales above 1 — the design box is a maximum, see
+   * `designWidth`.
    */
   fit?: FitMode;
   /**
@@ -110,7 +136,7 @@ export interface FitBoxProps {
 
 /**
  * A container that lays its contents out in a fixed design box and scales that
- * box to fit. Knows nothing about what is inside it.
+ * box **down** to fit. Knows nothing about what is inside it.
  */
 export function FitBox({ designWidth, designHeight, fit, children, className }: FitBoxProps) {
   const { outerRef, design } = useFitBox({ designWidth, designHeight, fit });
