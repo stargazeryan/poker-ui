@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Seat } from "../src/components/Seat";
-import { Counter, Pot } from "../src/components/Counter";
+import { Counter } from "../src/components/Counter";
 import { formatBB } from "../src/wager/format";
 
 describe("Seat", () => {
@@ -93,10 +93,6 @@ describe("Seat", () => {
 });
 
 describe("Counter", () => {
-  it("is still reachable under its old name", () => {
-    expect(Pot).toBe(Counter);
-  });
-
   it("renders a plain number by default — it does not invent a unit", () => {
     const { container } = render(<Counter amount={240} animate={false} />);
     expect(container.textContent).toContain("240");
@@ -129,7 +125,7 @@ describe("Counter", () => {
   });
 
   it("jumps straight to the new amount under prefers-reduced-motion", () => {
-    // the CSS media query cannot reach a rAF loop, so Pot checks for itself
+    // the CSS media query cannot reach a rAF loop, so Counter checks for itself
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({
       matches: true,

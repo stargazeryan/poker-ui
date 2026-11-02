@@ -5,7 +5,6 @@ import {
   CardRow,
   CardSlot,
   CardTable,
-  CommunityCards,
   Confetti,
   Counter,
   DEFAULT_FELT_GAP,
@@ -14,7 +13,6 @@ import {
   DESIGN_H,
   DESIGN_W,
   FitBox,
-  HoleCards,
   PlayingCard,
   Seat,
   layoutTable,
@@ -829,7 +827,7 @@ export function CounterPage() {
 
       <Demo
         title="Count-up"
-        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. The default rendering is the plain number ${amount.toLocaleString()}: no unit is invented, because the library does not know what your numbers mean. Pot is a deprecated alias of Counter.`}
+        description={`Click fast — the counter keeps easing toward the new target without ever jumping backwards. The default rendering is the plain number ${amount.toLocaleString()}: no unit is invented, because the library does not know what your numbers mean.`}
         code={`<Counter label="Main" amount={amount} />`}
       >
         <div className="flex flex-col items-center gap-4">
@@ -1074,46 +1072,45 @@ export function CardRowPage() {
       </Demo>
       <Api slug="card-fan" />
 
-      <H2>Deprecated wrappers</H2>
+      <H2>Dealing a hand, flipping a board</H2>
       <p className="mt-3 text-sm leading-relaxed text-neutral-300">
-        <Prop>HoleCards</Prop> and <Prop>CommunityCards</Prop> are the names these used to have, and both are still
-        exported so existing code keeps working — they are thin presets of <Prop>CardRow</Prop> now.
+        <Prop>CardRow</Prop> covers both: <Prop>animation=&quot;deal&quot;</Prop> for a hand arriving,{" "}
+        <Prop>animation=&quot;flip&quot;</Prop> for a board being turned over. There used to be two components for this,
+        named after one game&apos;s words for each; they are gone.
       </p>
 
       <Demo
-        title="HoleCards"
+        title="A hand, dealt"
         description={
           <>
             <Prop>CardRow</Prop> with <Prop>size=&quot;lg&quot;</Prop> and <Prop>animation=&quot;deal&quot;</Prop>.{" "}
-            <Prop>dealKey</Prop> re-deals an unchanged hand, because React reuses an element whose key has not changed
-            and a reused element never restarts its CSS animation.
+            <Prop>animationKey</Prop> re-deals an unchanged hand, because React reuses an element whose key has not
+            changed and a reused element never restarts its CSS animation.
           </>
         }
-        code={`<HoleCards cards={hand} size="lg" dealKey={round} />`}
+        code={`<CardRow cards={hand} size="lg" animation="deal" animationKey={round} />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <HoleCards cards={hand} size="lg" dealKey={round} />
+          <CardRow cards={hand} size="lg" animation="deal" animationKey={round} />
           <Row className="justify-center">
             <Btn onClick={() => setRound((r) => r + 1)}>deal the next hand</Btn>
           </Row>
-          <Field label="hand:" value={`${hand.join(" ")}  ·  dealKey=${round}`} />
+          <Field label="hand:" value={`${hand.join(" ")}  ·  animationKey=${round}`} />
         </div>
       </Demo>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["hole-cards"].summary}</p>
-      <Api slug="hole-cards" />
-
       <Demo
-        title="CommunityCards"
+        title="A board, flipped"
         description={
           <>
-            <Prop>CardRow</Prop> with <Prop>animation=&quot;flip&quot;</Prop> and{" "}
-            <Prop>placeholder=&quot;empty&quot;</Prop>.
+            <Prop>CardRow</Prop> with <Prop>animation=&quot;flip&quot;</Prop>, <Prop>slots</Prop> to hold the row&apos;s
+            width, and <Prop>placeholder=&quot;empty&quot;</Prop> so an undealt position stays empty rather than
+            becoming a card back.
           </>
         }
-        code={`<CommunityCards cards={board.slice(0, street)} slots={5} />`}
+        code={`<CardRow cards={board.slice(0, street)} slots={5} animation="flip" placeholder="empty" />`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CommunityCards cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} />
+          <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation="flip" placeholder="empty" />
           <Row className="justify-center">
             {[0, 3, 4, 5].map((n) => (
               <Btn key={n} onClick={() => setStreet(n)} active={street === n}>
@@ -1123,8 +1120,6 @@ export function CardRowPage() {
           </Row>
         </div>
       </Demo>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["community-cards"].summary}</p>
-      <Api slug="community-cards" />
     </>
   );
 }

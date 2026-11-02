@@ -483,36 +483,6 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
-  {
-    slug: "hole-cards",
-    title: "HoleCards",
-    interfaceName: "HoleCardsProps",
-    page: "card-row",
-    summary:
-      "**Deprecated** — `CardRow` with `size=\"lg\"`. \"Hole cards\" is one game's word for a row of cards, and the mechanism was never specific to it.",
-    props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards; `null` entries render as card backs." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"lg"', description: "Card size." },
-      { name: "className", type: "string", description: "Extra classes." },
-      { name: "deal", type: "boolean", default: "true", description: "Animate the cards dealing in." },
-      { name: "dealKey", type: "string | number", description: "Change this to replay the deal for an unchanged hand." },
-    ],
-  },
-  {
-    slug: "community-cards",
-    title: "CommunityCards",
-    interfaceName: "CommunityCardsProps",
-    page: "card-row",
-    summary:
-      "**Deprecated** — `CardRow` with `animation=\"flip\"`. \"Community\" is one game's word for a shared row, and the difference from a hand was only ever the animation.",
-    props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards; `null` entries render as empty positions here, unlike `CardRow`'s default." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
-      { name: "className", type: "string", description: "Extra classes." },
-      { name: "animated", type: "boolean", default: "true", description: "Animate each card with a 3D flip." },
-      { name: "slots", type: "number", description: "Reserve a fixed number of positions so the row width never changes." },
-    ],
-  },
 ];
 
 export const DOC_BY_SLUG: Record<string, ComponentDoc> = Object.fromEntries(

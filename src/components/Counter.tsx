@@ -89,9 +89,3 @@ export function Counter({ amount, label, format = defaultFormat, animate = true,
     </div>
   );
 }
-
-/** @deprecated Renamed to `Counter`. A pot is one game's use of an amount pill. */
-export const Pot = Counter;
-
-/** @deprecated Renamed to `CounterProps`. */
-export type PotProps = CounterProps;

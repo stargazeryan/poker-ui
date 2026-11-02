@@ -30,6 +30,31 @@ read before upgrading.
   Nothing about the layout itself changes: the ratio still decides the table's
   shape, the seat ring and where everything sits. Only the factor is capped.
 
+### Removed
+
+- **Every name that was deprecated in 0.8.0 is gone.** 0.8.0 renamed them and kept
+  an alias so the upgrade would not be a rewrite. The alias has now had its
+  release, so it is doing nothing but costing you a `@deprecated` squiggle.
+
+  | removed | use instead |
+  | --- | --- |
+  | `Pot`, `PotProps` | `Counter`, `CounterProps` |
+  | `HoleCards`, `HoleCardsProps` | `CardRow` with `animation="deal"` |
+  | `CommunityCards`, `CommunityCardsProps` | `CardRow` with `animation="flip"` |
+  | `layoutSeats` | `layoutTable` |
+  | `minSeatSeparation` | `minFrameSeparation` |
+  | `DEAL_STAGGER_MS` | `STAGGER_MS` |
+  | `FLIP_STAGGER_MS` | `FLIP_MS` |
+
+  The two card-row presets are worth spelling out, because their defaults move
+  onto `CardRow` itself: `size="lg"` + `animation="deal"` + `animationKey` (was
+  `dealKey`) for a hand, and `size="md"` + `animation="flip"` +
+  `placeholder="empty"` for a board.
+
+  `minSeatSeparation` was the odd one out — the reference page called it a
+  deprecated alias while the source never carried the `@deprecated` tag, so
+  nothing was actually warning you. Both are consistent now: the name is gone.
+
 ## 0.8.1 — the first published release of the split
 
 **0.8.0 was tagged but never published**, so if you are upgrading from 0.7.0 this

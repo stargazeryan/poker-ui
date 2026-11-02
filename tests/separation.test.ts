@@ -72,9 +72,10 @@ describe("the two entry points", () => {
     for (const name of WAGER_ONLY) {
       expect(core, `${name} is exported by the core entry`).not.toContain(name);
     }
-    // `Pot` is the one old poker word left, as a deprecated alias of Counter.
+    // No old poker word survives. `Pot` used to sit here as a deprecated alias
+    // of `Counter`; it is gone as of 0.9.0, so this now guards the removal.
     expect(core).toContain("Counter");
-    expect(CORE.Pot).toBe(CORE.Counter);
+    expect(core).not.toContain("Pot");
   });
 
   it("offers the wagering pieces from `/wager` instead", () => {

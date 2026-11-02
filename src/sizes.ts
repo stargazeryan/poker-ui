@@ -12,7 +12,7 @@ export const SIZES = ["xs", "sm", "md", "lg"] as const;
 /** Any size in the vocabulary. */
 export type Size = (typeof SIZES)[number];
 
-/** `PlayingCard` / `HoleCards` / `CommunityCards`: the full range. */
+/** `PlayingCard` / `CardRow`: the full range. */
 export type CardSize = Size;
 
 /** `Chip` / `ChipStack`: a chip has no `xs`. */

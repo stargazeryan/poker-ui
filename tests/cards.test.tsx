@@ -5,8 +5,6 @@ import {
   CardFan,
   CardRow,
   CardSlot,
-  CommunityCards,
-  HoleCards,
   PlayingCard,
   getSuitSymbol,
   parseCard,
@@ -106,9 +104,9 @@ describe("cards announce themselves", () => {
   });
 });
 
-describe("HoleCards (deprecated wrapper over CardRow)", () => {
-  it("renders one wrapper per card and staggers the deal animation", () => {
-    const { container } = render(<HoleCards cards={["As", "Kh"]} size="sm" />);
+describe("CardRow animation=deal", () => {
+  it("staggers the deal animation across the row", () => {
+    const { container } = render(<CardRow cards={["As", "Kh"]} size="sm" animation="deal" />);
     const wrappers = container.querySelectorAll(".animate-deal-in");
     expect(wrappers).toHaveLength(2);
     expect((wrappers[0] as HTMLElement).style.animationDelay).toBe("0ms");
@@ -116,40 +114,40 @@ describe("HoleCards (deprecated wrapper over CardRow)", () => {
   });
 
   it("can turn the deal animation off", () => {
-    const { container } = render(<HoleCards cards={["As", "Kh"]} deal={false} />);
+    const { container } = render(<CardRow cards={["As", "Kh"]} animation={false} />);
     expect(container.querySelectorAll(".animate-deal-in")).toHaveLength(0);
   });
 
   it("renders face-down placeholders for null cards", () => {
-    const { container } = render(<HoleCards cards={[null, null]} size="sm" />);
+    const { container } = render(<CardRow cards={[null, null]} size="sm" animation="deal" />);
     expect(container.textContent).toBe("");
     expect(container.querySelectorAll("svg")).toHaveLength(2);
   });
 });
 
-describe("CommunityCards (deprecated wrapper over CardRow)", () => {
+describe("CardRow animation=flip", () => {
   it("reserves fixed slots so the row width never changes", () => {
-    const { container } = render(<CommunityCards cards={["Ah", "Kd"]} size="md" slots={5} />);
+    const { container } = render(<CardRow cards={["Ah", "Kd"]} size="md" slots={5} animation="flip" placeholder="empty" />);
     // 5 slots, 2 filled -> 3 empty placeholders keep the row width stable
     expect(container.firstElementChild?.children).toHaveLength(5);
     expect(container.querySelectorAll(".animate-card-flip")).toHaveLength(2);
   });
 
   it("defaults the slot count to the number of cards", () => {
-    const { container } = render(<CommunityCards cards={["Ah", "Kd", "7c"]} />);
+    const { container } = render(<CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" placeholder="empty" />);
     expect(container.firstElementChild?.children).toHaveLength(3);
   });
 
   it("stagger-flips in order and can be turned off", () => {
-    const { container } = render(<CommunityCards cards={["Ah", "Kd", "7c"]} animated />);
+    const { container } = render(<CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" placeholder="empty" />);
     const flips = container.querySelectorAll(".animate-card-flip");
     expect([...flips].map((f) => (f as HTMLElement).style.animationDelay)).toEqual(["0ms", "70ms", "140ms"]);
-    expect(render(<CommunityCards cards={["Ah"]} animated={false} />).container.querySelectorAll(".animate-card-flip")).toHaveLength(0);
+    expect(render(<CardRow cards={["Ah"]} animation={false} />).container.querySelectorAll(".animate-card-flip")).toHaveLength(0);
   });
 });
 
 describe("CardRow — one primitive, one animation prop", () => {
-  it("is the same component the two old names wrap", () => {
+  it("renders a row of playing cards", () => {
     expect(render(<CardRow cards={["As", "Kh"]} animation={false} />).container.querySelectorAll('[role="img"]')).toHaveLength(2);
   });
 
@@ -172,7 +170,7 @@ describe("CardRow — one primitive, one animation prop", () => {
     expect(container.querySelectorAll("svg")).toHaveLength(1);
   });
 
-  it("can render a null as an empty position instead — the old CommunityCards rule", () => {
+  it("can render a null as an empty position instead", () => {
     const { container } = render(<CardRow cards={["As", null]} placeholder="empty" />);
     expect(container.querySelectorAll("svg")).toHaveLength(0);
   });
