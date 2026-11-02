@@ -288,7 +288,6 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "header", type: "ReactNode", description: "Top row inside the frame — name, badges." },
       { name: "children", type: "ReactNode", description: "Centre content — 0..N cards, an avatar, anything." },
       { name: "footer", type: "ReactNode", description: "Bottom row inside the frame — stack, status." },
-      { name: "badge", type: "ReactNode", description: "Floating element at the top-right of the frame." },
       { name: "overlay", type: "ReactNode", description: "Overlay centred over the frame." },
       { name: "above", type: "ReactNode", description: "Floating content above the frame, centred — e.g. an action bubble." },
       { name: "below", type: "ReactNode", description: "Content below the frame, centred — e.g. a countdown or a wager pill." },

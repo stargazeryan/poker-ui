@@ -10,7 +10,6 @@ describe("Seat", () => {
       <Seat
         header={<span>You</span>}
         footer={<span>100 BB</span>}
-        badge={<span>badge</span>}
         overlay={<span>overlay</span>}
         above={<span>above</span>}
         below={<span>below</span>}
@@ -21,7 +20,7 @@ describe("Seat", () => {
         <span>cards</span>
       </Seat>,
     );
-    for (const t of ["You", "100 BB", "badge", "overlay", "above", "below", "tl", "tr", "tc", "cards"]) {
+    for (const t of ["You", "100 BB", "overlay", "above", "below", "tl", "tr", "tc", "cards"]) {
       expect(getByText(t), t).toBeTruthy();
     }
     const bare = render(<Seat />);

@@ -24,8 +24,6 @@ export interface SeatProps {
   children?: ReactNode;
   /** Slot: bottom row inside the frame — stack / status. */
   footer?: ReactNode;
-  /** Slot: floating element at the frame's top-right (legacy alias of topRight). */
-  badge?: ReactNode;
   /** Slot: overlay centered over the frame. */
   overlay?: ReactNode;
 
@@ -74,7 +72,6 @@ export function Seat({
   header,
   children,
   footer,
-  badge,
   overlay,
   above,
   below,
@@ -144,7 +141,6 @@ export function Seat({
         )}
       </div>
 
-      {badge !== undefined && <div className="absolute top-0 right-0 z-40">{badge}</div>}
       {below !== undefined && <div className="mt-1 flex flex-col items-center gap-1">{below}</div>}
     </div>
   );

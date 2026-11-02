@@ -180,7 +180,6 @@ export {
  *   else's game, and naming games in the API makes this library one release
  *   behind every game anyone invents.
  *
- * `PokerTable` used to be exported from here as an alias of `CardTable`. The
- * name is gone rather than repointed: a round table is a shape, and the betting
- * line that made it "poker" is a `ring` the caller declares.
+ * A round table is a shape, and the betting line that made one "poker" is a
+ * `ring` the caller declares.
  */

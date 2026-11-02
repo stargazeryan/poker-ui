@@ -191,7 +191,7 @@ tables cannot drift. The short version:
 | `RoundTable` / `SquareTable` | the same minus the shape knobs they already decided |
 | `DealerTable` | `head`, `headWidth`, `headHeight`, `headY`, `renderHand(i, box)`, `handCount`, `handWidth`, `handHeight`, `handGap`, `handY`, `designWidth`, `designHeight`, `fit`, `renderOverlay(geometry)`, `className` |
 | `FitBox` | `designWidth`, `designHeight`, `fit`, `children` (**called** with `{ width, height, scale }`), `className` |
-| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
+| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
 | `Counter` | `amount`, `label`, `format`, `animate` |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label` |
 | `CardBack` | `size`, `label`, `className` |

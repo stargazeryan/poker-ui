@@ -775,14 +775,13 @@ export function SeatPage() {
         code={`<Seat
   header={...}      above={...}      topLeft={...}
   children={...}    below={...}      topRight={...}
-  footer={...}      badge={...}      topCenter={...}
+  footer={...}                       topCenter={...}
   overlay={...}
 />`}
       >
         <Seat
           header={<span className="w-full text-center text-[10px] text-sky-300">header</span>}
           footer={<span className="w-full text-center text-[10px] text-sky-300">footer</span>}
-          badge={<span className="rounded bg-sky-500/20 px-1 text-[9px] text-sky-200">badge</span>}
           overlay={<span className="text-[10px] text-sky-300">overlay</span>}
           above={<span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] text-sky-200">above</span>}
           below={<span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] text-sky-200">below</span>}

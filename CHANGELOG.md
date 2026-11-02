@@ -45,6 +45,12 @@ read before upgrading.
   | `minSeatSeparation` | `minFrameSeparation` |
   | `DEAL_STAGGER_MS` | `STAGGER_MS` |
   | `FLIP_STAGGER_MS` | `FLIP_MS` |
+  | `Seat`'s `badge` | `Seat`'s `topRight` |
+
+  `badge` was the same "one slot, two props" problem as the rest of this release:
+  it was documented as *a legacy alias of `topRight`* and drawn two pixels away
+  from it, which is not an alias — it is two ways to say the same thing, with the
+  code sample in the docs using both at once.
 
   The two card-row presets are worth spelling out, because their defaults move
   onto `CardRow` itself: `size="lg"` + `animation="deal"` + `animationKey` (was
