@@ -159,8 +159,8 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           "Minimum clearance between neighbouring frames. Frames shrink uniformly (never below 50%) until it is honoured; `0` disables it. Every `Seat` inside the table is told the size that was settled on.",
       },
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — **a maximum, not a target**. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
       { name: "marginX", type: "number", default: "164 / 1200", description: "Rail inset as a fraction of the design box width." },
       { name: "marginY", type: "number", default: "196 / 900", description: "Rail inset as a fraction of the design box height." },
       { name: "feltGap", type: "number", default: "11", description: "Felt inset from the rail, in design-space px." },
@@ -168,7 +168,7 @@ export const COMPONENTS: ComponentDoc[] = [
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the box instead of letterboxing.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.',
       },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
     ],
@@ -230,9 +230,9 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Minimum clearance between hand frames. Frames shrink uniformly until it is honoured; `0` disables it.",
       },
       { name: "handY", type: "number", default: "0.74", description: "Centre of the row of hands, as a fraction of the design height." },
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
-      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the box instead of letterboxing a fixed aspect ratio.' },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — **a maximum, not a target**. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
+      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.' },
       {
         name: "renderOverlay",
         type: "(geometry: DealerOverlayGeometry) => ReactNode",
@@ -247,15 +247,15 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "FitBox",
     interfaceName: "FitBoxProps",
     summary:
-      "A container that lays its contents out in a fixed design box and scales that box to fit. It is the whole responsive half of every table type, on its own — so a layout that is none of them (a circle of options, a card you flip, a custom arrangement) still gets the scaling and the auto-shrink for free.",
+      "A container that lays its contents out in a fixed design box and scales that box **down** to fit. The design box is a maximum: a larger container adds empty space rather than enlarging the table. It is the whole responsive half of every table type, on its own — so a layout that is none of them (a circle of options, a card you flip, a custom arrangement) still gets the scaling and the auto-shrink for free.",
     props: [
-      { name: "designWidth", type: "number", default: "1200", description: "Width of the design box your content is laid out in." },
-      { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
+      { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — a maximum. A wider container adds empty space instead of enlarging the table." },
+      { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
       {
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of letterboxing a fixed one.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of leaving that space empty. Neither mode scales above 1 — the design box is a maximum.',
       },
       {
         name: "children",
@@ -288,7 +288,6 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "header", type: "ReactNode", description: "Top row inside the frame — name, badges." },
       { name: "children", type: "ReactNode", description: "Centre content — 0..N cards, an avatar, anything." },
       { name: "footer", type: "ReactNode", description: "Bottom row inside the frame — stack, status." },
-      { name: "badge", type: "ReactNode", description: "Floating element at the top-right of the frame." },
       { name: "overlay", type: "ReactNode", description: "Overlay centred over the frame." },
       { name: "above", type: "ReactNode", description: "Floating content above the frame, centred — e.g. an action bubble." },
       { name: "below", type: "ReactNode", description: "Content below the frame, centred — e.g. a countdown or a wager pill." },
@@ -481,36 +480,6 @@ export const COMPONENTS: ComponentDoc[] = [
         description: "Piece colours, cycled. A prop rather than a theme token because they land in inline styles, which Tailwind's tree-shaking cannot see.",
       },
       { name: "className", type: "string", description: "Extra classes." },
-    ],
-  },
-  {
-    slug: "hole-cards",
-    title: "HoleCards",
-    interfaceName: "HoleCardsProps",
-    page: "card-row",
-    summary:
-      "**Deprecated** — `CardRow` with `size=\"lg\"`. \"Hole cards\" is one game's word for a row of cards, and the mechanism was never specific to it.",
-    props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards; `null` entries render as card backs." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"lg"', description: "Card size." },
-      { name: "className", type: "string", description: "Extra classes." },
-      { name: "deal", type: "boolean", default: "true", description: "Animate the cards dealing in." },
-      { name: "dealKey", type: "string | number", description: "Change this to replay the deal for an unchanged hand." },
-    ],
-  },
-  {
-    slug: "community-cards",
-    title: "CommunityCards",
-    interfaceName: "CommunityCardsProps",
-    page: "card-row",
-    summary:
-      "**Deprecated** — `CardRow` with `animation=\"flip\"`. \"Community\" is one game's word for a shared row, and the difference from a hand was only ever the animation.",
-    props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards; `null` entries render as empty positions here, unlike `CardRow`'s default." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
-      { name: "className", type: "string", description: "Extra classes." },
-      { name: "animated", type: "boolean", default: "true", description: "Animate each card with a 3D flip." },
-      { name: "slots", type: "number", description: "Reserve a fixed number of positions so the row width never changes." },
     ],
   },
 ];

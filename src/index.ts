@@ -28,13 +28,7 @@ export {
 
 export { SIZES, type CardSize, type ChipSize, type Size } from "./sizes";
 export { CARD_HEIGHT, CARD_WIDTH } from "./cardSize";
-export {
-  COUNT_UP_MS,
-  DEAL_STAGGER_MS,
-  FLIP_MS,
-  FLIP_STAGGER_MS,
-  STAGGER_MS,
-} from "./motion";
+export { COUNT_UP_MS, FLIP_MS, STAGGER_MS } from "./motion";
 
 /* ------------------------------------------------------------------- cards -- */
 
@@ -101,9 +95,7 @@ export {
   defaultSeatPlacement,
   ellipseBox,
   fitSeatScale,
-  layoutSeats,
   layoutTable,
-  minSeatSeparation,
   seatPoint,
   seatRingRadii,
   tableRadii,
@@ -130,23 +122,19 @@ export {
   CardFan,
   CardRow,
   CardSlot,
-  CommunityCards,
-  HoleCards,
   PlayingCard,
   type CardAnimation,
   type CardBackProps,
   type CardFanProps,
   type CardRowProps,
   type CardSlotProps,
-  type CommunityCardsProps,
-  type HoleCardsProps,
   type PlayingCardProps,
 } from "./components/PlayingCard";
 
 export { Seat, type SeatProps } from "./components/Seat";
 export { Confetti, type ConfettiProps } from "./components/Confetti";
 
-export { Counter, Pot, type CounterProps, type PotProps } from "./components/Counter";
+export { Counter, type CounterProps } from "./components/Counter";
 
 export {
   CardTable,
@@ -192,7 +180,6 @@ export {
  *   else's game, and naming games in the API makes this library one release
  *   behind every game anyone invents.
  *
- * `PokerTable` used to be exported from here as an alias of `CardTable`. The
- * name is gone rather than repointed: a round table is a shape, and the betting
- * line that made it "poker" is a `ring` the caller declares.
+ * A round table is a shape, and the betting line that made one "poker" is a
+ * `ring` the caller declares.
  */

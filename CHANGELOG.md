@@ -4,6 +4,63 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## 0.9.0 — the design box is a maximum
+
+### Changed
+
+- **A container larger than the design box no longer enlarges the table.**
+  `FitBox` scaled the design box up as well as down, so what a table actually
+  measured was decided by whatever container it landed in: a 1600px container drew
+  a 1600px-wide table, and every number written in the box's units — the 160×176
+  seat frame, the 11px felt inset, the card sizes — came out larger than it was
+  designed to be.
+
+  The design box is a **maximum** now. At most it is drawn 1:1 and centred; a
+  smaller container scales the whole box down by one factor, exactly as before. So
+  the design size is a real size in CSS px, and the numbers measured in it are
+  real sizes at 1:1 rather than an arbitrary unit that the container rewrites.
+
+  **If you were relying on the upscale** — a container wider than `designWidth`,
+  which the table used to fill — it is now drawn at its design size with empty
+  space around it. Raise `designWidth`/`designHeight` to the largest size you want
+  the table to reach, or wrap the table in your own `transform: scale()` if you
+  want it to fill the container on one axis regardless. `fit="container"` still
+  removes the empty space within the cap.
+
+  Nothing about the layout itself changes: the ratio still decides the table's
+  shape, the seat ring and where everything sits. Only the factor is capped.
+
+### Removed
+
+- **Every name that was deprecated in 0.8.0 is gone.** 0.8.0 renamed them and kept
+  an alias so the upgrade would not be a rewrite. The alias has now had its
+  release, so it is doing nothing but costing you a `@deprecated` squiggle.
+
+  | removed | use instead |
+  | --- | --- |
+  | `Pot`, `PotProps` | `Counter`, `CounterProps` |
+  | `HoleCards`, `HoleCardsProps` | `CardRow` with `animation="deal"` |
+  | `CommunityCards`, `CommunityCardsProps` | `CardRow` with `animation="flip"` |
+  | `layoutSeats` | `layoutTable` |
+  | `minSeatSeparation` | `minFrameSeparation` |
+  | `DEAL_STAGGER_MS` | `STAGGER_MS` |
+  | `FLIP_STAGGER_MS` | `FLIP_MS` |
+  | `Seat`'s `badge` | `Seat`'s `topRight` |
+
+  `badge` was the same "one slot, two props" problem as the rest of this release:
+  it was documented as *a legacy alias of `topRight`* and drawn two pixels away
+  from it, which is not an alias — it is two ways to say the same thing, with the
+  code sample in the docs using both at once.
+
+  The two card-row presets are worth spelling out, because their defaults move
+  onto `CardRow` itself: `size="lg"` + `animation="deal"` + `animationKey` (was
+  `dealKey`) for a hand, and `size="md"` + `animation="flip"` +
+  `placeholder="empty"` for a board.
+
+  `minSeatSeparation` was the odd one out — the reference page called it a
+  deprecated alias while the source never carried the `@deprecated` tag, so
+  nothing was actually warning you. Both are consistent now: the name is gone.
+
 ## 0.8.1 — the first published release of the split
 
 **0.8.0 was tagged but never published**, so if you are upgrading from 0.7.0 this

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import { HoleCards } from "../src/components/PlayingCard";
+import { CardRow } from "../src/components/PlayingCard";
 import { Counter } from "../src/components/Counter";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -43,29 +43,33 @@ describe("Counter count-up", () => {
   });
 });
 
-describe("HoleCards deal animation", () => {
+describe("CardRow animation=deal", () => {
+  const dealt = (cards: (string | null)[], animationKey?: number) => (
+    <CardRow cards={cards} size="sm" animation="deal" animationKey={animationKey} />
+  );
+
   it("re-mounts a card that changed, so the deal animation replays", () => {
-    const { container, rerender } = render(<HoleCards cards={["As", "Kh"]} size="sm" />);
+    const { container, rerender } = render(dealt(["As", "Kh"]));
     const before = [...container.querySelectorAll(".animate-deal-in")];
-    rerender(<HoleCards cards={["Qd", "Kh"]} size="sm" />);
+    rerender(dealt(["Qd", "Kh"]));
     const after = [...container.querySelectorAll(".animate-deal-in")];
     expect(after[0], "changed card should be re-dealt").not.toBe(before[0]);
     expect(after[1], "unchanged card should be left alone").toBe(before[1]);
   });
 
   it("leaves the DOM alone when nothing changed", () => {
-    const { container, rerender } = render(<HoleCards cards={["As", "Kh"]} size="sm" />);
+    const { container, rerender } = render(dealt(["As", "Kh"]));
     const before = [...container.querySelectorAll(".animate-deal-in")];
-    rerender(<HoleCards cards={["As", "Kh"]} size="sm" />);
+    rerender(dealt(["As", "Kh"]));
     const after = [...container.querySelectorAll(".animate-deal-in")];
     expect(after[0]).toBe(before[0]);
     expect(after[1]).toBe(before[1]);
   });
 
-  it("re-deals the whole hand when dealKey changes (same cards, new round)", () => {
-    const { container, rerender } = render(<HoleCards cards={["As", "Kh"]} size="sm" dealKey={1} />);
+  it("re-deals the whole hand when animationKey changes (same cards, new round)", () => {
+    const { container, rerender } = render(dealt(["As", "Kh"], 1));
     const before = [...container.querySelectorAll(".animate-deal-in")];
-    rerender(<HoleCards cards={["As", "Kh"]} size="sm" dealKey={2} />);
+    rerender(dealt(["As", "Kh"], 2));
     const after = [...container.querySelectorAll(".animate-deal-in")];
     expect(after[0]).not.toBe(before[0]);
     expect(after[1]).not.toBe(before[1]);

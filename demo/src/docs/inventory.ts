@@ -69,8 +69,8 @@ export const COLOUR_TOKENS = TOKENS.filter((t) => t.kind === "colour");
  */
 export const LAYOUT_OPTIONS: ApiRow[] = [
   { name: "count", type: "number", description: "Number of seats. The same number as `CardTable`'s `seatCount`." },
-  { name: "designWidth", type: "number", default: "1200", description: "Width of the design box." },
-  { name: "designHeight", type: "number", default: "900", description: "Height of the design box." },
+  { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — a maximum. A wider container adds empty space." },
+  { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum." },
   { name: "marginX", type: "number", default: "164 / 1200", description: "Rail inset as a fraction of `designWidth` (0–0.5)." },
   { name: "marginY", type: "number", default: "196 / 900", description: "Rail inset as a fraction of `designHeight`." },
   { name: "feltGap", type: "number", default: "11", description: "Felt inset from the rail, in design-space px." },
@@ -128,8 +128,8 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "seatWidth", kind: "number", min: 80, max: 240, step: 8, hint: "preferred frame width" },
   { prop: "seatHeight", kind: "number", min: 80, max: 260, step: 8, hint: "preferred frame height" },
   { prop: "seatGap", kind: "number", min: 0, max: 90, step: 2, hint: "0 disables the auto-shrink" },
-  { prop: "designWidth", kind: "number", min: 600, max: 2000, step: 20, hint: "design box width" },
-  { prop: "designHeight", kind: "number", min: 450, max: 1500, step: 20, hint: "design box height" },
+  { prop: "designWidth", kind: "number", min: 600, max: 2000, step: 20, hint: "maximum width, in px" },
+  { prop: "designHeight", kind: "number", min: 450, max: 1500, step: 20, hint: "maximum height, in px" },
   { prop: "marginX", kind: "number", min: 0, max: 0.3, step: 0.005, hint: "rail inset, as a fraction" },
   { prop: "marginY", kind: "number", min: 0, max: 0.35, step: 0.005, hint: "rail inset, as a fraction" },
   { prop: "feltGap", kind: "number", min: 0, max: 60, step: 1, hint: "felt inset from the rail" },

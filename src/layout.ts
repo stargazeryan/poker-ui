@@ -17,7 +17,6 @@
 import {
   fitFrameScale,
   fitRowScale,
-  minFrameSeparation,
   perimeterFrames,
   ringFrames,
   rowFrames,
@@ -194,9 +193,6 @@ export function ellipseBox(designWidth: number, designHeight: number, rx: number
   return { top, right: left, bottom: top, left };
 }
 
-/** Smallest gap between any two frames. Alias of `minFrameSeparation`. */
-export const minSeatSeparation = minFrameSeparation;
-
 /** The natural placement for a shape. */
 export function defaultSeatPlacement(shape: TableShape): SeatPlacement {
   if (shape === "rect") return "perimeter";
@@ -352,6 +348,3 @@ export function layoutTable(opts: LayoutOptions): Layout {
     },
   };
 }
-
-/** @deprecated Renamed to `layoutTable` — it lays out a table, not just seats. */
-export const layoutSeats = layoutTable;

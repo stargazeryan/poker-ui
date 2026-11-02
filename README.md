@@ -191,7 +191,7 @@ tables cannot drift. The short version:
 | `RoundTable` / `SquareTable` | the same minus the shape knobs they already decided |
 | `DealerTable` | `head`, `headWidth`, `headHeight`, `headY`, `renderHand(i, box)`, `handCount`, `handWidth`, `handHeight`, `handGap`, `handY`, `designWidth`, `designHeight`, `fit`, `renderOverlay(geometry)`, `className` |
 | `FitBox` | `designWidth`, `designHeight`, `fit`, `children` (**called** with `{ width, height, scale }`), `className` |
-| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `badge`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
+| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
 | `Counter` | `amount`, `label`, `format`, `animate` |
 | `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label` |
 | `CardBack` | `size`, `label`, `className` |
@@ -254,16 +254,18 @@ varies between houses, so it is the one to change first.
 ## Layout, seat size and responsiveness
 
 Everything is laid out in a fixed **design box** (1200×900 by default) that is
-then scaled to fit its container.
+scaled **down** to fit its container. The design box is a **maximum**: a larger
+container adds empty space rather than enlarging the table, so the design size is
+a real size and the numbers below are real px at 1:1.
 
 | Prop | Default | Meaning |
 | --- | --- | --- |
-| `designWidth` / `designHeight` | `1200` / `900` | the design box |
+| `designWidth` / `designHeight` | `1200` / `900` | the design size, in CSS px — a **maximum** |
 | `marginX` / `marginY` | `164/1200`, `196/900` | rail inset, as a **fraction** of the box |
 | `feltGap` | `11` | felt inset from the rail, design-space px |
 | `seatWidth` / `seatHeight` | `160` / `176` | **preferred** seat frame size |
 | `seatGap` | `24` | minimum clearance between neighbouring frames |
-| `fit` | `"design"` | `"container"` derives the width from the container |
+| `fit` | `"design"` | `"container"` derives the width from the container; neither scales above 1 |
 
 Because the insets are fractions, a custom design box stays in proportion.
 

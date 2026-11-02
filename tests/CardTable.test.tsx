@@ -12,7 +12,7 @@ import {
 } from "../src/components/CardTable";
 import { Confetti } from "../src/components/Confetti";
 import { Seat } from "../src/components/Seat";
-import { GLOW_GAP, layoutSeats } from "../src/layout";
+import { GLOW_GAP, layoutTable } from "../src/layout";
 import { setElementSize } from "./setup";
 
 const insetPx = (el: HTMLElement): { top: number; right: number; bottom: number; left: number } => ({
@@ -112,7 +112,7 @@ describe("the seat frame size has one source", () => {
       <CardTable seatCount={10} seatWidth={200} seatHeight={220} renderSeat={() => <Seat />} />,
     );
     // what the ring actually computed
-    const expected = layoutSeats({
+    const expected = layoutTable({
       count: 10,
       designWidth: DESIGN_W,
       designHeight: DESIGN_H,
