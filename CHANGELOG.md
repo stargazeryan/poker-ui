@@ -31,6 +31,11 @@ read before upgrading.
   built bundle that scores 0% and moves the total whenever the site is rebuilt —
   and fails below 90% statements, 85% branches, 90% functions and 90% lines. CI
   runs that in place of the plain test run, so it is one pass rather than two.
+- **The consumer smoke test has a CSS ceiling.** It already asserted that every
+  utility and token *reaches* a consumer's stylesheet; it now also fails when that
+  stylesheet passes 32 kB (28.1 kB today). The number is the whole consumer app's
+  CSS, Tailwind's preflight included, so it is a tripwire for the class of
+  regression that ships every keyframe to everybody — not a budget.
 - **`npm run lint`** — an ESLint flat config (`eslint.config.js`) and an
   `.editorconfig`, with the lint run added to CI. It is there for the class of
   mistake this package has actually made: `react-hooks/rules-of-hooks` refuses

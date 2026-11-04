@@ -376,7 +376,7 @@ npm run typecheck     # tsc --noEmit
 npm test              # vitest: unit, component, docs routes, docs-vs-types, separation
 npm run test:coverage # the same run with the coverage gate (src/** only)
 npm run build         # tsup -> dist (ESM + CJS + d.ts), two entries
-npm run test:consumer # pack + install + build a real consumer app, assert the CSS
+npm run test:consumer # pack + install + build a real consumer app, assert the CSS and its ceiling
 npm run check:release vX.Y.Z
 ```
 

@@ -293,6 +293,23 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
   }
 
   /*
+   * A ceiling rather than a budget.
+   *
+   * This is the consumer app's entire stylesheet — Tailwind's preflight, the
+   * package's utilities and its tokens — so it is a tripwire for the kind of
+   * regression that ships every keyframe to every consumer (the problem the
+   * tree-shaking assertions above exist for), not a precise measure of what the
+   * package weighs. 15% of headroom over today's number, to be worth having.
+   */
+  const sizeKb = css.length / 1024;
+  const ceilingKb = 32;
+  sizeKb <= ceilingKb
+    ? ok(`the whole consumer stylesheet is ${sizeKb.toFixed(1)} kB (ceiling ${ceilingKb} kB)`)
+    : fail(
+        `the consumer stylesheet is ${sizeKb.toFixed(1)} kB, over the ${ceilingKb} kB ceiling — did a new utility, token or animation land?`,
+      );
+
+  /*
    * The reduced-motion block must not reach into the host app's animations.
    * Both the pattern and the brace matching have to tolerate minification:
    * Lightning CSS turns the query into `@media(prefers-reduced-motion:reduce)`.
