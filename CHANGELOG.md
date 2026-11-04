@@ -49,6 +49,14 @@ read before upgrading.
   "173", "198", "219".
 - **`Seat` takes the space key.** It fired `onClick` and left the default action
   alone, so pressing space also scrolled the page.
+- **The edge glow is drawn on a table with no felt.** `glow` did nothing with
+  `deck={false}` — the default with `shape="none"` — because the entire surface
+  layer is skipped there, so `glow={isMyTurn}` asked for a halo and silently got
+  none. It is the one decoration that needs nothing drawn under it, so
+  `CardTable` and `DealerTable` draw it themselves now, and the prop means the
+  same thing on every shape. `watermark` and `ambient` stay tied to the felt, and
+  now say so: a watermark is drawn *on* the felt and the ambient light is a light
+  *on* it.
 - **`ellipseBox` and `surface.insetBox` are one implementation.** They were two
   copies of the same conversion, which is how the reference page came to call one
   of them "the one place that conversion happens".

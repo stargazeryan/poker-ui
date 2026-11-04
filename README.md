@@ -302,7 +302,7 @@ All on by default, each toggleable:
 | Winner glow | `Seat isWinner` | `animated={false}` |
 | Counter count-up | `Counter` | `animate={false}` |
 | Ambient felt + spotlight | `CardTable` | `ambient={false}` |
-| Your-turn edge glow | your own ring in the table's `renderOverlay` | render it conditionally |
+| Your-turn edge glow | `glow` on the table — drawn with or without a felt | `glow={false}` |
 | Confetti | `<Confetti />` | render it conditionally |
 
 The CSS animations are disabled automatically under `prefers-reduced-motion`. The

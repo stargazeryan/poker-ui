@@ -419,3 +419,36 @@ describe("CardTable — overlay and decorations", () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("CardTable — the edge glow", () => {
+  it("is drawn on a table with no rail and no felt", () => {
+    // `deck` is off with shape="none", so the surface layer never runs — and it
+    // used to take the glow down with it: the one decoration that needs nothing
+    // under it was dropped in silence.
+    const { container } = render(<CardTable shape="none" glow renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelectorAll("div.animate-turn-glow")).toHaveLength(1);
+    expect(container.querySelector('[data-part="glow"]')).toBeTruthy();
+    // and nothing else was painted: the ambient light does need a felt
+    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(0);
+  });
+
+  it("is drawn exactly once when the table does have a surface", () => {
+    const { container } = render(<CardTable glow renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelectorAll("div.animate-turn-glow")).toHaveLength(1);
+  });
+
+  it("is still not drawn unless the caller asks for it", () => {
+    const bare = render(<CardTable shape="none" renderSeat={(i) => <div>{i}</div>} />).container;
+    expect(bare.querySelectorAll('[data-part="glow"]')).toHaveLength(0);
+  });
+
+  it("does not draw a watermark without a felt to draw it on", () => {
+    // A watermark goes *on* the felt; with no felt there is nothing for it to be
+    // on, and the prop now says so instead of dropping it silently.
+    const { container } = render(
+      <CardTable shape="none" watermark={<span>♠♥♦♣</span>} renderSeat={(i) => <div>{i}</div>} />,
+    );
+    expect(container.querySelectorAll('[data-part="watermark"]')).toHaveLength(0);
+    expect(container.textContent).not.toContain("♠");
+  });
+});

@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
 import { FitBox, type DesignBox } from "../components/FitBox";
 import { SeatSizeContext } from "../components/seatSize";
-import { TableRim, TableSurface } from "../components/TableSurface";
+import { TableGlow, TableRim, TableSurface } from "../components/TableSurface";
 import { fitFrameScale, fitRowScale, rowFrames, type FrameBox } from "../frames";
 import {
   DEFAULT_FELT_GAP,
@@ -124,9 +124,16 @@ export interface DealerTableProps {
    * Draw the edge glow — a golden halo hugging the rail, behind the hands.
    * Default false. `glow={isDealersTurn}` is what this is for; the table does
    * not know what a turn is.
+   *
+   * Drawn on a table with no felt too (`deck={false}`, the default with
+   * `shape="none"`): it is the one decoration that needs nothing under it.
    */
   glow?: boolean;
-  /** Decoration across the middle of the felt. Nothing is drawn by default. */
+  /**
+   * Decoration across the middle of the felt. Nothing is drawn by default, and
+   * nothing can be: a watermark is drawn *on* a felt, so with `deck={false}`
+   * there is nothing for it to be on.
+   */
   watermark?: ReactNode;
   /** Extra classes for the rail. */
   railClassName?: string;
@@ -287,6 +294,9 @@ function DealerSurface({
           feltClassName={feltClassName}
         />
       )}
+
+      {/* No surface to paint, but the glow needs nothing under it (see `TableGlow`). */}
+      {glow && !deck && <TableGlow layout={surface} />}
 
       {head !== undefined && (
         <div

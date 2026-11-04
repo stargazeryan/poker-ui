@@ -16,7 +16,7 @@ import {
 import type { SeatPlacement, TableShape } from "../surface";
 import { FitBox, type DesignBox } from "./FitBox";
 import { SeatSizeContext } from "./seatSize";
-import { TableRim, TableSurface } from "./TableSurface";
+import { TableGlow, TableRim, TableSurface } from "./TableSurface";
 
 /* Re-exported so an import from this module keeps working; the constants live
  * in `layout.ts` and `surface.ts` with the rest of the geometry. */
@@ -157,6 +157,10 @@ export interface CardTableProps {
    * Nothing is drawn by default. A suit watermark is a card-room decoration, not
    * part of a table, so a game that is not played on green felt does not inherit
    * one.
+   *
+   * **It needs a felt**, because a watermark is drawn *on* one: with
+   * `deck={false}` (the default with `shape="none"`) there is nothing for it to
+   * be on, and it is not drawn.
    */
   watermark?: ReactNode;
   /** Extra classes for the rail, to restyle or replace it. */
@@ -187,6 +191,10 @@ export interface CardTableProps {
    * what a turn is. Draw it here rather than in `renderOverlay`: the overlay
    * layer is above the seats, so a halo drawn there sits on top of the seat
    * frames instead of behind them.
+   *
+   * It is drawn on a table with no felt as well (`deck={false}`, the default
+   * with `shape="none"`), where it hugs the design box — the one decoration
+   * that needs nothing under it.
    */
   glow?: boolean;
   /**
@@ -367,6 +375,13 @@ function Table({
           feltClassName={feltClassName}
         />
       )}
+
+      {/*
+       * No rail and no felt were asked for, but the glow is the one decoration
+       * that needs nothing drawn under it: `glow={isMyTurn}` means the same
+       * thing on a bare table as on a felted one (see `TableGlow`).
+       */}
+      {glow && !deck && <TableGlow layout={layout} />}
 
       {/* caller-declared outlines: a betting line, a muck ring, a target zone */}
       {rings?.map((ring) => (

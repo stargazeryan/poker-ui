@@ -4,8 +4,9 @@ import type { Box, Layout } from "../layout";
 
 /**
  * The *drawn* table: the glow behind it, the rail, the felt, the ambient light
- * and the watermark — and, separately, the rim hairline that goes in front of
- * the seats.
+ * and the watermark — and, separately, the two pieces a table may draw on their
+ * own, the edge glow (`TableGlow`, which needs nothing under it) and the rim
+ * hairline (which goes in front of the seats).
  *
  * Split out of `CardTable` so that every table type paints the same table. A
  * dealer table is a different *arrangement* (a head and a row, not a ring), not
@@ -59,6 +60,9 @@ interface TableSurfaceProps {
    * layout has always computed `boxes.glow` and the library never drew it, so
    * every caller drew it themselves in `renderOverlay` — which is a layer
    * *above* the seats, and put the halo over the seat frames.
+   *
+   * It is the one decoration that needs nothing under it, so a table with no
+   * felt draws it anyway (see `TableGlow`).
    */
   glow?: boolean;
   /** Extra classes for the rail. */
@@ -140,16 +144,11 @@ export function TableSurface({
        * The edge glow, behind the seats and the caller's content — the layer
        * `boxes.glow` was always computed for.
        */}
-      {glow && (
-        <div
-          className="pointer-events-none absolute animate-turn-glow"
-          style={{ borderRadius: radius, ...px(boxes.glow) }}
-          aria-hidden="true"
-        />
-      )}
+      {glow && <TableGlow layout={layout} />}
 
       {watermark !== undefined && (
         <div
+          data-part="watermark"
           className="pointer-events-none absolute flex items-center justify-center"
           style={{ borderRadius: radius, ...px(boxes.felt) }}
           aria-hidden="true"
@@ -158,6 +157,28 @@ export function TableSurface({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * The edge glow: a golden halo at `boxes.glow`, behind the seats and the
+ * caller's content.
+ *
+ * It is a component of its own because it is the one decoration that needs
+ * nothing drawn under it. `CardTable` and `DealerTable` render it directly when
+ * the caller asks for a glow on a table with no rail and no felt —
+ * `shape="none"`, where `deck` is off and `TableSurface` never runs — so
+ * `glow={isMyTurn}` means the same thing on every shape instead of silently
+ * doing nothing on one of them.
+ */
+export function TableGlow({ layout }: { layout: Pick<Layout, "radius" | "boxes"> }) {
+  return (
+    <div
+      data-part="glow"
+      className="pointer-events-none absolute animate-turn-glow"
+      style={{ borderRadius: layout.radius, ...px(layout.boxes.glow) }}
+      aria-hidden="true"
+    />
   );
 }
 
