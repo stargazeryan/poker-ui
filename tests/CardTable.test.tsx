@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { CardTable, type TableOverlayGeometry } from "../src/components/CardTable";
+import { Confetti } from "../src/components/Confetti";
+import { Seat } from "../src/components/Seat";
 import {
-  CardTable,
   DEFAULT_FELT_GAP,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
-  type TableOverlayGeometry,
-} from "../src/components/CardTable";
-import { Confetti } from "../src/components/Confetti";
-import { Seat } from "../src/components/Seat";
-import { GLOW_GAP, layoutTable } from "../src/layout";
+  GLOW_GAP,
+  layoutTable,
+} from "../src/layout";
 import { setElementSize } from "./setup";
 
 const insetPx = (el: HTMLElement): { top: number; right: number; bottom: number; left: number } => ({

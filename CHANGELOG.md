@@ -4,7 +4,29 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
-## Unreleased
+## 0.10.0 — the review pass
+
+A pass over 0.9.0's leftovers: three names that were doing nothing, a slot radius
+that did not clamp the way its ring did, two layouts recomputed on every render,
+and the tooling that would have caught all of it. **Removed** is the section to
+read before upgrading.
+
+### Removed
+
+- **`SeatLayout` and `EllipseBox`** — type aliases of `FrameBox` and `Box`, kept
+  as "the name the docs and older consumers know". They were the last of the
+  aliases 0.9.0 set out to delete (`layoutSeats` and `minSeatSeparation` went
+  with it); two names for one type is exactly what that release spent itself
+  removing. Use `FrameBox` and `Box`.
+- **`fitRowScale`'s `height` option** — a documented, required member of
+  `RowFitOptions` that the function never read (`void height;`). A public option
+  with no effect is worse than no option, because it reads like a knob. `width`,
+  `gap`, `maxWidth` and `fraction` are the ones that do something.
+- **The internal re-export shims** in `components/CardTable.tsx` and
+  `components/PlayingCard.tsx`, along with the comment claiming they kept "an
+  import from this module" working: the public entries never went through them,
+  and the only importers were this repo's own tests. Nothing public moves — the
+  exports map has only ever exposed the two entries and the stylesheets.
 
 ### Added
 

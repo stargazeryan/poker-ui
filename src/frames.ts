@@ -259,8 +259,6 @@ export interface RowFitOptions {
   count: number;
   /** Preferred frame width. */
   width: number;
-  /** Preferred frame height. */
-  height: number;
   /** Clearance between neighbours. */
   gap: number;
   /** The widest the row may be, frame edge to frame edge. */
@@ -285,13 +283,11 @@ export interface RowFitOptions {
 export function fitRowScale({
   count,
   width,
-  height,
   gap,
   maxWidth,
   fraction = 1,
   floor = FRAME_SHRINK_FLOOR,
 }: RowFitOptions): number {
-  void height;
   const n = normCount(count);
   const limit = maxWidth * fraction;
   if (!Number.isFinite(limit) || limit <= 0) return floor;

@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import {
-  CardBack,
-  CardFan,
-  CardRow,
-  CardSlot,
-  PlayingCard,
-  getSuitSymbol,
-  parseCard,
-} from "../src/components/PlayingCard";
+import { CardBack, CardFan, CardRow, CardSlot, PlayingCard } from "../src/components/PlayingCard";
+import { getSuitSymbol, parseCard } from "../src/cards";
 import { CARD_HEIGHT, CARD_WIDTH } from "../src/cardSize";
 
 describe("parseCard", () => {

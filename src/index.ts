@@ -100,10 +100,8 @@ export {
   seatPoint,
   seatRingRadii,
   tableRadii,
-  type EllipseBox,
   type Layout,
   type LayoutOptions,
-  type SeatLayout,
 } from "./layout";
 
 /* -------------------------------------------------------------- components -- */

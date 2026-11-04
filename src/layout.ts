@@ -59,11 +59,6 @@ export const ROW_FRACTION = 0.94;
 
 export type { FrameBox, SeatPlacement, TableShape, Box };
 
-/** Kept as the name the docs and older consumers know. */
-export type SeatLayout = FrameBox;
-/** An inset box — the representation every shape shares. */
-export type EllipseBox = Box;
-
 export interface LayoutOptions {
   /** Number of seats. */
   count: number;
@@ -290,7 +285,6 @@ export function fitSeatScale(opts: LayoutOptions): number {
     fitRowScale({
       count: opts.count,
       width: opts.seatWidth,
-      height: opts.seatHeight,
       gap: opts.seatGap,
       maxWidth: opts.designWidth,
       fraction: ROW_FRACTION,

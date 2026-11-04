@@ -5,14 +5,6 @@ import { describeCard, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "
 import { FLIP_MS, STAGGER_MS } from "../motion";
 import { type CardSize } from "../sizes";
 
-/*
- * Card helpers are re-exported from here so imports from this module keep
- * working; they live in `cards.ts` now, next to the naming they belong with.
- */
-export { describeCard, getRankName, getSuitName, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "../cards";
-export type { ParsedCard } from "../cards";
-export type { CardSize } from "../sizes";
-
 const SIZE_CLASSES: Record<CardSize, string> = {
   xs: "w-8 h-11",
   sm: "w-10 h-14",

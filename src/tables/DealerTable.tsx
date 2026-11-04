@@ -272,7 +272,6 @@ function DealerSurface({
         fitRowScale({
           count,
           width: handWidth,
-          height: handHeight,
           gap: handGap,
           maxWidth: width,
           fraction: ROW_FRACTION,

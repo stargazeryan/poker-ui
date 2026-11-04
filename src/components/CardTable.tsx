@@ -18,20 +18,6 @@ import { FitBox, type DesignBox } from "./FitBox";
 import { SeatSizeContext } from "./seatSize";
 import { TableGlow, TableRim, TableSurface } from "./TableSurface";
 
-/* Re-exported so an import from this module keeps working; the constants live
- * in `layout.ts` and `surface.ts` with the rest of the geometry. */
-export {
-  DEFAULT_FELT_GAP,
-  DEFAULT_MARGIN_X,
-  DEFAULT_MARGIN_Y,
-  DEFAULT_SEAT_GAP,
-  DEFAULT_SEAT_H,
-  DEFAULT_SEAT_W,
-  DESIGN_H,
-  DESIGN_W,
-} from "../layout";
-export { DEFAULT_CORNER_FRACTION } from "../surface";
-
 /** Geometry CardTable laid a seat frame out for, handed to `renderSeat`. */
 export interface SeatBox {
   index: number;
