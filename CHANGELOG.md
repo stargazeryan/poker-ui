@@ -8,6 +8,17 @@ read before upgrading.
 
 ### Added
 
+- **`@stargazeryan/poker-ui/compiled.css` — for a consumer who is not running
+  Tailwind.** Setup has always had one step people miss, and for a good reason: a
+  compiled package's class names are invisible to the consumer's Tailwind build
+  until they add `@source`, and missing it renders a styled component library
+  unstyled. That is unavoidable for a Tailwind app and pure friction for anyone
+  else, so `npm run build` now also emits the stylesheet already compiled —
+  utilities, tokens and keyframes in one ~24 kB file — exported as
+  `./compiled.css`. It carries deliberately **no preflight**: a reset shipped
+  inside a component library would rewrite the app's base styles on import. The
+  consumer smoke test builds a second entry that never touches Tailwind and
+  asserts the same utilities, tokens and keyframes reach it.
 - **`maxScale` — a larger container can enlarge the table again, on purpose.**
   0.9.0 made the design box a maximum, which was the right call (the numbers
   measured in it are real CSS px at 1:1), but it left "fill the container" with

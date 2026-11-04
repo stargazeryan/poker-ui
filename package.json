@@ -36,13 +36,15 @@
       "default": "./dist/wager.js"
     },
     "./styles.css": "./src/styles.css",
+    "./compiled.css": "./dist/compiled.css",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && npm run build:css",
+    "build:css": "tailwindcss -i scripts/compiled.css -o dist/compiled.css --minify",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -72,6 +74,7 @@
     "tailwindcss": ">=4"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.4",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",

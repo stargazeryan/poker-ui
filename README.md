@@ -54,10 +54,25 @@ Both extra lines are load-bearing:
 - the `styles.css` import brings the `@theme` block: the felt, rail, gold,
   card-back and chip tokens every component draws with.
 
+### and if you are not using Tailwind
+
+Then there is nothing to configure. The package ships that same stylesheet already
+compiled — utilities, tokens and keyframes in one file:
+
+```tsx
+import "@stargazeryan/poker-ui/compiled.css";
+```
+
+It deliberately carries **no preflight**, because a reset inside a component
+library would rewrite your app's own base styles the moment you imported it.
+Tailwind's custom-property initialisation is in there, since its utilities need
+it. Use one route or the other, not both.
+
 > `npm run test:consumer` in this repo packs the package, installs it into a
 > throwaway app that follows those three lines literally, and asserts the
 > utilities, tokens and keyframes all reached the output CSS — from both entry
-> points.
+> points. It also builds a second entry that imports none of that and only
+> `compiled.css`, and asserts the same things arrive there.
 
 ## Table types, not game tables
 
@@ -380,7 +395,8 @@ npm run lint          # eslint: hooks, types, and the small habits (no formatter
 npm run typecheck     # tsc --noEmit
 npm test              # vitest: unit, component, docs routes, docs-vs-types, separation
 npm run test:coverage # the same run with the coverage gate (src/** only)
-npm run build         # tsup -> dist (ESM + CJS + d.ts), two entries
+npm run build         # tsup -> dist (ESM + CJS + d.ts), then dist/compiled.css
+npm run build:css     # just the compiled stylesheet (needs dist/ to exist)
 npm run test:consumer # pack + install + build a real consumer app, assert the CSS and its ceiling
 npm run check:release vX.Y.Z
 ```
