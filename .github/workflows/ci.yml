@@ -34,8 +34,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests
-        run: npm test
+      # The coverage gate is this same run: one pass, thresholds enforced. An
+      # untested module or a deleted test used to be invisible in CI.
+      - name: Unit tests, with the coverage gate
+        run: npm run test:coverage
 
       - name: Build the package
         run: npm run build

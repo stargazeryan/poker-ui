@@ -374,6 +374,7 @@ npm install --include=dev
 npm run lint          # eslint: hooks, types, and the small habits (no formatter — see eslint.config.js)
 npm run typecheck     # tsc --noEmit
 npm test              # vitest: unit, component, docs routes, docs-vs-types, separation
+npm run test:coverage # the same run with the coverage gate (src/** only)
 npm run build         # tsup -> dist (ESM + CJS + d.ts), two entries
 npm run test:consumer # pack + install + build a real consumer app, assert the CSS
 npm run check:release vX.Y.Z

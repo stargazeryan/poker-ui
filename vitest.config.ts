@@ -23,5 +23,26 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     setupFiles: ["tests/setup.ts"],
     restoreMocks: true,
+    coverage: {
+      provider: "v8",
+      /*
+       * The library, and only the library.
+       *
+       * Measuring everything also counts the docs app and — once the site has
+       * been built — `demo/dist/assets/*.js`, a bundle that scores 0% and moves
+       * the total whenever somebody runs `npm run docs:build`. The number worth
+       * gating is `src`, and gating it in the same run as `npm test` is what
+       * stops a deleted test or an untested module from being invisible.
+       */
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.d.ts"],
+      reporter: ["text", "json-summary"],
+      thresholds: {
+        statements: 90,
+        branches: 85,
+        functions: 90,
+        lines: 90,
+      },
+    },
   },
 });

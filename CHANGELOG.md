@@ -24,6 +24,13 @@ read before upgrading.
   which is the invisible-spot problem this measurement was introduced to fix, back
   again through the theming door. `SPOT_CLASSES.light` / `SPOT_CLASSES.ink` are
   the two inks as classes; the measurement stays the default.
+- **The test suite has a coverage gate.** `@vitest/coverage-v8` was installed and
+  used by nothing: no `coverage` block, no thresholds, so an untested module or a
+  deleted test was invisible. `npm run test:coverage` measures `src/**` only —
+  measuring everything also counted the docs app and `demo/dist/assets/*.js`, a
+  built bundle that scores 0% and moves the total whenever the site is rebuilt —
+  and fails below 90% statements, 85% branches, 90% functions and 90% lines. CI
+  runs that in place of the plain test run, so it is one pass rather than two.
 - **`npm run lint`** — an ESLint flat config (`eslint.config.js`) and an
   `.editorconfig`, with the lint run added to CI. It is there for the class of
   mistake this package has actually made: `react-hooks/rules-of-hooks` refuses
