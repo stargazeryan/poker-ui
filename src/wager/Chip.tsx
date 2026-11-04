@@ -24,6 +24,15 @@ export interface ChipProps {
   colorClassName?: string;
   /** Colour of the eight edge spots. Defaults to `chipSpotColor(color)`. */
   spotColor?: string;
+  /**
+   * `fill-*` utility for the eight edge spots, applied over `spotColor`.
+   *
+   * The default spot colour is *measured* off `color`, which a `@theme` override
+   * cannot reach: repaint a chip's body dark and the spots keep the ink chosen
+   * for the old hex. Pass `SPOT_CLASSES.light` (or `.ink`) when you repaint the
+   * body from a token, so the spots are painted by the same override.
+   */
+  spotClassName?: string;
   /** Default `"md"`. */
   size?: ChipSize;
   /** Accessible name. Defaults to `"<value> chip"`. */
@@ -37,13 +46,16 @@ export interface ChipProps {
  * the value.
  *
  * The colours come from `--color-chip-*` via `fill-*` utilities, so the chip
- * palette is themeable like every other token.
+ * palette is themeable like every other token. The edge spots are the exception
+ * unless you say otherwise: their colour is *measured* from `color` (see
+ * `spotClassName`), and a measured colour cannot follow a theme override.
  */
 export function Chip({
   value,
   color = "#2980b9",
   colorClassName,
   spotColor,
+  spotClassName,
   size = "md",
   label,
   className,
@@ -90,6 +102,7 @@ export function Chip({
               width={3.4}
               height={6}
               rx={1.3}
+              className={spotClassName}
               fill={spots}
               transform={`translate(${24 + 19.3 * Math.cos(rad)} ${15 + 10.7 * Math.sin(rad)}) rotate(${angle})`}
             />
@@ -184,6 +197,7 @@ export function ChipStack({
                 color={entry.color}
                 colorClassName={entry.className}
                 spotColor={entry.spotColor}
+                spotClassName={entry.spotClassName}
                 size={size}
               />
             </div>

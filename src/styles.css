@@ -55,6 +55,17 @@
   --color-chip-green: #27ae60;
   --color-chip-black: #1a1a2e;
   --color-chip-white: #ecf0f1;
+  /*
+   * The two inks a chip's edge spots are drawn in, as tokens.
+   *
+   * The spots need a token of their own because their colour is chosen by
+   * *measuring* the body — and a body repainted from a `@theme` override is not
+   * a colour JavaScript can read. Repaint `--color-chip-white` dark and the
+   * measured spots stay dark with it; `fill-chip-spot` / `fill-chip-spot-ink`
+   * (see `SPOT_CLASSES`) are how the spots follow.
+   */
+  --color-chip-spot: rgba(255, 255, 255, 0.9);
+  --color-chip-spot-ink: rgba(0, 0, 0, 0.45);
 
   /* ---- animations ---- */
   --animate-card-flip: card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;

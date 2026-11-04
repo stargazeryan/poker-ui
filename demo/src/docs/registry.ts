@@ -470,6 +470,12 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           "Colour of the eight edge spots. Defaults to `chipSpotColor(color)`, which is white except on a light body — white spots on the white chip sit at 1.1:1 and vanish.",
       },
+      {
+        name: "spotClassName",
+        type: "string",
+        description:
+          "A `fill-*` utility for the edge spots, over `spotColor`. The default spot colour is *measured* off `color`, which a `@theme` override cannot reach — pass `SPOT_CLASSES.light` (or `.ink`) when you repaint a chip's body from a token.",
+      },
       { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
       { name: "label", type: "string", description: 'Accessible name. Defaults to "<value> chip".' },
       { name: "className", type: "string", description: "Extra classes." },

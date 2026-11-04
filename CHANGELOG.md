@@ -15,6 +15,15 @@ read before upgrading.
   because *what* a row is belongs to the caller's game. The reserved positions
   past the end of `cards` are `aria-hidden` now — they hold nothing, so they
   should say nothing.
+- **`Chip` and `Denomination` take a `spotClassName`**, with `--color-chip-spot`
+  and `--color-chip-spot-ink` behind it. A chip's body is painted by a class and
+  its edge spots by a colour *measured* off `color` — the hex — and the two never
+  knew about each other. Repaint `--color-chip-white` from a `@theme` block, which
+  is the documented way to restyle a chip, and the body moves while the spots keep
+  the ink the maths chose for the old hex: a chip repainted dark keeps dark spots,
+  which is the invisible-spot problem this measurement was introduced to fix, back
+  again through the theming door. `SPOT_CLASSES.light` / `SPOT_CLASSES.ink` are
+  the two inks as classes; the measurement stays the default.
 - **`npm run lint`** — an ESLint flat config (`eslint.config.js`) and an
   `.editorconfig`, with the lint run added to CI. It is there for the class of
   mistake this package has actually made: `react-hooks/rules-of-hooks` refuses

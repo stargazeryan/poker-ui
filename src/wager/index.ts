@@ -11,6 +11,7 @@
 
 export {
   DEFAULT_DENOMINATIONS,
+  SPOT_CLASSES,
   chipBreakdown,
   chipCount,
   chipSpotColor,

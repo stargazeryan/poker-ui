@@ -48,6 +48,8 @@ export const TOKENS: TokenRow[] = [
   { name: "--color-chip-green", kind: "colour", value: "#27ae60", controls: "the green chip face (25 in the default set)" },
   { name: "--color-chip-black", kind: "colour", value: "#1a1a2e", controls: "the black chip face (100 in the default set)" },
   { name: "--color-chip-white", kind: "colour", value: "#ecf0f1", controls: "the white chip face (1 in the default set)" },
+  { name: "--color-chip-spot", kind: "colour", value: "rgba(255, 255, 255, 0.9)", controls: "the light edge-spot ink, as a class (`SPOT_CLASSES.light`)" },
+  { name: "--color-chip-spot-ink", kind: "colour", value: "rgba(0, 0, 0, 0.45)", controls: "the dark edge-spot ink, as a class (`SPOT_CLASSES.ink`)" },
   { name: "--animate-card-flip", kind: "animation", value: "card-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "`CardRow animation=\"flip\"`" },
   { name: "--animate-deal-in", kind: "animation", value: "deal-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both", controls: "`CardRow animation=\"deal\"`, staggered by STAGGER_MS" },
   { name: "--animate-turn-glow", kind: "animation", value: "turn-glow 1.3s ease-in-out infinite", controls: "`Seat isActive`, and any ring you draw in a table's overlay" },

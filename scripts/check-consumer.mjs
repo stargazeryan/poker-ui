@@ -236,6 +236,11 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     // themselves.
     [".fill-chip-black", /\.fill-chip-black\s*{/],
     [".fill-chip-blue", /\.fill-chip-blue\s*{/],
+    // The edge-spot inks, which nothing uses by default: they exist for a
+    // consumer who repaints a chip's body from a token, so a build that dropped
+    // them would leave exactly that consumer with invisible spots.
+    [".fill-chip-spot", /\.fill-chip-spot\s*{/],
+    [".fill-chip-spot-ink", /\.fill-chip-spot-ink\s*{/],
   ];
   for (const [label, re] of utilities) {
     (re.test(css) ? ok : fail)(`utility present: ${label}`);
@@ -272,6 +277,8 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     "--color-chip-red",
     "--color-chip-black",
     "--color-chip-blue",
+    "--color-chip-spot",
+    "--color-chip-spot-ink",
     // removed as dead: nothing in the package or the docs referenced them
     "--color-wood",
   ];
