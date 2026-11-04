@@ -168,7 +168,14 @@ export const COMPONENTS: ComponentDoc[] = [
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) so the table fills the space instead of leaving it empty.',
+      },
+      {
+        name: "maxScale",
+        type: "number",
+        default: "1",
+        description:
+          "How far a **larger** container may enlarge the table: `1` never does (empty space instead), `2` grows it to twice the design size, `Infinity` fills the container — the pre-0.9.0 behaviour.",
       },
       { name: "className", type: "string", description: "Extra classes on the outer element." },
     ],
@@ -232,7 +239,8 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "handY", type: "number", default: "0.74", description: "Centre of the row of hands, as a fraction of the design height." },
       { name: "designWidth", type: "number", default: "1200", description: "The width your content is designed for, in CSS px — **a maximum, not a target**. A wider container adds empty space instead of enlarging the table." },
       { name: "designHeight", type: "number", default: "900", description: "The height your content is designed for, in CSS px. A maximum, like `designWidth`." },
-      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the space instead of leaving it empty. Neither mode scales above 1 — the design box is a maximum.' },
+      { name: "fit", type: '"design" | "container"', default: '"design"', description: '`"container"` fills the space instead of leaving it empty.' },
+      { name: "maxScale", type: "number", default: "1", description: "How far a **larger** container may enlarge the table. `Infinity` fills the container at any size." },
       {
         name: "renderOverlay",
         type: "(geometry: DealerOverlayGeometry) => ReactNode",
@@ -255,7 +263,14 @@ export const COMPONENTS: ComponentDoc[] = [
         name: "fit",
         type: '"design" | "container"',
         default: '"design"',
-        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of leaving that space empty. Neither mode scales above 1 — the design box is a maximum.',
+        description: '`"container"` derives the design width from the container aspect ratio (clamped 0.5–2.5) instead of leaving that space empty.',
+      },
+      {
+        name: "maxScale",
+        type: "number",
+        default: "1",
+        description:
+          "The largest multiplier the box may be drawn at. `1` means the design box is a maximum and a bigger container adds empty space; `Infinity` fills the container at any size.",
       },
       {
         name: "children",

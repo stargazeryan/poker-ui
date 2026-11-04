@@ -265,10 +265,15 @@ a real size and the numbers below are real px at 1:1.
 | `feltGap` | `11` | felt inset from the rail, design-space px |
 | `seatWidth` / `seatHeight` | `160` / `176` | **preferred** seat frame size |
 | `seatGap` | `24` | minimum clearance between neighbouring frames |
-| `fit` | `"design"` | `"container"` derives the width from the container; neither scales above 1 |
+| `fit` | `"design"` | `"container"` derives the width from the container |
+| `maxScale` | `1` | how far a **larger** container may enlarge the box; `Infinity` fills it |
 
 Because the insets are fractions, a custom design box stays in proportion.
 
+- **A larger container is empty space by default.** The design box is a maximum,
+  so a 1600px container draws a 1200px table, centred. `maxScale={2}` lets it grow
+  to twice the design size, and `maxScale={Infinity}` fills the container at any
+  size — what 0.8.x did unconditionally, for a table that should track the window.
 - **`fit="container"` removes letterboxing.** With the default fit, a
   phone-portrait container (390×700) scales the 4:3 box down and wastes ~58% of
   it. `fit="container"` derives the design width from the container's aspect

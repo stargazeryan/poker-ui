@@ -309,6 +309,8 @@ const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
   deck: true,
   ambient: true,
   fit: "design",
+  // the cap the playground's slider can reach; 1 is the library's default
+  maxScale: 1,
   className: false,
   // Not CardTable props: what the *caller* decides to declare and draw.
   glow: true,

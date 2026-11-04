@@ -252,6 +252,15 @@ describe("CardTable — scaling and fit", () => {
     expect(px(wrapper(container).style.height)).toBeCloseTo(900 * (640 / 1200), 3);
   });
 
+  it("passes maxScale through, so a caller can let a big container enlarge the table", () => {
+    setElementSize(2400, 1800); // twice the design box on both axes
+    const capped = render(<CardTable renderSeat={(i) => <div>{i}</div>} />);
+    expect(px(wrapper(capped.container).style.width)).toBeCloseTo(1200, 3);
+
+    const filled = render(<CardTable maxScale={Infinity} renderSeat={(i) => <div>{i}</div>} />);
+    expect(px(wrapper(filled.container).style.width)).toBeCloseTo(2400, 3);
+  });
+
   it("fills the container with fit=\"container\"", () => {
     setElementSize(640, 900);
     const { container } = render(<CardTable fit="container" renderSeat={(i) => <div>{i}</div>} />);

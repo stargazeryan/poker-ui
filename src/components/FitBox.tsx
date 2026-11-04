@@ -24,6 +24,20 @@ export type FitMode = "design" | "container";
 export const MIN_FIT_ASPECT = 0.5;
 export const MAX_FIT_ASPECT = 2.5;
 
+/**
+ * The largest multiplier the design box may be drawn at.
+ *
+ * `Infinity` is the "fill the container" case — what 0.8.x did unconditionally
+ * and what `maxScale={Infinity}` still does. Anything else that is not a finite
+ * number falls back to the documented default, rather than propagating `NaN`
+ * into a style, and a negative cap cannot shrink a box that already fits.
+ */
+function capScale(maxScale: number): number {
+  if (maxScale === Infinity) return Infinity;
+  if (!Number.isFinite(maxScale)) return 1;
+  return Math.max(0, maxScale);
+}
+
 /** The design box in use, and the scale it is drawn at. */
 export interface DesignBox {
   /** Design-space width. Under `fit="container"` this is derived from the container. */
@@ -47,9 +61,18 @@ export interface FitBoxOptions {
    *   empty. The ratio changes here; the height does not.
    *
    * Neither mode scales above 1 — the design box is a maximum, see
-   * `designWidth`.
+   * `designWidth` — unless `maxScale` says otherwise.
    */
   fit?: FitMode;
+  /**
+   * The largest multiplier the design box may be drawn at. Default `1`, which is
+   * the "the design box is a maximum" rule: a bigger container adds empty space.
+   *
+   * Raise it to let a large container enlarge the content (`maxScale={2}` grows
+   * it to twice the design size), or pass `Infinity` for the pre-0.9.0
+   * behaviour of filling the container whatever its size.
+   */
+  maxScale?: number;
 }
 
 /**
@@ -58,7 +81,12 @@ export interface FitBoxOptions {
  * Guarded by the package's `"use client"` banner: `useLayoutEffect` warns during
  * server rendering.
  */
-export function useFitBox({ designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design" }: FitBoxOptions = {}): {
+export function useFitBox({
+  designWidth = DESIGN_W,
+  designHeight = DESIGN_H,
+  fit = "design",
+  maxScale = 1,
+}: FitBoxOptions = {}): {
   outerRef: RefObject<HTMLDivElement | null>;
   design: DesignBox;
 } {
@@ -86,11 +114,12 @@ export function useFitBox({ designWidth = DESIGN_W, designHeight = DESIGN_H, fit
       fit === "container" && box.w > 0 && box.h > 0
         ? dh * Math.min(MAX_FIT_ASPECT, Math.max(MIN_FIT_ASPECT, box.w / box.h))
         : designWidth;
-    // `1` is the cap: the design box is the largest the table is ever drawn, so
-    // a bigger container adds empty space instead of enlarging the table.
-    const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh, 1) : 1;
+    // `maxScale` is the cap: at its default of `1` the design box is the largest
+    // the content is ever drawn, so a bigger container adds empty space instead
+    // of enlarging the table.
+    const scale = box.w > 0 && box.h > 0 ? Math.min(box.w / dw, box.h / dh, capScale(maxScale)) : 1;
     return { width: dw, height: dh, scale };
-  }, [designWidth, designHeight, fit, box.w, box.h]);
+  }, [designWidth, designHeight, fit, maxScale, box.w, box.h]);
 
   return { outerRef, design };
 }
@@ -126,6 +155,16 @@ export interface FitBoxProps {
    */
   fit?: FitMode;
   /**
+   * The largest multiplier the design box may be drawn at, `1` by default: the
+   * design box is a maximum, so a container bigger than it adds empty space
+   * rather than enlarging the content.
+   *
+   * `maxScale={2}` lets a large container draw it twice as wide, and
+   * `maxScale={Infinity}` fills the container at any size — what 0.8.x did
+   * unconditionally, and what callers who relied on it now ask for.
+   */
+  maxScale?: number;
+  /**
    * The design-box contents, **called** with the box that was settled on rather
    * than mounted as children — so this stays a function of the live geometry and
    * never becomes a new component type on every render.
@@ -138,8 +177,8 @@ export interface FitBoxProps {
  * A container that lays its contents out in a fixed design box and scales that
  * box **down** to fit. Knows nothing about what is inside it.
  */
-export function FitBox({ designWidth, designHeight, fit, children, className }: FitBoxProps) {
-  const { outerRef, design } = useFitBox({ designWidth, designHeight, fit });
+export function FitBox({ designWidth, designHeight, fit, maxScale, children, className }: FitBoxProps) {
+  const { outerRef, design } = useFitBox({ designWidth, designHeight, fit, maxScale });
 
   return (
     <div

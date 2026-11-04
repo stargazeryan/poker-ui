@@ -8,6 +8,14 @@ read before upgrading.
 
 ### Added
 
+- **`maxScale` — a larger container can enlarge the table again, on purpose.**
+  0.9.0 made the design box a maximum, which was the right call (the numbers
+  measured in it are real CSS px at 1:1), but it left "fill the container" with
+  two answers: raise `designWidth`/`designHeight`, or wrap the table in your own
+  `transform: scale()`. `FitBox`, `CardTable` and `DealerTable` take `maxScale`
+  now: `1` by default, so nothing changes; `2` grows the table to twice its
+  design size; `Infinity` fills the container at any size, which is what 0.8.x
+  did unconditionally.
 - **`CardRow` and `CardFan` take a `label`** — the row's accessible name, e.g.
   `label="Your hand"`. A row of cards is a group that belongs together and
   nothing said so: a screen reader got a string of `role="img"` cards with no

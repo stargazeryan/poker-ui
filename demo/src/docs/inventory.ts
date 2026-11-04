@@ -142,6 +142,7 @@ export const CARD_TABLE_CONTROLS: ControlSpec[] = [
   { prop: "ambient", kind: "boolean", hint: "spotlight + felt sheen" },
   { prop: "glow", kind: "boolean", hint: "the edge halo, behind the seats — drawn with or without a felt" },
   { prop: "fit", kind: "enum", options: ["design", "container"] },
+  { prop: "maxScale", kind: "number", min: 1, max: 3, step: 0.25, hint: "1 = never enlarge; how far a bigger container may" },
   { prop: "className", kind: "boolean", hint: "hangs a debug outline on the outer element" },
 ];
 

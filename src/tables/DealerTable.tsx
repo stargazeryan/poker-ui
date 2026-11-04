@@ -152,6 +152,11 @@ export interface DealerTableProps {
   /** `"design"` (default) scales the fixed box; `"container"` fills the box. */
   fit?: "design" | "container";
   /**
+   * How far a **larger** container may enlarge the table. Default `1`: the design
+   * box is a maximum. `maxScale={Infinity}` fills the container at any size.
+   */
+  maxScale?: number;
+  /**
    * Content over the whole design box, `pointer-events-none` — a settlement
    * banner, confetti. **Called**, like `CardTable`'s, so both tables spell this
    * slot the same way and a caller switching between them changes a prop's
@@ -174,10 +179,10 @@ export interface DealerOverlayGeometry {
 const dim = (base: number, scale: number): number => Math.max(1, Math.round(base * scale));
 
 export function DealerTable(props: DealerTableProps) {
-  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", className } = props;
+  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", maxScale, className } = props;
 
   return (
-    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
+    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} maxScale={maxScale} className={className}>
       {(design) => <DealerSurface {...props} design={design} />}
     </FitBox>
   );

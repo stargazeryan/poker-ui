@@ -255,6 +255,15 @@ export interface CardTableProps {
    *   Use this for phone-portrait layouts.
    */
   fit?: "design" | "container";
+  /**
+   * How far a **larger** container may enlarge the table. Default `1`: the design
+   * box is a maximum, so a 1600px container draws a 1200px table, centred.
+   *
+   * `maxScale={2}` lets it grow to twice the design size and
+   * `maxScale={Infinity}` fills the container at any size — the pre-0.9.0
+   * behaviour, for a caller who wants the table to track the window.
+   */
+  maxScale?: number;
   className?: string;
 }
 
@@ -280,9 +289,9 @@ const px = (b: Box) => ({
  * belongs to one game.
  */
 export function CardTable(props: CardTableProps) {
-  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", className } = props;
+  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", maxScale, className } = props;
   return (
-    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
+    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} maxScale={maxScale} className={className}>
       {(design) => <Table {...props} design={design} />}
     </FitBox>
   );
