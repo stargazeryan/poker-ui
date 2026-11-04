@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
 import {
   DEFAULT_FELT_GAP,
@@ -138,8 +138,8 @@ export interface CardTableProps {
    *
    * `"row"` is the layout a dealer/player arrangement wants — never a ring.
    * For anything these three cannot express, use `<FitBox>` with `frames.ts`
-   * directly; that is exactly what the recipes in `@stargazeryan/poker-ui/recipes`
-   * do, and it is why the blackjack recipe has no table component in it.
+   * directly — `DealerTable` is exactly that — or compose it in your own app,
+   * the way the docs' worked examples do (`demo/src/examples/games.tsx`).
    */
   seatPlacement?: SeatPlacement;
   /**
@@ -220,8 +220,8 @@ export interface CardTableProps {
    * px. Frames shrink uniformly (down to 50%) until it is honoured, which is what
    * keeps 9–10 seat tables from looking cramped and what lets 11–16 seat tables
    * lay out at all. `0` disables it.
-   * Every Seat inside the table is told the frame size through context, so this
-   * applies to the `seats` array form too.
+   * Every `Seat` inside the table is told the frame size through context, so a
+   * bare `<Seat />` follows the ring without the size being threaded through.
    * Default 24.
    */
   seatGap?: number;
@@ -310,21 +310,48 @@ function Table({
   const requested = Math.floor(seatCount);
   const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
 
-  const layout = layoutTable({
-    count,
-    designWidth: design.width,
-    designHeight: design.height,
-    marginX,
-    marginY,
-    feltGap,
-    seatWidth,
-    seatHeight,
-    seatGap,
-    startAngle,
-    shape,
-    cornerRadius,
-    seatPlacement,
-  });
+  /*
+   * Memoised on the values the layout reads.
+   *
+   * `layoutTable` does not compute a layout, it *searches* for one: it re-runs
+   * the whole arrangement at each of up to 51 shrink steps, and each step is an
+   * O(n²) sweep of every frame pair (a 16-seat ring is 6,120 of them). Rebuilding
+   * that on every render made a table's cost a function of how often its parent
+   * re-rendered — a countdown, a hover, a keystroke anywhere above it.
+   */
+  const layout = useMemo(
+    () =>
+      layoutTable({
+        count,
+        designWidth: design.width,
+        designHeight: design.height,
+        marginX,
+        marginY,
+        feltGap,
+        seatWidth,
+        seatHeight,
+        seatGap,
+        startAngle,
+        shape,
+        cornerRadius,
+        seatPlacement,
+      }),
+    [
+      count,
+      design.width,
+      design.height,
+      marginX,
+      marginY,
+      feltGap,
+      seatWidth,
+      seatHeight,
+      seatGap,
+      startAngle,
+      shape,
+      cornerRadius,
+      seatPlacement,
+    ],
+  );
 
   const { seatW, seatH } = layout;
 

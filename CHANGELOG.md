@@ -4,6 +4,75 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## Unreleased
+
+### Added
+
+- **`CardRow` and `CardFan` take a `label`** — the row's accessible name, e.g.
+  `label="Your hand"`. A row of cards is a group that belongs together and
+  nothing said so: a screen reader got a string of `role="img"` cards with no
+  idea they were one hand. It is opt-in, and without it no role is added at all,
+  because *what* a row is belongs to the caller's game. The reserved positions
+  past the end of `cards` are `aria-hidden` now — they hold nothing, so they
+  should say nothing.
+- **`npm run lint`** — an ESLint flat config (`eslint.config.js`) and an
+  `.editorconfig`, with the lint run added to CI. It is there for the class of
+  mistake this package has actually made: `react-hooks/rules-of-hooks` refuses
+  the hook-in-a-callback that `DealerTable`'s memoised layout had to avoid, and
+  on its first run it found a genuinely duplicated import in
+  `tests/layout.test.ts`. There is deliberately **no formatter** — prettier was
+  measured against this tree and asked for 1,300+ changed lines across half the
+  repository, nearly all of it un-picking the hand-laid-out rows in
+  `demo/src/docs` — so line breaking stays a human decision.
+
+### Changed
+
+- **Every `Counter` on the page shares one animation loop.** Each counter used to
+  own a rAF loop, so a settlement animating nine seat stacks ran nine callbacks,
+  nine updates per frame and nine render passes. They subscribe to a single loop
+  now, it stops when the last one has finished, and a frame that rounds to the
+  number already on screen no longer re-renders at all.
+- **`engines.node` is `>=20`.** Vite 6, Vitest 3 and ESLint 10 already required
+  it and CI builds on 20; `>=18` was a promise the toolchain could not keep.
+
+### Fixed
+
+- **A slot declared outside the surface is clamped to it.** `layout.slotPoint`
+  multiplied the radius straight through while `ringBox` clamped it, so a slot at
+  `radius: 1.2` was drawn 87px past the rail its own ring was pinned to — the
+  drift the shared `slotPoint` / `ringBox` pair exists to prevent, fixed for
+  0..1 and left broken outside it. Both clamp identically now, and
+  `MIN_SLOT_RADIUS` is a real floor rather than a constant nothing read.
+- **`Counter` exposes the amount, not the counting.** The number animates through
+  every intermediate value, so it is now `aria-hidden` and the settled amount is
+  written once beside it — a screen reader reads "Main: 240", not sixty frames of
+  "173", "198", "219".
+- **`Seat` takes the space key.** It fired `onClick` and left the default action
+  alone, so pressing space also scrolled the page.
+- **`ellipseBox` and `surface.insetBox` are one implementation.** They were two
+  copies of the same conversion, which is how the reference page came to call one
+  of them "the one place that conversion happens".
+
+### Changed
+
+- **`CardTable` and `DealerTable` memoise their layout.** `layoutTable` does not
+  compute a layout, it searches for one — up to 51 shrink steps, each an O(n²)
+  sweep of every frame pair (6,120 of them on a 16-seat ring) — and it ran on
+  every render, so a table's cost was a function of how often its parent
+  re-rendered.
+- **`DealerTable` reads its surface from `tableSurface`** rather than running the
+  whole ring layout to keep two fields of it. Same felt, none of the ring.
+
+### Docs
+
+- **The `@stargazeryan/poker-ui/recipes` subpath does not exist** and never
+  shipped: the source comments pointed at it, `package.json` has never exported
+  it. They now point at the worked examples, `demo/src/examples/games.tsx`.
+- README's theming section claimed every colour comes from a theme token. It now
+  names the two exceptions.
+- `.gitattributes` normalises line endings to LF, so a checkout made on Windows
+  no longer turns the whole tree into a diff.
+
 ## 0.9.0 — the design box is a maximum
 
 ### Changed

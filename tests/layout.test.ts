@@ -5,9 +5,11 @@ import {
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
+  GLOW_GAP,
+  RIM_GAP,
+  layoutTable,
+  type LayoutOptions,
 } from "../src/layout";
-import { GLOW_GAP, RIM_GAP } from "../src/layout";
-import { layoutTable, type LayoutOptions } from "../src/layout";
 import { minFrameSeparation, perimeterFrames, ringFrames } from "../src/frames";
 
 const base: LayoutOptions = {

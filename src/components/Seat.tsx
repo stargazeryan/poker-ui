@@ -113,7 +113,11 @@ export function Seat({
         onKeyDown={
           onClick
             ? (e) => {
-                if (e.key === "Enter" || e.key === " ") onClick();
+                if (e.key !== "Enter" && e.key !== " ") return;
+                // The frame is a button, so it takes the key: without this,
+                // space fired the handler *and* scrolled the page.
+                e.preventDefault();
+                onClick();
               }
             : undefined
         }

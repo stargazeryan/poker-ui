@@ -227,3 +227,28 @@ describe("CardSlot and CardFan", () => {
     expect(rotated).toHaveLength(2);
   });
 });
+
+describe("naming a group of cards", () => {
+  // A row or a fan is a group of cards that belong together, and nothing said so:
+  // a screen reader got a string of images with no idea they were one hand. The
+  // name is opt-in, because *what* a row is belongs to the caller's game.
+  it("groups a CardRow under its label, and adds no role without one", () => {
+    const named = render(<CardRow cards={["As", "Kh"]} label="Your hand" />).container;
+    expect(named.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe("Your hand");
+    expect(render(<CardRow cards={["As", "Kh"]} />).container.querySelector('[role="group"]')).toBeNull();
+  });
+
+  it("groups a CardFan under its label, and adds no role without one", () => {
+    const named = render(<CardFan cards={["As", "Kh", "Qd"]} label="Meld" />).container;
+    expect(named.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe("Meld");
+    expect(render(<CardFan cards={["As"]} />).container.querySelector('[role="group"]')).toBeNull();
+  });
+
+  it("hides reserved-but-empty positions from assistive tech", () => {
+    const { container } = render(<CardRow cards={["As"]} slots={3} />);
+    // the two positions past the end of `cards` hold nothing, so they say nothing
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+    // while the card itself is still announced
+    expect(container.querySelectorAll('[role="img"]')).toHaveLength(1);
+  });
+});

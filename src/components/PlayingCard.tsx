@@ -207,6 +207,13 @@ export interface CardRowProps {
    * empty.
    */
   placeholder?: "back" | "empty";
+  /**
+   * Accessible name for the row — "Your hand", "The board", the dealer's. A row
+   * is a group of cards that belong together, and this is how a screen reader
+   * gets to hear that; nothing is named by default, because *what* a row is
+   * belongs to the game. Without a label no role is added at all.
+   */
+  label?: string;
   className?: string;
 }
 
@@ -224,6 +231,7 @@ export function CardRow({
   animationKey,
   slots,
   placeholder = "back",
+  label,
   className,
 }: CardRowProps) {
   const count = Math.max(slots ?? cards.length, cards.length);
@@ -231,7 +239,11 @@ export function CardRow({
   const shown = Array.from({ length: count }, (_, i) => (i < cards.length ? cards[i] : undefined));
 
   return (
-    <div className={cn("flex gap-2", animation === "flip" && "[perspective:800px]", className)}>
+    <div
+      role={label === undefined ? undefined : "group"}
+      aria-label={label}
+      className={cn("flex gap-2", animation === "flip" && "[perspective:800px]", className)}
+    >
       {shown.map((card, i) => {
         const key =
           animation === "deal"
@@ -245,10 +257,20 @@ export function CardRow({
 
         if (card === undefined) {
           // Past the end of `cards`: an undealt position keeps the row's width.
-          return <div key={`${i}:empty`} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />;
+          // It holds nothing, so it says nothing.
+          return (
+            <div
+              key={`${i}:empty`}
+              aria-hidden="true"
+              className={SIZE_CLASSES[size]}
+              style={{ aspectRatio: "10/14" }}
+            />
+          );
         }
         if (card === null && placeholder === "empty") {
-          return <div key={`${i}:gap`} className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />;
+          return (
+            <div key={`${i}:gap`} aria-hidden="true" className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />
+          );
         }
 
         return (
@@ -308,6 +330,12 @@ export interface CardFanProps {
   overlap?: number;
   /** Total spread in degrees. `0` (the default) is a flat overlapping row. */
   arc?: number;
+  /**
+   * Accessible name for the fan — "Your hand", "The meld". Read out once, with
+   * the cards grouped under it; nothing is named by default, and without a
+   * label no role is added at all.
+   */
+  label?: string;
   className?: string;
 }
 
@@ -316,7 +344,7 @@ export interface CardFanProps {
  * wants. A 13-card hand at `size="sm"` laid out flat is wider than any seat
  * frame; overlapped, it fits.
  */
-export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, className }: CardFanProps) {
+export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, label, className }: CardFanProps) {
   const width = CARD_WIDTH[size];
   const height = CARD_HEIGHT[size];
   const n = cards.length;
@@ -328,7 +356,12 @@ export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, className
   const pivot = height * 0.35;
 
   return (
-    <div className={cn("relative", className)} style={{ width: total + width, height }}>
+    <div
+      role={label === undefined ? undefined : "group"}
+      aria-label={label}
+      className={cn("relative", className)}
+      style={{ width: total + width, height }}
+    >
       {cards.map((card, i) => {
         const t = n === 1 ? 0 : (i - mid) / mid;
         const rotate = (t * arc) / 2;

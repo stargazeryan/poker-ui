@@ -380,6 +380,12 @@ export const COMPONENTS: ComponentDoc[] = [
         description:
           'What a `null` **within** `cards` means: a face-down card, or an undealt position. Past the end of the array is always empty.',
       },
+      {
+        name: "label",
+        type: "string",
+        description:
+          'Accessible name for the row — "Your hand", "The board". The cards are grouped under it; without it nothing is named and no role is added.',
+      },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -395,6 +401,11 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"lg"', description: "Card size." },
       { name: "overlap", type: "number", default: "0.55", description: "How much neighbouring cards overlap, 0–0.95 of a card width. `0` is a plain row." },
       { name: "arc", type: "number", default: "0", description: "Total spread in degrees. `0` is a flat overlapping row; 20–30 reads as a held hand." },
+      {
+        name: "label",
+        type: "string",
+        description: 'Accessible name for the fan — "Your hand", "The meld". Without it nothing is named and no role is added.',
+      },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },

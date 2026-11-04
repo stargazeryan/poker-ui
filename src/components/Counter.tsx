@@ -32,6 +32,48 @@ export interface CounterProps {
   className?: string;
 }
 
+/*
+ * One animation loop for every counter on the page.
+ *
+ * Each `Counter` used to own its loop, so a settlement animating nine seat
+ * stacks ran nine frame callbacks, nine updates per frame and nine render
+ * passes. A handler now subscribes to a shared loop and returns `false` when it
+ * is done, and the loop stops when the last one has: the ninth counter costs a
+ * little arithmetic, not a frame rate.
+ */
+type CounterFrame = (now: number) => boolean;
+
+const frames = new Set<CounterFrame>();
+let handle = 0;
+
+function pump(now: number) {
+  // A handler can unsubscribe itself (or another) mid-frame, so iterate a copy.
+  for (const frame of [...frames]) {
+    if (!frame(now)) frames.delete(frame);
+  }
+  // The old handle stays non-zero across the pass on purpose: a counter that
+  // subscribes during one does not start a second loop here.
+  handle = frames.size > 0 ? requestAnimationFrame(pump) : 0;
+}
+
+/** Run `frame` on every animation frame until it returns `false`. */
+function onFrame(frame: CounterFrame): () => void {
+  // "Is the loop running?" is asked of the *subscribers*, not of `handle`. A
+  // handle can outlive its callback — a counter that unmounts mid-count, a
+  // backgrounded tab whose frames are dropped, a test that swaps rAF out — and
+  // a loop that never arrives must not leave the next counter thinking one is
+  // already on its way.
+  const idle = frames.size === 0;
+  frames.add(frame);
+  if (idle) {
+    if (handle !== 0) cancelAnimationFrame(handle);
+    handle = requestAnimationFrame(pump);
+  }
+  return () => {
+    frames.delete(frame);
+  };
+}
+
 /** Smoothly count a number toward its target (presentational only). */
 function CountUp({ value, format }: { value: number; format: (n: number) => string }) {
   const [shown, setShown] = useState(value);
@@ -50,26 +92,26 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
       setShown(to);
       return;
     }
-    let raf = 0;
-    const dur = COUNT_UP_MS;
-    // Time the animation off the rAF timestamps themselves and never against
+    // Time the animation off the loop's own timestamps and never against
     // `performance.now()`: that is a second clock with a different origin, and
     // its skew against the rAF clock is unbounded. Mixing them made `t`
     // negative, which pushed `eased` outside [0, 1] and sent the counter off
     // backwards (reproducibly to -15698 in jsdom, where the two clocks start
     // ~390ms apart).
     let origin: number | null = null;
-    const tick = (now: number) => {
+    return onFrame((now) => {
       if (origin === null) origin = now;
-      const t = Math.min(1, Math.max(0, (now - origin) / dur));
+      const t = Math.min(1, Math.max(0, (now - origin) / COUNT_UP_MS));
       const eased = 1 - Math.pow(1 - t, 3);
       const next = Math.round(from + (to - from) * eased);
-      shownRef.current = next;
-      setShown(next);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+      // A frame that rounds to the number already on screen is not a change,
+      // and setting it would be a render for nothing.
+      if (next !== shownRef.current) {
+        shownRef.current = next;
+        setShown(next);
+      }
+      return t < 1;
+    });
   }, [value]);
 
   return <>{format(shown)}</>;
@@ -78,13 +120,24 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
 /**
  * A labelled, optionally counting amount. Standalone and optional — no table
  * requires it, and it attaches no unit.
+ *
+ * The count-up is a *presentational* effect: it passes through every
+ * intermediate value on the way to the target, and those are not values anybody
+ * wants read out. So the animated number is `aria-hidden`, and the settled
+ * amount is written once beside it — a screen reader gets "240", not sixty
+ * frames of "173", "198", "219"…. `data-counter-value` marks the animated half,
+ * which is the one the tests measure.
  */
 export function Counter({ amount, label, format = defaultFormat, animate = true, className }: CounterProps) {
+  const settled = format(amount);
   return (
     <div className={cn("flex items-center gap-2 font-mono text-sm text-gold", className)}>
       {label && <span className="text-neutral-400">{label}</span>}
       <span className="whitespace-nowrap rounded-full border border-gold/50 bg-neutral-900/80 px-3 py-1 shadow-inner">
-        {animate ? <CountUp value={amount} format={format} /> : format(amount)}
+        <span aria-hidden="true" data-counter-value>
+          {animate ? <CountUp value={amount} format={format} /> : settled}
+        </span>
+        <span className="sr-only">{label ? `${label}: ${settled}` : settled}</span>
       </span>
     </div>
   );

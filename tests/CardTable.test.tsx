@@ -197,6 +197,26 @@ describe("CardTable — declared rings and slots", () => {
     expect(ringInsets(container).top).toBeGreaterThanOrEqual(0);
   });
 
+  it("clamps a nonsense slot radius identically, so the content stays on its ring", () => {
+    // The ring clamped and the slot did not, so a slot declared at the same
+    // radius as its ring was drawn past the rail: 87px outside it at 1.2 on the
+    // default box, on a line the caller believed both were on.
+    setElementSize(1200, 900);
+    const { container } = render(
+      <CardTable
+        seatCount={4}
+        rings={[{ id: "line", radius: 9 }]}
+        slots={[{ id: "bet", radius: 9, render: (i) => <span>{i}</span> }]}
+        renderSeat={(i) => <div>{i}</div>}
+      />,
+    );
+    const line = ringInsets(container);
+    const slot = container.querySelector('[data-slot-index="0"]') as HTMLElement;
+    // Seat 0 sits at the bottom of the ellipse: on the ring's lower edge.
+    expect(px(slot.style.left)).toBeCloseTo(600, 3);
+    expect(px(slot.style.top)).toBeCloseTo(900 - line.top, 3);
+  });
+
   it("draws no ring and places no slot when the caller declares none", () => {
     const { container } = render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
     expect(container.querySelector('[data-part="ring"]')).toBeNull();

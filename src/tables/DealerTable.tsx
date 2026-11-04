@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
-import { FitBox } from "../components/FitBox";
+import { FitBox, type DesignBox } from "../components/FitBox";
 import { SeatSizeContext } from "../components/seatSize";
 import { TableRim, TableSurface } from "../components/TableSurface";
 import { fitFrameScale, fitRowScale, rowFrames, type FrameBox } from "../frames";
@@ -10,10 +10,11 @@ import {
   DEFAULT_MARGIN_Y,
   DESIGN_H,
   DESIGN_W,
-  layoutTable,
+  GLOW_GAP,
+  RIM_GAP,
   ROW_FRACTION,
 } from "../layout";
-import type { TableShape } from "../surface";
+import { tableSurface, type TableShape } from "../surface";
 
 /**
  * A **dealer table**: one frame at the head, and a row of frames for the
@@ -39,9 +40,10 @@ import type { TableShape } from "../surface";
  * that a dealer table has no ellipse to draw. That was the wrong conclusion from
  * a right observation: not being a poker oval is not the same as having no
  * surface, and a game sitting on the page's raw background looks unfinished. The
- * surface below comes from `layoutTable`, the same function `CardTable` uses, so
- * the two tables cannot drift apart; the default is a rounded rectangle
- * (`shape="rect"`), and `shape="none"` still gets you the bare version.
+ * surface below comes from `tableSurface`, the same conversion `layoutTable`
+ * performs for the round tables, so the three cannot drift apart; the default is
+ * a rounded rectangle (`shape="rect"`), and `shape="none"` still gets you the
+ * bare version.
  *
  * The head is whatever your game calls it. It is a *position*, not a role: pass
  * the dealer's hand, or the banker's, or a label and a counter.
@@ -164,7 +166,27 @@ export interface DealerOverlayGeometry {
 /** Round a frame dimension at a scale, never below 1. */
 const dim = (base: number, scale: number): number => Math.max(1, Math.round(base * scale));
 
-export function DealerTable({
+export function DealerTable(props: DealerTableProps) {
+  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", className } = props;
+
+  return (
+    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
+      {(design) => <DealerSurface {...props} design={design} />}
+    </FitBox>
+  );
+}
+
+/*
+ * Everything inside the design box, in its own component.
+ *
+ * It is a component rather than a bare callback so the geometry can be memoised
+ * — a hook written inside `FitBox`'s children callback is a hook inside a
+ * callback — and it sits at module level so it is never a new component type on
+ * a render. The layout below is the expensive part of a table, and it is rebuilt
+ * only when a number that feeds it moves.
+ */
+function DealerSurface({
+  design,
   head,
   headWidth = DEFAULT_HEAD_W,
   headHeight = DEFAULT_HEAD_H,
@@ -188,122 +210,121 @@ export function DealerTable({
   marginX = DEFAULT_MARGIN_X,
   marginY = DEFAULT_MARGIN_Y,
   feltGap = DEFAULT_FELT_GAP,
-  designWidth = DESIGN_W,
-  designHeight = DESIGN_H,
-  fit = "design",
   renderOverlay,
-  className,
-}: DealerTableProps) {
-  return (
-    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
-      {({ width, height, scale: boxScale }) => {
-        const requested = Math.floor(handCount);
-        const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
+}: DealerTableProps & { design: DesignBox }) {
+  const { width, height, scale: boxScale } = design;
+  const requested = Math.floor(handCount);
+  const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
 
-        /*
-         * The surface, from the same function `CardTable` calls. Only `radius`
-         * and `boxes` are used — the ring seats it also computes are ignored,
-         * because this table's positions are a row. Going through it rather than
-         * re-deriving the insets is what keeps the two tables' felt identical.
-         */
-        const surface = layoutTable({
+  /*
+   * The surface, from the same conversion the round tables go through:
+   * `tableSurface` — the boundary and its insets, and nothing else. Asking
+   * `layoutTable` the same question answered it by running the whole ring layout
+   * first: up to 51 shrink steps, each an O(n²) pair sweep, plus the `ringFrames`
+   * output this table has no use for. Same felt, none of the ring.
+   */
+  const surface = useMemo(
+    () =>
+      tableSurface({
+        shape,
+        designWidth: width,
+        designHeight: height,
+        marginX,
+        marginY,
+        feltGap,
+        rimGap: RIM_GAP,
+        glowGap: GLOW_GAP,
+        cornerRadius,
+      }),
+    [shape, width, height, marginX, marginY, feltGap, cornerRadius],
+  );
+
+  // Two constraints, and a row needs both: the gap between neighbours (the
+  // same shrink a ring uses) and the width of the box itself, which a ring
+  // gets for free from its clamped radii and a row does not.
+  const scale = useMemo(
+    () =>
+      Math.min(
+        fitFrameScale(
+          (s) =>
+            rowFrames({
+              count,
+              cx: width / 2,
+              cy: height * handY,
+              width: dim(handWidth, s),
+              height: dim(handHeight, s),
+              gap: handGap,
+            }),
+          handGap,
+        ),
+        fitRowScale({
           count,
-          designWidth: width,
-          designHeight: height,
-          marginX,
-          marginY,
-          feltGap,
-          seatWidth: handWidth,
-          seatHeight: handHeight,
-          seatGap: handGap,
-          startAngle: 90,
-          shape,
-          cornerRadius,
-          seatPlacement: "row",
-        });
+          width: handWidth,
+          height: handHeight,
+          gap: handGap,
+          maxWidth: width,
+          fraction: ROW_FRACTION,
+        }),
+      ),
+    [count, width, height, handY, handWidth, handHeight, handGap],
+  );
+  const w = dim(handWidth, scale);
+  const h = dim(handHeight, scale);
+  const frames = useMemo(
+    () => rowFrames({ count, cx: width / 2, cy: height * handY, width: w, height: h, gap: handGap }),
+    [count, width, height, handY, w, h, handGap],
+  );
 
-        // Two constraints, and a row needs both: the gap between neighbours (the
-        // same shrink a ring uses) and the width of the box itself, which a ring
-        // gets for free from its clamped radii and a row does not.
-        const scale = Math.min(
-          fitFrameScale(
-            (s) =>
-              rowFrames({
-                count,
-                cx: width / 2,
-                cy: height * handY,
-                width: dim(handWidth, s),
-                height: dim(handHeight, s),
-                gap: handGap,
-              }),
-            handGap,
-          ),
-          fitRowScale({
-            count,
-            width: handWidth,
-            height: handHeight,
-            gap: handGap,
-            maxWidth: width,
-            fraction: ROW_FRACTION,
-          }),
-        );
-        const w = dim(handWidth, scale);
-        const h = dim(handHeight, scale);
-        const frames = rowFrames({ count, cx: width / 2, cy: height * handY, width: w, height: h, gap: handGap });
+  return (
+    <>
+      {deck && (
+        <TableSurface
+          layout={surface}
+          watermark={watermark}
+          ambient={ambient}
+          glow={glow}
+          railClassName={railClassName}
+          feltClassName={feltClassName}
+        />
+      )}
 
-        return (
-          <>
-            {deck && (
-              <TableSurface
-                layout={surface}
-                watermark={watermark}
-                ambient={ambient}
-                glow={glow}
-                railClassName={railClassName}
-                feltClassName={feltClassName}
-              />
-            )}
+      {head !== undefined && (
+        <div
+          data-part="head"
+          className="absolute"
+          style={{ left: width / 2 - headWidth / 2, top: height * headY - headHeight / 2 }}
+        >
+          <SeatSizeContext.Provider value={{ width: headWidth, height: headHeight }}>
+            {head}
+          </SeatSizeContext.Provider>
+        </div>
+      )}
 
-            {head !== undefined && (
-              <div
-                data-part="head"
-                className="absolute"
-                style={{ left: width / 2 - headWidth / 2, top: height * headY - headHeight / 2 }}
-              >
-                <SeatSizeContext.Provider value={{ width: headWidth, height: headHeight }}>
-                  {head}
-                </SeatSizeContext.Provider>
-              </div>
-            )}
+      <SeatSizeContext.Provider value={{ width: w, height: h }}>
+        {frames.map((frame, index) => {
+          const content = renderHand ? renderHand(index, frame) : null;
+          if (content === null || content === undefined) return null;
+          return (
+            <div
+              key={index}
+              data-part="hand"
+              data-hand={index}
+              className="absolute"
+              style={{ left: frame.x - w / 2, top: frame.y - h / 2 }}
+            >
+              {content}
+            </div>
+          );
+        })}
+      </SeatSizeContext.Provider>
 
-            <SeatSizeContext.Provider value={{ width: w, height: h }}>
-              {frames.map((frame, index) => {
-                const content = renderHand ? renderHand(index, frame) : null;
-                if (content === null || content === undefined) return null;
-                return (
-                  <div
-                    key={index}
-                    data-part="hand"
-                    data-hand={index}
-                    className="absolute"
-                    style={{ left: frame.x - w / 2, top: frame.y - h / 2 }}
-                  >
-                    {content}
-                  </div>
-                );
-              })}
-            </SeatSizeContext.Provider>
+      {renderOverlay !== undefined && (
+        <div data-part="overlay" className={cn("pointer-events-none absolute inset-0 z-30")}>
+          {renderOverlay({ designWidth: width, designHeight: height, scale: boxScale })}
+        </div>
+      )}
 
-            {renderOverlay !== undefined && (
-              <div data-part="overlay" className={cn("pointer-events-none absolute inset-0 z-30")}>
-                {renderOverlay({ designWidth: width, designHeight: height, scale: boxScale })}
-              </div>
-            )}
-
-            {deck && <TableRim layout={surface} />}
-          </>
-        );
-      }}
-    </FitBox>
+      {deck && <TableRim layout={surface} />}
+    </>
   );
 }

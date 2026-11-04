@@ -1,0 +1,28 @@
+# Normalise line endings for every text file in the repository.
+#
+# HEAD has always stored LF, but a checkout made on Windows (or copied from one)
+# lands CRLF in the working tree, and with no attributes git compares bytes — so
+# the whole tree reads as "modified" and any commit risks carrying 18k lines of
+# line-ending churn. `text=auto eol=lf` makes LF the repository format *and* the
+# checkout format, so the tree stays clean whichever platform touches it.
+* text=auto eol=lf
+
+# Never rewrite a binary as if it were text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.tgz binary
+
+# Generated, not authored — out of the language stats, but a dependency change
+# is still worth reading in a diff, so this is not `-diff`.
+package-lock.json linguist-generated=true
+
+# Built output, if it is ever tracked deliberately.
+demo/dist/** -text
+dist/** -text

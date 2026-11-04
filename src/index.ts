@@ -8,7 +8,8 @@
  * - no betting line, no chip set, no big blind — those are the `./wager` entry
  *   point, because only the games that wager need them;
  * - no `PokerTable`, no `HoleCards`, no `Pot` — those are words one game uses.
- *   `./recipes` has the four worked examples.
+ *   The four worked examples are in the docs, `demo/src/examples/games.tsx`,
+ *   built out of this entry and `/wager` and nothing else.
  *
  * The components here *position and draw*; you decide *what is true*.
  */

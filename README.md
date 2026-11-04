@@ -330,9 +330,10 @@ run-it-twice are not here, and should not be.
 
 ## Theming
 
-Every colour a component draws with comes from a Tailwind theme token, and every
-token in `styles.css` is referenced by a component — so overriding one restyles
-the table, with no `!important` and no per-component overrides:
+The table, the rail, the felt, the card backs, the chips and every animation draw
+from the `@theme` tokens in `styles.css`, and every token there is referenced by a
+component — so overriding one restyles the table, with no `!important` and no
+per-component overrides:
 
 ```css
 @theme {
@@ -345,10 +346,16 @@ the table, with no `!important` and no per-component overrides:
 The docs site lists every token with the value it ships and has a live editor
 that sets these properties on a wrapper.
 
-Confetti colours are the one exception: `Confetti`'s `colors` is a prop, because
-those colours land in inline styles that Tailwind's tree-shaking cannot see.
-`className` / `frameClassName` / `className` on the table's rail and felt are
-there for the rest.
+Two things are deliberately not tokens of ours:
+
+- `Confetti`'s `colors` is a prop, because those colours land in inline styles
+  that Tailwind's tree-shaking cannot see.
+- the neutral furniture — the seat frame's body and border, the card face, the
+  red/black suit ink — is Tailwind's own palette rather than a token, so it is
+  restyled with `frameClassName` on `Seat` and `className` elsewhere. Overriding
+  `--color-felt` moves the felt; putting the seat frames on a light theme is a
+  class. Reach for a token where the package defines one, and for a class where
+  it does not.
 
 ## Docs site and development
 
@@ -364,6 +371,7 @@ consumers actually get.
 ```bash
 npm install --include=dev
 
+npm run lint          # eslint: hooks, types, and the small habits (no formatter — see eslint.config.js)
 npm run typecheck     # tsc --noEmit
 npm test              # vitest: unit, component, docs routes, docs-vs-types, separation
 npm run build         # tsup -> dist (ESM + CJS + d.ts), two entries

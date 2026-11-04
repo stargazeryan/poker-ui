@@ -24,6 +24,7 @@ import {
 } from "./frames";
 import { ellipsePoint, seatAngle } from "./geometry";
 import {
+  insetBox,
   scaledBox,
   scaledRadius,
   tableSurface,
@@ -137,6 +138,9 @@ export interface Layout {
    * never disagree — the two used to be derived separately and drifted apart by
    * up to 100px. On a row or a rectangle's perimeter there is no ellipse to be
    * on, so the point is `radius` of the way from the centre toward that seat.
+   *
+   * `radius` is clamped the same way `ringBox` clamps it, so the two agree
+   * outside 0..1 as well as inside it.
    */
   slotPoint(index: number, radius: number): { x: number; y: number };
 }
@@ -186,11 +190,28 @@ export function seatPoint(
   return ellipsePoint(cx, cy, ringRx, ringRy, seatAngle(index, count, startAngle));
 }
 
-/** Turn radii into the inset box of a positioned surface. */
+/**
+ * Turn radii into the inset box of a positioned surface — *the* conversion, the
+ * same one `surface.insetBox` performs. This name exists because the layout's
+ * callers and the reference page know it, not because it is a second formula:
+ * it used to be a copy, and two copies of one conversion disagree eventually.
+ */
 export function ellipseBox(designWidth: number, designHeight: number, rx: number, ry: number): Box {
-  const top = designHeight / 2 - ry;
-  const left = designWidth / 2 - rx;
-  return { top, right: left, bottom: top, left };
+  return insetBox(designWidth, designHeight, rx, ry);
+}
+
+/**
+ * A slot radius as a fraction of the surface, clamped to
+ * `[MIN_SLOT_RADIUS, 1]`.
+ *
+ * `ringBox` / `ringRadius` have always clamped (through `scaledBox`); `slotPoint`
+ * did not, so a slot declared at `radius: 1.2` was drawn 87px outside the rail
+ * the ring it was declared on was pinned to. Non-finite falls back to the floor
+ * rather than propagating NaN into a style.
+ */
+function clampSlotRadius(radius: number): number {
+  if (!Number.isFinite(radius)) return MIN_SLOT_RADIUS;
+  return Math.min(1, Math.max(MIN_SLOT_RADIUS, radius));
 }
 
 /** The natural placement for a shape. */
@@ -330,20 +351,21 @@ export function layoutTable(opts: LayoutOptions): Layout {
     ringBox: (radius: number) => scaledBox(surface, radius),
     ringRadius: (radius: number) => scaledRadius(surface, radius),
     slotPoint: (index: number, radius: number) => {
+      const r = clampSlotRadius(radius);
       if (placement === "ring") {
         return ellipsePoint(
           surface.cx,
           surface.cy,
-          surface.rx * radius,
-          surface.ry * radius,
+          surface.rx * r,
+          surface.ry * r,
           seatAngle(index, opts.count, opts.startAngle),
         );
       }
       const seat = seats[index];
       if (!seat) return { x: surface.cx, y: surface.cy };
       return {
-        x: surface.cx + (seat.x - surface.cx) * radius,
-        y: surface.cy + (seat.y - surface.cy) * radius,
+        x: surface.cx + (seat.x - surface.cx) * r,
+        y: surface.cy + (seat.y - surface.cy) * r,
       };
     },
   };
