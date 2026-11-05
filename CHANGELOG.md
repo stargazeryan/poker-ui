@@ -70,8 +70,14 @@ read before upgrading.
   deleted test was invisible. `npm run test:coverage` measures `src/**` only —
   measuring everything also counted the docs app and `demo/dist/assets/*.js`, a
   built bundle that scores 0% and moves the total whenever the site is rebuilt —
-  and fails below 90% statements, 85% branches, 90% functions and 90% lines. CI
-  runs that in place of the plain test run, so it is one pass rather than two.
+  and fails below 95% statements, 85% branches, 95% functions and 95% lines —
+  checked *per file*, not on the average, because an average absorbs one
+  collapsing module completely: `frames.ts` sat at 74.5% of branches with the
+  global gate green, and three exported helpers (`gridFrames`, `seatPoint`,
+  `ellipseBox`) had no test at all. They do now, along with the guards the
+  coverage report had been pointing at, which took the suite from 302 to 324
+  tests and `src/**` to 100% statements and lines. CI runs the gate in place of
+  the plain test run, so it is one pass rather than two.
 - **The consumer smoke test has a CSS ceiling.** It already asserted that every
   utility and token *reaches* a consumer's stylesheet; it now also fails when that
   stylesheet passes 32 kB (28.1 kB today). The number is the whole consumer app's
@@ -96,6 +102,13 @@ read before upgrading.
   number already on screen no longer re-renders at all.
 - **`engines.node` is `>=20`.** Vite 6, Vitest 3 and ESLint 10 already required
   it and CI builds on 20; `>=18` was a promise the toolchain could not keep.
+- **`CardTable` and `DealerTable` memoise their layout.** `layoutTable` does not
+  compute a layout, it searches for one — up to 51 shrink steps, each an O(n²)
+  sweep of every frame pair (6,120 of them on a 16-seat ring) — and it ran on
+  every render, so a table's cost was a function of how often its parent
+  re-rendered.
+- **`DealerTable` reads its surface from `tableSurface`** rather than running the
+  whole ring layout to keep two fields of it. Same felt, none of the ring.
 
 ### Fixed
 
@@ -122,16 +135,24 @@ read before upgrading.
 - **`ellipseBox` and `surface.insetBox` are one implementation.** They were two
   copies of the same conversion, which is how the reference page came to call one
   of them "the one place that conversion happens".
-
-### Changed
-
-- **`CardTable` and `DealerTable` memoise their layout.** `layoutTable` does not
-  compute a layout, it searches for one — up to 51 shrink steps, each an O(n²)
-  sweep of every frame pair (6,120 of them on a 16-seat ring) — and it ran on
-  every render, so a table's cost was a function of how often its parent
-  re-rendered.
-- **`DealerTable` reads its surface from `tableSurface`** rather than running the
-  whole ring layout to keep two fields of it. Same felt, none of the ring.
+- **A CommonJS consumer was handed ESM types.** The exports map declared a single
+  top-level `types` condition for both module systems, so `.` and `./wager`
+  resolved to `dist/index.d.ts` however they were imported, and the built
+  `dist/index.d.cts` was unreachable — which is to say useless. `attw` reported
+  both entries as "Masquerading as ESM". Types are resolved per condition now,
+  and that check runs in CI.
+- **`fitRowScale` read "no width limit" as "no room".** `maxWidth: Infinity` — a
+  box that cannot constrain anything — returned the 0.5 floor and shrank the row,
+  while the docstring's own promise ("the largest uniform scale at which the row
+  fits") is satisfied at 1. Only a limit that is zero, negative or nonsense is the
+  floor now.
+- **React 18 logged five server-render warnings per page.** `FitBox` measured in a
+  `useLayoutEffect`, and React 18 warns that such an effect "does nothing on the
+  server" once per component that has one: measured on react-dom 18.3.1 with the
+  built package, the four table types and `FitBox` produced five warnings where
+  React 19 produces none. The effect is chosen per environment now, which removes
+  the warning without changing a rendered byte. `tests/ssr.test.tsx` renders every
+  component on the server and asserts React stays quiet.
 
 ### Docs
 
@@ -142,6 +163,21 @@ read before upgrading.
   names the two exceptions.
 - `.gitattributes` normalises line endings to LF, so a checkout made on Windows
   no longer turns the whole tree into a diff.
+
+### CI
+
+- **The types are checked the way a consumer resolves them.** The package ships
+  dual ESM/CJS with separate `.d.ts` and `.d.cts`, and which one a consumer gets
+  depends on *their* module setting — a shape that can look right here and still
+  resolve wrongly there, as it did. `attw` runs on the packed tarball in CI
+  (pinned, ignoring `no-resolution` for the two stylesheet subpaths, which are
+  assets with no declarations to resolve).
+- **The release gate required the entry points and `src/styles.css`, but not
+  `dist/compiled.css`** — the other published stylesheet, added in this release.
+  A broken `build:css` would have shipped an entry that resolves to nothing, with
+  the gate green.
+- **`permissions: contents: read`**, so the workflow's token is not the
+  repository default.
 
 ## 0.9.0 — the design box is a maximum
 

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "../cn";
 import { DESIGN_H, DESIGN_W } from "../layout";
 
@@ -75,15 +75,27 @@ export interface FitBoxOptions {
   maxScale?: number;
 }
 
+/*
+ * `useLayoutEffect` on the server is React 18 noise: it warns — once per
+ * component that uses it — that the effect "does nothing on the server", and
+ * React 19 stopped saying so. Measured here with react-dom 18.3.1 on the built
+ * package: fourteen components rendered by `renderToString`, five of which
+ * measure, five warnings; the same run on React 19 is silent.
+ *
+ * The hook only measures and rescales *after* mount, so a server render has
+ * nothing to lay out early. Choosing the effect that matches the environment
+ * removes the warning without changing a rendered byte.
+ */
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 /**
  * Measure a container and derive the design box and scale for it.
  *
  * The built entry points carry a `"use client"` banner, which is what lets these
- * components be imported from a server-component tree: `useLayoutEffect` has no
- * server equivalent, so a server render produces the design box at 1:1 and the
- * scale arrives on mount. That is a layout shift, not a warning — on React 19 it
- * logs nothing at all, which `tests/ssr.test.tsx` renders every component to
- * assert. Do not add a `typeof window` guard for a complaint that does not come.
+ * components be imported from a server-component tree. A server render produces
+ * the design box at 1:1 and it scales on mount — a layout shift, and the reason
+ * `tests/ssr.test.tsx` pins that markup — and with the effect above it is silent
+ * on React 18 as well as 19.
  */
 export function useFitBox({
   designWidth = DESIGN_W,
@@ -97,7 +109,7 @@ export function useFitBox({
   const outerRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const el = outerRef.current;
     if (!el) return;
     const compute = () => {

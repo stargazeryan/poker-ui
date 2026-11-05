@@ -21,9 +21,15 @@ import { Chip, ChipStack } from "../src/wager";
 /*
  * What a server render actually does: no DOM, no effects, a string out the other
  * side. Nothing in the suite used to cover it, and the docs' "known gaps" page
- * claimed this path "logs the warning" about `useLayoutEffect` on the server —
- * which is worth a test rather than a claim either way, because the answer
- * decides whether a Next.js consumer sees console noise on every page.
+ * made a claim about it — that the measuring effect "warns on the server" — which
+ * is worth a test rather than a claim either way, because the answer decides
+ * whether a Next.js consumer sees console noise on every page.
+ *
+ * The claim turned out to be version-specific, and measuring beat guessing: on
+ * react-dom 18.3.1 the built package produced five "useLayoutEffect does nothing
+ * on the server" warnings per render, and on React 19 none. The effect is now
+ * chosen per environment, so both are silent — this file pins the React 19 half
+ * (the one this repo can run), and the React 18 half was measured by hand.
  */
 const seat = (index: number, box: SeatBox) => (
   <Seat key={index} width={box.width} height={box.height} header={`p${index}`} />

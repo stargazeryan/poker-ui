@@ -302,8 +302,8 @@ const GAPS: Array<[string, string]> = [
     "Counter renders a plain number by default and formatBB(amount, bb) is an opt-in poker helper from the wager entry, because a big blind is a game rule and this is generic UI. The cost is that nothing stops you showing big-blind amounts in one place and chip amounts in another on the same table: the library has no unit concept, deliberately, so it cannot catch that for you.",
   ],
   [
-    "The design box is measured in a layout effect, so the server's markup is unscaled",
-    "FitBox (and therefore every table type and CardTable) measures its container in a useLayoutEffect, so a server-rendered page ships the design box at 1:1 and it scales once the client mounts — a layout shift, not a crash. The built entry points carry a \"use client\" banner, which is what lets them be imported from a server-component tree. The warning this page used to claim SSR logs does not reproduce on React 19: rendering all fifteen components with renderToString produces no console output, and tests/ssr.test.tsx is what will notice if that changes. React 18 is still inside the supported peer range and is not what this repo's suite runs, so a warning from it would not be caught here.",
+    "The design box is measured after mount, so the server's markup is unscaled",
+    "FitBox (and therefore every table type and CardTable) measures its container in a layout effect, so a server-rendered page ships the design box at 1:1 and it scales on the client — a layout shift rather than a crash, and one tests/ssr.test.tsx pins so that a change to the measuring has to say so. The built entry points carry a \"use client\" banner, which is what lets them be imported from a server-component tree. The React 18 warning this page used to list is gone: the effect is chosen per environment, which measurably took react-dom 18.3.1 from five warnings per page to none.",
   ],
   [
     "The overlay slot is pointer-events-none",
@@ -338,7 +338,7 @@ export function KnownGaps() {
       <Row className="mt-4">
         <Field
           label="fixed in this branch:"
-          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry"
+          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry · five React 18 server-render warnings per page"
         />
       </Row>
     </>
