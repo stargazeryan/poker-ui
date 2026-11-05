@@ -14,6 +14,9 @@ const SETUP = `
 @source "../node_modules/@stargazeryan/poker-ui";
 `;
 
+/** The no-Tailwind route: the same CSS, already built. */
+const COMPILED = `@import "@stargazeryan/poker-ui/compiled.css";`;
+
 const MINIMAL = `
 import { CardRow, Counter, RoundTable, Seat } from "@stargazeryan/poker-ui";
 
@@ -60,8 +63,23 @@ export function GettingStarted() {
       <H2>Install</H2>
       <CodeBlock code="npm install @stargazeryan/poker-ui" />
       <P>
-        Peer requirements: <Prop>react</Prop> and <Prop>react-dom</Prop> at 18 or newer, plus Tailwind CSS v4.
+        Peer requirements: <Prop>react</Prop> and <Prop>react-dom</Prop> at 18 or newer. Tailwind CSS v4 is needed
+        only if you build the CSS yourself — the package also ships the stylesheet already compiled.
       </P>
+
+      <H2>Or skip Tailwind entirely</H2>
+      <P>
+        The package ships the stylesheet already compiled — every utility, token and keyframe the components use, with{" "}
+        <strong>no preflight</strong>, so importing it cannot reset your app&apos;s base styles. One line, no Tailwind
+        in your build:
+      </P>
+      <CodeBlock code={COMPILED} />
+      <Callout title="Pick one route, not both.">
+        <Prop>styles.css</Prop> is Tailwind <em>source</em> — utilities as <Prop>@utility</Prop>, tokens as{" "}
+        <Prop>@theme</Prop> — and expects your own Tailwind v4 build to scan the package. <Prop>compiled.css</Prop>{" "}
+        is that same CSS already built, for apps that are not running Tailwind v4 at all. Importing both would emit
+        the utilities twice.
+      </Callout>
 
       <H2>Wire up Tailwind</H2>
       <P>
@@ -95,7 +113,7 @@ export function GettingStarted() {
       <Demo
         title="Six seats, live"
         description="One of the seats is yours, one is mid-turn, and the board is half dealt. The betting line is a ring this page declared — and the amounts on it are plain pills, because the guide does not pull in the chip editor."
-        previewClassName="h-[440px] w-full p-0 overflow-hidden"
+        previewClassName="aspect-[4/3] max-h-[560px] w-full p-0 overflow-hidden"
       >
         <RoundTable
           seatCount={6}
@@ -166,6 +184,10 @@ export function Theming() {
         <Prop>@theme</Prop> block and the table restyles — no <Prop>!important</Prop>, no CSS-in-JS, no per-component
         overrides.
       </P>
+      <P>
+        On the <Prop>compiled.css</Prop> route there is no <Prop>@theme</Prop> block to edit, so set the same custom
+        properties — <Prop>--color-felt</Prop> and the rest — yourself, exactly as the editor below does.
+      </P>
       <Callout title="This only works because the components actually reference the tokens.">
         Tailwind v4 emits a theme variable only when something uses it. In 0.5.0 the felt, rail, gold and card-back
         colours were hard-coded hex values, so none of the documented tokens reached the output CSS and overriding them
@@ -202,7 +224,7 @@ export function Theming() {
               reset
             </Btn>
           </div>
-          <div style={tokens as CSSProperties} className="h-[420px] w-full">
+          <div style={tokens as CSSProperties} className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={6}
               rings={[BET_RING]}

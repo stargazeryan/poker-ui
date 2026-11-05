@@ -32,7 +32,7 @@ import {
   formatBB,
   type Denomination,
 } from "@stargazeryan/poker-ui/wager";
-import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
+import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
 import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
@@ -41,7 +41,7 @@ function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{doc.summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(doc.summary)}</p>
       <H2>Examples</H2>
     </>
   );
@@ -217,7 +217,7 @@ const entries = chipBreakdown(487);
       <Api slug="chip-stack" />
 
       <H2>Chip</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["chip"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["chip"].summary)}</p>
       <Demo
         title="The default set"
         description={
@@ -272,7 +272,7 @@ function SeatGapDemo() {
         <Field label="closest gap:" value={`${actual.toFixed(1)}px`} />
         <Field label="shrunk:" value={shrunk ? "yes" : "no"} />
       </Row>
-      <div className="h-[380px] w-full">
+      <div className="aspect-[4/3] max-h-[560px] w-full">
         <CardTable
           seatCount={count}
           seatGap={gap}
@@ -350,7 +350,7 @@ function CardTablePlayground() {
 
   return (
     <>
-      <div className="grid gap-3 border-b border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 border-b border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {numeric.map((c) => (
           <Stepper
             key={c.prop}
@@ -408,7 +408,7 @@ function CardTablePlayground() {
         <Field label="shrunk:" value={geo.seatW < num("seatWidth") - 0.5 || geo.seatH < num("seatHeight") - 0.5 ? "yes" : "no"} />
       </Row>
 
-      <div className="h-[440px] w-full">
+      <div className="aspect-[4/3] max-h-[560px] w-full">
         <CardTable
           seatCount={count}
           startAngle={num("startAngle")}
@@ -460,7 +460,9 @@ export function CardTablePage() {
   const [turn, setTurn] = useState(true);
   const [winner, setWinner] = useState(false);
 
-  const angles = Array.from({ length: count }, (_, i) => `${seatAngle(i, count).toFixed(0)}°`).join(" / ");
+  // `seatAngle` is deliberately unwrapped — seat 5 of 6 is 390° — but a readout
+  // for humans should stay in 0–360.
+  const angles = Array.from({ length: count }, (_, i) => `${(((seatAngle(i, count) % 360) + 360) % 360).toFixed(0)}°`).join(" / ");
 
   return (
     <>
@@ -490,7 +492,7 @@ export function CardTablePage() {
               </Btn>
             ))}
           </Row>
-          <div className="h-[400px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={count}
               renderSeat={renderPlayers()}
@@ -521,7 +523,7 @@ export function CardTablePage() {
   renderSeat={(i, box) => <Seat width={box.width} height={box.height} />}
 />`}
       >
-        <div className="h-[400px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <CardTable
             seatCount={6}
             rings={[BET_RING]}
@@ -558,7 +560,7 @@ export function CardTablePage() {
               showdown
             </Btn>
           </Row>
-          <div className="h-[400px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={6}
               glow={turn}
@@ -689,7 +691,7 @@ export function CardTablePage() {
       </P>
 
       <H2>Confetti</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["confetti"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["confetti"].summary)}</p>
       <Api slug="confetti" />
       <Demo
         title="Confetti"
@@ -1052,7 +1054,7 @@ export function CardRowPage() {
       <Api slug="card-row" />
 
       <H2>CardFan</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["card-fan"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["card-fan"].summary)}</p>
       <Demo
         title="Overlap, and an arc"
         description={

@@ -59,7 +59,9 @@ function GeometryPlayground() {
         <Stepper label="index" value={safeIndex} min={0} max={count - 1} onChange={setIndex} />
       </Row>
 
-      <div className="grid gap-4 sm:grid-cols-[200px_1fr] sm:items-center">
+      {/* `minmax(0,1fr)`, not a bare `1fr`: the content column holds code samples
+          whose min-content width can otherwise stretch the track and the page. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
         <svg viewBox="0 0 600 400" className="w-full rounded-lg border border-white/10 bg-black/20">
           <ellipse cx="300" cy="200" rx="120" ry="80" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
           <line x1="300" y1="200" x2={one.x} y2={one.y} stroke="rgba(243,156,18,0.6)" strokeWidth="1.5" strokeDasharray="4 4" />

@@ -89,7 +89,12 @@ export function Demo({
   return (
     <section className="mt-6 first:mt-0">
       {title && <h3 className="text-[15px] font-semibold text-neutral-100">{title}</h3>}
-      {description && <div className="mt-1 text-sm leading-relaxed text-neutral-400">{description}</div>}
+      {/* capped to a comfortable measure, like running text in the pages */}
+      {description && (
+        <div className="mt-1 max-w-[70ch] text-sm leading-relaxed text-neutral-400">
+          {typeof description === "string" ? inlineMd(description) : description}
+        </div>
+      )}
 
       <div
         className={cn(
@@ -122,6 +127,37 @@ export function Demo({
 
 /* ------------------------------------------------------------------- api ---- */
 
+/**
+ * The registry keeps its copy as plain strings, so the emphasis in a handful of
+ * them is written markdown-style. Rendering the string directly showed the raw
+ * `backticks`, **asterisks** and *stars*, which is not what a reader expects —
+ * this turns them into the same <code>/<strong>/<em> the hand-written pages use.
+ */
+export function inlineMd(text: string): ReactNode {
+  return text
+    .split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
+    .map((part, i) => {
+      if (/^\*\*[^*]+\*\*$/.test(part)) {
+        return (
+          <strong key={i} className="font-semibold text-neutral-100">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (/^\*[^*]+\*$/.test(part)) {
+        return <em key={i}>{part.slice(1, -1)}</em>;
+      }
+      if (/^`[^`]+`$/.test(part)) {
+        return (
+          <code key={i} className="rounded bg-white/[0.07] px-1 py-0.5 font-mono text-[12px] text-gold">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+}
+
 export function ApiTable({ rows, caption }: { rows: ApiRow[]; caption?: string }) {
   return (
     <div className="mt-3">
@@ -142,7 +178,7 @@ export function ApiTable({ rows, caption }: { rows: ApiRow[]; caption?: string }
                 <td className="px-4 py-3 font-mono text-[12.5px] whitespace-nowrap text-gold">{row.name}</td>
                 <td className="px-4 py-3 font-mono text-[12px] whitespace-nowrap text-sky-300">{row.type}</td>
                 <td className="px-4 py-3 font-mono text-[12px] whitespace-nowrap text-neutral-400">{row.default ?? "—"}</td>
-                <td className="px-4 py-3 leading-relaxed text-neutral-300">{row.description}</td>
+                <td className="px-4 py-3 leading-relaxed text-neutral-300">{inlineMd(row.description)}</td>
               </tr>
             ))}
           </tbody>

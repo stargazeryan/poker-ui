@@ -10,7 +10,7 @@ import {
   type TableTypeName,
 } from "@stargazeryan/poker-ui";
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
-import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
+import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG, type ApiRow } from "../registry";
 import { BankingExample } from "../../examples/games";
 import { BET_RING, PlayerSeat, SAMPLE, betSlots, renderHands, renderPlayers } from "../../examples/parts";
@@ -49,7 +49,7 @@ function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{doc.summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(doc.summary)}</p>
       <H2>Examples</H2>
     </>
   );
@@ -84,22 +84,25 @@ export function TableTypesPage() {
 
       <H2>Side by side</H2>
       <P>The same three, live, each carrying the same seat content — one seat component, three arrangements:</P>
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
+      {/* `grid-cols-1` matters below lg: without a template the implicit track is
+          `auto`, so it took the DealerTable's min-content width and pushed the
+          page sideways at 390px. */}
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">RoundTable</div>
-          <div className="h-[300px] overflow-hidden rounded-lg border border-white/10">
+          <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
             <RoundTable seatCount={6} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">SquareTable</div>
-          <div className="h-[300px] overflow-hidden rounded-lg border border-white/10">
+          <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
             <SquareTable cornerRadius={70} seatCount={4} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">DealerTable</div>
-          <div className="h-[300px] overflow-hidden rounded-lg border border-white/10">
+          <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
             <DealerTable
               headWidth={190}
               headHeight={140}
@@ -168,7 +171,7 @@ export function RoundTablePage() {
               </Btn>
             ))}
           </Row>
-          <div className="h-[420px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={count}
               renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 0} />}
@@ -200,7 +203,7 @@ export function RoundTablePage() {
               betting line
             </Btn>
           </Row>
-          <div className="h-[420px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={6}
               rings={line ? [BET_RING] : undefined}
@@ -262,7 +265,7 @@ export function SquareTablePage() {
               </Btn>
             ))}
           </Row>
-          <div className="h-[420px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <SquareTable cornerRadius={corner} seatCount={count} renderSeat={renderPlayers()} />
           </div>
         </div>
@@ -316,7 +319,7 @@ export function DealerTablePage() {
           <Row className="justify-center border-b border-white/10 py-3">
             <Stepper label="handCount" value={handCount} min={1} max={6} onChange={setHandCount} />
           </Row>
-          <div className="h-[460px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <DealerTable
               handCount={handCount}
               head={
