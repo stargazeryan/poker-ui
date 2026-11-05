@@ -178,6 +178,11 @@ read before upgrading.
   the gate green.
 - **`permissions: contents: read`**, so the workflow's token is not the
   repository default.
+- **A second job runs the suite on React 18**, the bottom of the peer range,
+  which nothing had ever checked. It downgrades `react`, `react-dom` and their
+  types and runs the type check and the unit tests — and the server-render test
+  in this release is what would fail if the measuring effect went back to warning
+  on 18.
 
 ## 0.9.0 — the design box is a maximum
 
