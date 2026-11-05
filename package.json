@@ -24,16 +24,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./wager": {
-      "types": "./dist/wager.d.ts",
-      "import": "./dist/wager.js",
-      "require": "./dist/wager.cjs",
-      "default": "./dist/wager.js"
+      "import": {
+        "types": "./dist/wager.d.ts",
+        "default": "./dist/wager.js"
+      },
+      "require": {
+        "types": "./dist/wager.d.cts",
+        "default": "./dist/wager.cjs"
+      }
     },
     "./styles.css": "./src/styles.css",
     "./compiled.css": "./dist/compiled.css",
@@ -72,6 +80,11 @@
     "react": ">=18",
     "react-dom": ">=18",
     "tailwindcss": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "tailwindcss": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.4",

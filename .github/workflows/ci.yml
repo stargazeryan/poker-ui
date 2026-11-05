@@ -9,6 +9,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: nothing here writes to the repository, and without this block
+# the job's token carries the repository default instead.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -41,6 +46,19 @@ jobs:
 
       - name: Build the package
         run: npm run build
+
+      # Does a consumer's TypeScript resolve the types the way that consumer
+      # resolves modules? The package ships dual ESM/CJS with a separate .d.ts
+      # and .d.cts, and which one you get depends on the *consumer's* module
+      # setting — a shape that can look right here and still hand a CJS project
+      # ESM types. It did: a single top-level `types` condition served both
+      # systems, and `dist/index.d.cts` was never reachable.
+      #
+      # `no-resolution` is ignored because the two stylesheet subpaths are
+      # assets: a bundler imports them, they have no declarations to resolve, and
+      # that is the only question this tool asks about them.
+      - name: Check the types resolve for both module systems
+        run: npx --yes @arethetypeswrong/cli@0.18.5 --pack . --ignore-rules no-resolution
 
       - name: Check the published package from a real consumer app
         run: npm run test:consumer

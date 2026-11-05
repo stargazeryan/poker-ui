@@ -78,8 +78,12 @@ export interface FitBoxOptions {
 /**
  * Measure a container and derive the design box and scale for it.
  *
- * Guarded by the package's `"use client"` banner: `useLayoutEffect` warns during
- * server rendering.
+ * The built entry points carry a `"use client"` banner, which is what lets these
+ * components be imported from a server-component tree: `useLayoutEffect` has no
+ * server equivalent, so a server render produces the design box at 1:1 and the
+ * scale arrives on mount. That is a layout shift, not a warning — on React 19 it
+ * logs nothing at all, which `tests/ssr.test.tsx` renders every component to
+ * assert. Do not add a `typeof window` guard for a complaint that does not come.
  */
 export function useFitBox({
   designWidth = DESIGN_W,

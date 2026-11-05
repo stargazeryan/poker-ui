@@ -4,6 +4,28 @@ import { CardBack, CardFan, CardRow, CardSlot, PlayingCard } from "../src/compon
 import { getSuitSymbol, parseCard } from "../src/cards";
 import { CARD_HEIGHT, CARD_WIDTH } from "../src/cardSize";
 
+describe("CardFan", () => {
+  it("is a flat overlapping row by default, and splays when given an arc", () => {
+    // `arc` defaults to 0, which is a row: nothing may be rotated or given a
+    // pivot it does not use.
+    const flat = render(<CardFan cards={["As", "Kh", "Qd"]} />).container;
+    expect(flat.querySelector("[style*='transform-origin']")).toBeNull();
+
+    // arc 60 over three cards is -30 / 0 / +30, so the middle card stays flat
+    // and the outer two pivot about a point below the row — a held hand.
+    const fanned = render(<CardFan cards={["As", "Kh", "Qd"]} arc={60} />).container;
+    expect(fanned.querySelectorAll("[style*='transform-origin']")).toHaveLength(2);
+    expect(fanned.querySelectorAll("[style*='rotate(-30deg)']")).toHaveLength(1);
+    expect(fanned.querySelectorAll("[style*='rotate(30deg)']")).toHaveLength(1);
+  });
+
+  it("leaves a single card flat even in an arc — there is nothing to splay it against", () => {
+    const one = render(<CardFan cards={["As"]} arc={90} />).container;
+    expect(one.querySelector("[style*='transform-origin']")).toBeNull();
+    expect(one.querySelector("[style*='rotate(']")).toBeNull();
+  });
+});
+
 describe("parseCard", () => {
   it("splits a compact card code into rank + suit", () => {
     expect(parseCard("As")).toEqual({ rank: "A", suit: "s" });

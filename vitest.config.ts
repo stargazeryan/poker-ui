@@ -37,11 +37,26 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.d.ts"],
       reporter: ["text", "json-summary"],
+      /*
+       * `perFile` is the point: the numbers apply to every file on its own, not
+       * to the average. A global gate absorbs one collapsing module completely —
+       * `frames.ts` sat at 74.5% of branches with the gate green, which is how
+       * three exported helpers went untested for as long as they did, and a
+       * global check is structurally blind to that.
+       *
+       * `branches` is the one floor that is not at 95, because a few arms are
+       * unreachable by construction: `rectanglePerimeterPoint`'s fallback needs a
+       * rectangle with negative extents, FitBox's `!el` needs a layout effect with
+       * no element, and `content === undefined` needs a render callback that
+       * returns nothing at all. Those count against a file's branch percentage and
+       * cannot be executed from outside.
+       */
       thresholds: {
-        statements: 90,
+        perFile: true,
+        statements: 95,
         branches: 85,
-        functions: 90,
-        lines: 90,
+        functions: 95,
+        lines: 95,
       },
     },
   },

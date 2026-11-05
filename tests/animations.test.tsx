@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { CardRow } from "../src/components/PlayingCard";
 import { Counter } from "../src/components/Counter";
+import { Confetti } from "../src/components/Confetti";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -95,6 +96,25 @@ describe("Counter count-up", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("Confetti — a decoration that cannot be talked into nonsense", () => {
+  it("draws nothing for a count that is not a positive number", () => {
+    // `count={NaN}` or a negative is a caller's arithmetic going wrong, and the
+    // answer is no pieces, never `NaN` many.
+    for (const count of [0, -3, Number.NaN]) {
+      const { container } = render(<Confetti count={count} />);
+      expect(container.querySelectorAll("span"), `count ${count}`).toHaveLength(0);
+    }
+    expect(render(<Confetti count={2.7} />).container.querySelectorAll("span")).toHaveLength(2);
+  });
+
+  it("falls back to the default palette instead of rendering invisible pieces", () => {
+    const { container } = render(<Confetti count={3} colors={[]} />);
+    const pieces = [...container.querySelectorAll("span")];
+    expect(pieces).toHaveLength(3);
+    for (const piece of pieces) expect((piece as HTMLElement).style.backgroundColor).not.toBe("");
   });
 });
 

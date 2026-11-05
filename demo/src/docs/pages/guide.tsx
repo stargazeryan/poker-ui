@@ -302,8 +302,8 @@ const GAPS: Array<[string, string]> = [
     "Counter renders a plain number by default and formatBB(amount, bb) is an opt-in poker helper from the wager entry, because a big blind is a game rule and this is generic UI. The cost is that nothing stops you showing big-blind amounts in one place and chip amounts in another on the same table: the library has no unit concept, deliberately, so it cannot catch that for you.",
   ],
   [
-    "The design box scales with useLayoutEffect unconditionally",
-    "FitBox (and therefore every table type and CardTable) measures its container in a layout effect, which warns on the server. It is guarded by a \"use client\" banner, so it works in a client component, but SSR of a client component still logs the warning.",
+    "The design box is measured in a layout effect, so the server's markup is unscaled",
+    "FitBox (and therefore every table type and CardTable) measures its container in a useLayoutEffect, so a server-rendered page ships the design box at 1:1 and it scales once the client mounts — a layout shift, not a crash. The built entry points carry a \"use client\" banner, which is what lets them be imported from a server-component tree. The warning this page used to claim SSR logs does not reproduce on React 19: rendering all fifteen components with renderToString produces no console output, and tests/ssr.test.tsx is what will notice if that changes. React 18 is still inside the supported peer range and is not what this repo's suite runs, so a warning from it would not be caught here.",
   ],
   [
     "The overlay slot is pointer-events-none",

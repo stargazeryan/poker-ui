@@ -290,7 +290,10 @@ export function fitRowScale({
 }: RowFitOptions): number {
   const n = normCount(count);
   const limit = maxWidth * fraction;
-  if (!Number.isFinite(limit) || limit <= 0) return floor;
+  // A box with no width limit at all (`Infinity`) is not the same as a box that
+  // cannot hold the row: the first fits at scale 1, which the loop below already
+  // says. Only zero, a negative or a nonsense limit is the floor.
+  if (!(limit > 0)) return floor;
   for (let step = 0; step <= 50; step++) {
     const scale = 1 - step * 0.01;
     const w = Math.max(1, Math.round(width * scale));

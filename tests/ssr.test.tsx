@@ -1,0 +1,76 @@
+import { describe, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
+import {
+  CardBack,
+  CardFan,
+  CardRow,
+  CardSlot,
+  CardTable,
+  Confetti,
+  Counter,
+  DealerTable,
+  FitBox,
+  PlayingCard,
+  RoundTable,
+  Seat,
+  SquareTable,
+  type SeatBox,
+} from "../src/index";
+import { Chip, ChipStack } from "../src/wager";
+
+/*
+ * What a server render actually does: no DOM, no effects, a string out the other
+ * side. Nothing in the suite used to cover it, and the docs' "known gaps" page
+ * claimed this path "logs the warning" about `useLayoutEffect` on the server —
+ * which is worth a test rather than a claim either way, because the answer
+ * decides whether a Next.js consumer sees console noise on every page.
+ */
+const seat = (index: number, box: SeatBox) => (
+  <Seat key={index} width={box.width} height={box.height} header={`p${index}`} />
+);
+
+describe("server rendering — no DOM, no effects", () => {
+  it("renders every component without throwing and without a React warning", () => {
+    // React logs through console.error, so that is what "the warning" would be.
+    const complaints = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const cases: Array<[string, string]> = [
+      ["RoundTable", renderToString(<RoundTable seatCount={6} renderSeat={seat} />)],
+      ["SquareTable", renderToString(<SquareTable seatCount={4} renderSeat={seat} />)],
+      ["DealerTable", renderToString(<DealerTable handCount={3} />)],
+      ["CardTable", renderToString(<CardTable seatCount={4} renderSeat={seat} />)],
+      ["Seat", renderToString(<Seat header="x" />)],
+      ["Counter", renderToString(<Counter label="Main" amount={240} />)],
+      ["PlayingCard", renderToString(<PlayingCard card="As" />)],
+      ["CardBack", renderToString(<CardBack />)],
+      ["CardRow", renderToString(<CardRow cards={["As", "Kh"]} animation="flip" />)],
+      ["CardFan", renderToString(<CardFan cards={["As", "Kh"]} arc={30} />)],
+      ["CardSlot (empty)", renderToString(<CardSlot />)],
+      ["CardSlot (filled)", renderToString(<CardSlot>{<PlayingCard card="As" />}</CardSlot>)],
+      ["Confetti", renderToString(<Confetti count={8} />)],
+      ["ChipStack", renderToString(<ChipStack amount={487} />)],
+      ["Chip", renderToString(<Chip value={25} />)],
+      ["FitBox", renderToString(<FitBox>{() => <div>content</div>}</FitBox>)],
+    ];
+
+    for (const [name, html] of cases) {
+      // A component that renders nothing on the server is not a pass.
+      expect(html.length, `${name} rendered something`).toBeGreaterThan(20);
+    }
+    // ...and the content reached the markup, not just the wrapper elements.
+    const table = cases.find(([name]) => name === "RoundTable")![1];
+    expect(table).toContain("p0");
+
+    expect(complaints.mock.calls, `React complained on the server: ${String(complaints.mock.calls[0]?.[0] ?? "")}`).toHaveLength(0);
+  });
+
+  it("draws the design box at 1:1 on the server, because there is nothing to measure yet", () => {
+    // The documented consequence of measuring in a layout effect: the server's
+    // markup is the design box unscaled, and it settles after mount. Pinning it
+    // here means a future change to the measuring has to say so.
+    // one text node, or React breaks it up with a `<!-- -->` marker
+    const html = renderToString(<FitBox>{({ scale }) => <div>{`scale ${scale}`}</div>}</FitBox>);
+    expect(html).toContain("scale 1");
+    expect(html).not.toContain("scale 0");
+  });
+});
