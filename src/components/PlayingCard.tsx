@@ -46,7 +46,27 @@ const BACK_EMBLEM_SIZE: Record<CardSize, number> = {
   lg: 42,
 };
 
-function getSuitClass(suit: string): string {
+/**
+ * The four-colour deck: diamonds blue, clubs green.
+ *
+ * A standard deck tells hearts from diamonds, and spades from clubs, by hue
+ * alone — the cue a colour-blind player does not have. At xs and sm there is no
+ * room for the suit letter beside the rank either, so the hue is the *only* cue
+ * on a small card. The four-colour deck is the online-poker answer to that, and
+ * it stays opt-in because it is not what a physical deck looks like.
+ */
+const FOUR_COLOR_SUIT: Record<string, string> = {
+  h: "text-red-600",
+  d: "text-blue-700",
+  c: "text-green-700",
+  s: "text-neutral-900",
+};
+
+function getSuitClass(suit: string, fourColor = false): string {
+  if (fourColor) {
+    const cls = FOUR_COLOR_SUIT[suit];
+    if (cls) return cls;
+  }
   if (isRedSuit(suit)) return "text-red-600";
   return isKnownSuit(suit) ? "text-neutral-900" : "";
 }
@@ -61,6 +81,12 @@ export interface PlayingCardProps {
    * than the fragments "A" and "♠" a screen reader would otherwise read out.
    */
   label?: string;
+  /**
+   * Draw the suit in four colours — diamonds blue, clubs green — so the suit is
+   * not carried by red-versus-black alone. The accessible name is unchanged.
+   * Default false.
+   */
+  fourColor?: boolean;
   className?: string;
 }
 
@@ -71,14 +97,14 @@ const CARD_FACE = "relative bg-gradient-to-br from-white via-white to-neutral-10
  * breakpoints) so cards scale predictably inside any container. Small sizes
  * (xs / sm) show only a larger upright index, centered in the card.
  */
-export function PlayingCard({ card, size = "md", label, className }: PlayingCardProps) {
+export function PlayingCard({ card, size = "md", label, fourColor = false, className }: PlayingCardProps) {
   if (!card) return <CardBack size={size} className={className} label={label} />;
 
   const name = label ?? describeCard(card);
 
   const { rank, suit } = parseCard(card);
   const suitSymbol = getSuitSymbol(suit);
-  const suitClass = getSuitClass(suit);
+  const suitClass = getSuitClass(suit, fourColor);
   const large = size === "md" || size === "lg";
 
   // Small cards: rank centered in the top half, suit centered in the bottom half.
@@ -200,6 +226,11 @@ export interface CardRowProps {
    */
   placeholder?: "back" | "empty";
   /**
+   * Draw the suit in four colours (see `PlayingCard`). A row that is four-colour
+   * has to be told once, here, rather than per card. Default false.
+   */
+  fourColor?: boolean;
+  /**
    * Accessible name for the row — "Your hand", "The board", the dealer's. A row
    * is a group of cards that belong together, and this is how a screen reader
    * gets to hear that; nothing is named by default, because *what* a row is
@@ -223,6 +254,7 @@ export function CardRow({
   animationKey,
   slots,
   placeholder = "back",
+  fourColor = false,
   label,
   className,
 }: CardRowProps) {
@@ -271,7 +303,7 @@ export function CardRow({
             className={cn(SIZE_CLASSES[size], animClass)}
             style={{ aspectRatio: "10/14", ...style }}
           >
-            <PlayingCard card={card} size={size} />
+            <PlayingCard card={card} size={size} fourColor={fourColor} />
           </div>
         );
       })}
@@ -322,6 +354,15 @@ export interface CardFanProps {
   overlap?: number;
   /** Total spread in degrees. `0` (the default) is a flat overlapping row. */
   arc?: number;
+  /** Draw the suit in four colours (see `PlayingCard`). Default false. */
+  fourColor?: boolean;
+  /**
+   * The width the fan has to fit, in px — usually a seat frame's. Give it and the
+   * **overlap is chosen for you**: the cards are brought together until the fan is
+   * no wider than this. Without it, `overlap` is taken as given and nothing checks
+   * that the fan fits wherever it was put.
+   */
+  fitWidth?: number;
   /**
    * Accessible name for the fan — "Your hand", "The meld". Read out once, with
    * the cards grouped under it; nothing is named by default, and without a
@@ -336,11 +377,28 @@ export interface CardFanProps {
  * wants. A 13-card hand at `size="sm"` laid out flat is wider than any seat
  * frame; overlapped, it fits.
  */
-export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, label, className }: CardFanProps) {
+export function CardFan({
+  cards,
+  size = "lg",
+  overlap = 0.55,
+  arc = 0,
+  fitWidth,
+  fourColor = false,
+  label,
+  className,
+}: CardFanProps) {
   const width = CARD_WIDTH[size];
   const height = CARD_HEIGHT[size];
   const n = cards.length;
-  const step = width * (1 - Math.min(0.95, Math.max(0, overlap)));
+  // `fitWidth` answers "how much overlap does this hand need" from the frame,
+  // which is the half of this that could be measured. It never pulls the cards
+  // apart past no overlap: a fan that cannot fit is drawn at its smallest and
+  // left to the caller to size differently.
+  const needed = n > 1 && fitWidth !== undefined ? 1 - (fitWidth - width) / ((n - 1) * width) : 0;
+  // Only ever **tighter** than the overlap that was asked for. A fan already
+  // narrower than the width it was given is left where it is, rather than spread
+  // out to fill it: this fits a fan into a frame, it does not justify one.
+  const step = width * (1 - Math.min(0.95, Math.max(0, overlap, needed)));
   const mid = (n - 1) / 2;
   const total = (n - 1) * step;
   // The cards pivot about a point below the row, so a non-zero arc splays the
@@ -367,7 +425,7 @@ export function CardFan({ cards, size = "lg", overlap = 0.55, arc = 0, label, cl
               transformOrigin: rotate === 0 ? undefined : `50% calc(100% + ${pivot}px)`,
             }}
           >
-            <PlayingCard card={card} size={size} />
+            <PlayingCard card={card} size={size} fourColor={fourColor} />
           </div>
         );
       })}

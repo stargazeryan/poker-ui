@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "../cn";
+import { DesignScaleContext } from "../designScale";
 import { DESIGN_H, DESIGN_W } from "../layout";
 
 /**
@@ -23,6 +24,25 @@ export type FitMode = "design" | "container";
 /** Aspect range `fit="container"` will not go outside of. */
 export const MIN_FIT_ASPECT = 0.5;
 export const MAX_FIT_ASPECT = 2.5;
+
+/**
+ * How far outside the design box a decoration may spill, in px, before it is
+ * clipped.
+ *
+ * The box used to clip at its own edge (`overflow-hidden`), which quietly ate
+ * anything a table declares *outside* a seat frame: the frame of the topmost
+ * seat is laid out to sit inside the box, so a `Seat`'s "somebody is thinking"
+ * bubble, its countdown pill, and the winner glow itself (a 40px blur) were all
+ * cut off at the box's edge. Measured on the default six-seat ring: 16px of room
+ * above the top frame in a 725px-wide container, against a bubble that needed
+ * more.
+ *
+ * `overflow: clip` with a margin is the same containment with a forgiving edge:
+ * runaways are still contained at 40px, while a declared decoration is drawn.
+ * A browser that does not support `overflow-clip-margin` clips at the box, which
+ * is exactly the old behaviour.
+ */
+export const FIT_BLEED = 40;
 
 /**
  * The largest multiplier the design box may be drawn at.
@@ -199,10 +219,13 @@ export function FitBox({ designWidth, designHeight, fit, maxScale, children, cla
   return (
     <div
       ref={outerRef}
-      className={cn(
-        "relative flex h-full w-full min-h-0 items-center justify-center overflow-hidden",
-        className,
-      )}
+      className={cn("relative flex h-full w-full min-h-0 items-center justify-center", className)}
+      /*
+       * `overflow: clip` rather than `overflow-hidden`: same containment, but the
+       * clip region can be grown, so a declared decoration just outside the box
+       * is drawn instead of cut. See FIT_BLEED.
+       */
+      style={{ overflow: "clip", overflowClipMargin: `${FIT_BLEED}px` }}
     >
       <div style={{ width: design.width * design.scale, height: design.height * design.scale }}>
         <div
@@ -214,7 +237,9 @@ export function FitBox({ designWidth, designHeight, fit, maxScale, children, cla
             transformOrigin: "top left",
           }}
         >
-          {children(design)}
+          {/* The one place the scale is published, so text inside a scaled box
+              can keep itself at or above MIN_TEXT_PX. */}
+          <DesignScaleContext.Provider value={design.scale}>{children(design)}</DesignScaleContext.Provider>
         </div>
       </div>
     </div>

@@ -4,6 +4,107 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## 0.11.0 — readable at any size
+
+**0.10.0 was never published.** If you are upgrading from 0.9.0 — npm's latest —
+its section below is part of this release and worth reading first: the removed
+aliases are there, and they are the part a 0.9.0 consumer has to act on. It stays a
+section of its own rather than being folded into this one because the two passes
+were separate work.
+
+A pass over what the table looks like rather than what it does, and then the
+pieces it was missing: a countdown, a marker, the one control. Every item in
+**Changed** started as a measurement of the built docs site: a betting line at
+1.2:1 against the felt, a seat name drawn at 3px on a phone, a bubble cut off by
+the box it was drawn in, a winner and a current seat in the same gold. Read that
+section before upgrading — the render moves.
+
+Sizes, measured on this release: the compiled stylesheet is ~27 kB (was ~24 kB),
+and the consumer smoke test's stylesheet **is now 31.1 kB against its 32 kB
+ceiling** — the headroom the ceiling was written with is nearly spent, so the next
+addition to the shipped CSS wants the ceiling raised deliberately rather than
+bumped by a failure.
+
+### Changed
+
+- **A current seat and a winning seat are no longer the same drawing.** Both were
+  a gold ring with a gold glow, differing only in brightness (50%→95% against
+  90%→100%), so the two most important states were indistinguishable at a glance
+  and in greyscale. A current seat is a 2px outline; a winner is a 3px border, a
+  gold wash inside the frame and a second inset ring behind it. Both animations
+  are unchanged.
+- **A declared ring is drawn in `--color-line`, not `border-white/10`.** Measured
+  against the felt gradient, the old outline was 1.2–1.3:1 — a betting line
+  nobody could see. The token ships as `#ffd678`: 3.5:1 at the lightest end of the
+  felt, 7.1:1 at its base. Override the token to change it, or `className` on the
+  ring itself.
+- **Floating slots hang off the frame proportionally, and `above` is anchored to
+  the frame's top edge.** The offsets were fixed px, so on a ring that shrinks its
+  frames (a sixteen-seat ring is 80x88) a -48px bubble covered most of the seat.
+  At the default 160x176 every value lands on the px it replaced; `above` moves
+  from 48px above the frame to attached to it, so it fits the room the ring
+  already leaves. If you relied on the old gap, put the space back in your own
+  bubble.
+- **The design box clips with a margin instead of at its own edge.** `FitBox` used
+  `overflow-hidden`, which cut off anything declared outside a seat frame — the
+  action bubble, the countdown pill, the winner glow (a 40px blur). It is now
+  `overflow: clip` with `overflow-clip-margin: FIT_BLEED` (40px), so a decoration
+  that reaches just past the box is drawn while runaways are still contained. A
+  browser without `overflow-clip-margin` behaves exactly as before.
+- **A seat's own rows and a counter's amount are kept at or above `MIN_TEXT_PX`
+  (10) on screen.** The design box is scaled to fit, and text was scaled with it:
+  an 11px name was drawn at 6.6px in a 725px container and 3px on a 390px phone.
+  The components now publish the scale they are inside and compensate their own
+  text, never by more than `MAX_TEXT_SCALE` (3). Geometry is not compensated —
+  only the ink. `minTextPx={0}` switches it off per component.
+- **The furniture is themed by tokens.** `Seat`'s body, border and ink and
+  `Counter`'s pill and label were Tailwind's own neutrals, hard-coded in the two
+  components, so a light or branded table meant overriding a class per component.
+
+### Added
+
+- **`Seat`**: `label` (an accessible name for the frame, and the button's name
+  when `onClick` is given) and `minTextPx`. The frame also reports `data-state`
+  (`idle` / `active` / `winner` / `dimmed`) and `aria-current` on the current seat
+  — "whose turn" was colour-only until now.
+- **`Counter`**: `minTextPx`. Its settled amount is an `aria-live` region, so the
+  count-up stops being silent to a screen reader.
+- **`TurnTimer`** — a countdown ring drawn from one number the caller owns
+  (`remaining`, `size`, `stroke`, `tone`, `label`, `title`). It animates nothing and
+  schedules nothing, and it is a `progressbar` rather than a live region, because a
+  ring that ticks once a second would interrupt whatever is being read out.
+- **`Marker`** — the disc every card room draws and every caller drew by hand: a
+  dealer button, a bid marker, a rank badge. `children`, `size`, `tone`, `label`.
+  Neutral by name on purpose: it carries no opinion about what it marks.
+- **`AmountSlider`** (`/wager`) — the library's only control. A labelled range with
+  a formatted readout, the formatted amount as its `aria-valuetext`, and optional
+  quick-set buttons (`quick`), which is what the docs' own chip examples had been
+  writing out of a bare `<input type="range">`.
+- **`CardFan`**'s `fitWidth` — the fan chooses its own overlap to fit a width,
+  which is the half of that known gap that could be measured. `arc` stays
+  decorative, as documented, and is not touched.
+- **`--color-warning`** — the token `TurnTimer tone="warning"` draws with.
+- **`fourColor`** on `PlayingCard`, `CardRow` and `CardFan`: diamonds blue, clubs
+  green, so a suit is not carried by red-versus-black alone — the cue that is
+  missing is the one a colour-blind player needs, and at `xs`/`sm` there is no
+  room for the suit letter either. Opt-in; the accessible name is unchanged.
+- **`ChipStack`**: `layout="pile"` cuts a stack into columns of at most
+  `PILE_HEIGHT` (five) — how a counted bet sits on the felt. The `+N` count is a
+  legible pill rather than 10px of 40% ink.
+- **Tokens**: `--color-surface`, `--color-surface-border`, `--color-surface-ink`,
+  `--color-muted`, `--color-line` — all with pickers on the docs' theming page.
+- **Exports**: `cardSizeFor`, `useDesignScale`, `readableScale`, `MIN_TEXT_PX`,
+  `MAX_TEXT_SCALE`, `FIT_BLEED`, `PILE_HEIGHT`. `cardSizeFor(box, count)` is the
+  largest card size whose cards fit a frame, so a seat fills its own box and a
+  ring that shrinks its frames shrinks their cards with them.
+
+### Fixed
+
+- A seat's floating slots collided with its own `header` row on a shrunk ring;
+  the docs' slots demo showed `above` landing on the frame's name.
+- The winner glow and any float on the outermost seat were clipped by the design
+  box.
+
 ## 0.10.0 — the review pass
 
 A pass over 0.9.0's leftovers: three names that were doing nothing, a slot radius

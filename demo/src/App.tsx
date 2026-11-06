@@ -15,6 +15,7 @@ import {
   PlayingCardPage,
   SeatPage,
 } from "./docs/pages/components";
+import { AmountSliderPage, MarkerPage, TurnTimerPage } from "./docs/pages/primitives";
 import { LayoutPage, TurnOrderPage } from "./docs/pages/reference";
 
 /** Every slug in `NAV`, plus nothing else — `useSlug` falls back to `FIRST_SLUG`. */
@@ -31,6 +32,9 @@ const PAGES: Record<string, ComponentType> = {
   "fit-box": FitBoxPage,
   seat: SeatPage,
   counter: CounterPage,
+  "turn-timer": TurnTimerPage,
+  marker: MarkerPage,
+  "amount-slider": AmountSliderPage,
   "playing-card": PlayingCardPage,
   "card-back": CardBackPage,
   "card-row": CardRowPage,

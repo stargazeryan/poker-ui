@@ -384,7 +384,7 @@ function Table({
           key={ring.id}
           data-ring={ring.id}
           data-part="ring"
-          className={cn("absolute border-2 border-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]", ring.className)}
+          className={cn("absolute border-2 border-line shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]", ring.className)}
           style={{ borderRadius: layout.ringRadius(ring.radius), ...px(layout.ringBox(ring.radius)) }}
           aria-hidden="true"
         />

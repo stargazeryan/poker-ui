@@ -15,6 +15,14 @@ const CHIP_WIDTH: Record<ChipSize, number> = { sm: 22, md: 30, lg: 42 };
 /** Eight edge spots, evenly spaced around the rim. */
 const SPOT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
+/**
+ * Chips in a column of a pile.
+ *
+ * Five is the number a hand can count at a glance and the number casinos cut to,
+ * so it is the column height `layout="pile"` splits a bet into.
+ */
+export const PILE_HEIGHT = 5;
+
 export interface ChipProps {
   /** Printed on the centre of the face. */
   value?: number | string;
@@ -139,6 +147,14 @@ export interface ChipStackProps {
   amount: number;
   /** Default `"md"`. */
   size?: ChipSize;
+  /**
+   * How the chips are arranged. `"stack"` (default) is one tower — what a single
+   * stack of chips looks like. `"pile"` cuts the tower into columns of at most
+   * `PILE_HEIGHT` (five), which is how a bet that has been counted out actually
+   * sits on the felt: a 240 bet is not one twelve-high tower, and at a seat's
+   * `sm` chip size a tower that tall is a smear rather than a count.
+   */
+  layout?: "stack" | "pile";
   /** Default `DEFAULT_DENOMINATIONS` (white 1, red 5, blue 10, green 25, black 100). */
   denominations?: Denomination[];
   /**
@@ -161,6 +177,7 @@ export interface ChipStackProps {
 export function ChipStack({
   amount,
   size = "md",
+  layout = "stack",
   denominations = DEFAULT_DENOMINATIONS,
   maxChips = 12,
   label,
@@ -176,6 +193,14 @@ export function ChipStack({
   }
   const hidden = total - drawn.length;
 
+  /** The drawn chips, as one tower or as columns of at most PILE_HEIGHT. */
+  const piles: (typeof drawn)[] = [];
+  if (layout === "pile") {
+    for (let i = 0; i < drawn.length; i += PILE_HEIGHT) piles.push(drawn.slice(i, i + PILE_HEIGHT));
+  } else {
+    piles.push(drawn);
+  }
+
   const offset = Math.max(3, Math.round(CHIP_WIDTH[size] * 0.17));
   const breakdown = entries.map((e) => `${e.count}x${e.label ?? e.value}`).join(", ");
 
@@ -187,26 +212,41 @@ export function ChipStack({
     >
       {drawn.length > 0 && (
         // Presentation only — the stack already carries the accessible name.
-        <div aria-hidden="true" className="flex flex-col items-center drop-shadow-[0_3px_4px_rgba(0,0,0,0.5)]">
-          {drawn.map((entry, i) => (
-            // Later chips are tucked under the ones above them, so z-index has
-            // to descend as the stack grows.
-            <div key={i} className="relative" style={{ marginTop: i === 0 ? 0 : -offset, zIndex: drawn.length - i }}>
-              <Chip
-                value={entry.label ?? entry.value}
-                color={entry.color}
-                colorClassName={entry.className}
-                spotColor={entry.spotColor}
-                spotClassName={entry.spotClassName}
-                size={size}
-              />
+        <div
+          aria-hidden="true"
+          className={cn(
+            "flex drop-shadow-[0_3px_4px_rgba(0,0,0,0.5)]",
+            layout === "pile" ? "flex-row items-end gap-1" : "flex-col items-center",
+          )}
+        >
+          {piles.map((pile, p) => (
+            <div key={p} className="flex flex-col items-center">
+              {pile.map((entry, i) => (
+                // Later chips are tucked under the ones above them, so z-index
+                // has to descend as the column grows.
+                <div key={i} className="relative" style={{ marginTop: i === 0 ? 0 : -offset, zIndex: pile.length - i }}>
+                  <Chip
+                    value={entry.label ?? entry.value}
+                    color={entry.color}
+                    colorClassName={entry.className}
+                    spotColor={entry.spotColor}
+                    spotClassName={entry.spotClassName}
+                    size={size}
+                  />
+                </div>
+              ))}
             </div>
           ))}
         </div>
       )}
 
       {hidden > 0 && (
-        <span className="font-mono text-[10px] leading-none text-neutral-400">+{hidden}</span>
+        // Ten px of 40% ink on a felt was a smudge. A pill, so the count reads
+        // over whatever is behind it — this number is the difference between a
+        // stack a player can count and one they cannot.
+        <span className="rounded-full bg-surface/80 px-1.5 py-0.5 font-mono text-[11px] leading-none text-surface-ink/80">
+          +{hidden}
+        </span>
       )}
       {label !== undefined && <span className="leading-none">{label}</span>}
     </div>

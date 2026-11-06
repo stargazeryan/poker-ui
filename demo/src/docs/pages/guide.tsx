@@ -251,6 +251,13 @@ export function Theming() {
       </P>
       <ApiTable rows={TOKEN_ROWS} caption="Every token" />
       <P>
+        The furniture is a token now as well: <Prop>--color-surface</Prop>, <Prop>--color-surface-border</Prop>,{" "}
+        <Prop>--color-surface-ink</Prop> and <Prop>--color-muted</Prop> are what a seat frame and a counter pill are
+        drawn with, and <Prop>--color-line</Prop> is the outline a declared ring is drawn with. The first four used to be
+        Tailwind&apos;s own neutrals, hard-coded into the two components — which is why a light or a branded table meant
+        overriding a class on every component instead of setting a token once.
+      </P>
+      <P>
         Confetti colours are the one exception: they are inline styles, which Tailwind&apos;s tree-shaking cannot see, so
         they are a prop (<Prop>colors</Prop> on <Prop>Confetti</Prop>) rather than tokens.
       </P>
@@ -275,7 +282,7 @@ const GAPS: Array<[string, string]> = [
   ],
   [
     "CardFan's arc is decorative",
-    "CardFan overlaps a large hand so it fits, and arc splays the tops by rotating each card about a pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, the cards are not laid on a true circle, and nothing measures whether the fan actually fits the frame it is in. overlap is the control that matters for fitting; arc is the one that looks nice.",
+    "CardFan overlaps a large hand so it fits, and arc splays the tops by rotating each card about a pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, and the cards are not laid on a true circle. For fitting, pass fitWidth — usually a seat frame's — and the overlap is chosen from it, never looser than the overlap you asked for; arc is the one that only looks nice.",
   ],
   [
     "Reduced motion is per-component, not global",
@@ -295,7 +302,7 @@ const GAPS: Array<[string, string]> = [
   ],
   [
     "Accessibility is still incomplete",
-    "Cards and chips name themselves now (describeCard for the artwork, and the chip breakdown), but Counter has no aria-live so the count-up is silent to a screen reader, Seat's slots leave naming entirely to you, and the confetti is a purely visual reward. Suit colour is also the main cue at the small sizes, where there is no room for the suit letter.",
+    "Cards and chips name themselves (describeCard for the artwork, the chip breakdown), a Counter's settled amount is a live region, and a Seat can be given a name (label) and reports which seat is current. What is still yours: a Seat's slots are named by their content, and the confetti is a purely visual reward. A four-colour deck is available (PlayingCard fourColor) because a standard deck carries the suit by hue alone where there is no room for the suit letter — it is a prop rather than the default, because it is not what a physical deck looks like.",
   ],
   [
     "Units are yours, and nothing checks them",
@@ -338,7 +345,7 @@ export function KnownGaps() {
       <Row className="mt-4">
         <Field
           label="fixed in this branch:"
-          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry · five React 18 server-render warnings per page"
+          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry · five React 18 server-render warnings per page · a betting line at 1.2:1 · a nameplate drawn at 3px on a phone · a bubble clipped by the box it was drawn in · a winner and a current seat drawn the same · furniture that was not a token · a chip count at 10px of 40% ink · a suit carried by hue alone"
         />
       </Row>
     </>

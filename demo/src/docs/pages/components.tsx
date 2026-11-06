@@ -37,7 +37,7 @@ import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
 import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
 
-function Sec({ slug }: { slug: string }) {
+export function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
@@ -47,7 +47,7 @@ function Sec({ slug }: { slug: string }) {
   );
 }
 
-function Api({ slug }: { slug: string }) {
+export function Api({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
@@ -215,6 +215,32 @@ const entries = chipBreakdown(487);
       </Demo>
 
       <Api slug="chip-stack" />
+
+      <Demo
+        title="A pile, not a tower"
+        description={
+          <>
+            <Prop>layout=&quot;pile&quot;</Prop> cuts the stack into columns of at most <Prop>PILE_HEIGHT</Prop> (five) —
+            how a bet that has been counted out actually sits on the felt, and far easier to count than one tall tower at
+            a seat&apos;s chip size.
+          </>
+        }
+        code={`<ChipStack amount={1000} size="sm" layout="pile" />`}
+      >
+        <div className="flex items-end justify-center gap-10">
+          <ChipStack
+            amount={1000}
+            size="sm"
+            label={<span className="font-mono text-[10px] text-neutral-400">stack</span>}
+          />
+          <ChipStack
+            amount={1000}
+            size="sm"
+            layout="pile"
+            label={<span className="font-mono text-[10px] text-neutral-400">pile</span>}
+          />
+        </div>
+      </Demo>
 
       <H2>Chip</H2>
       <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["chip"].summary)}</p>
@@ -797,6 +823,23 @@ export function SeatPage() {
         </Seat>
       </Demo>
 
+      <P>
+        A floating slot hangs off the frame by a fraction of its height rather than by a fixed pixel offset, so a ring
+        that shrinks its frames — sixteen seats end up at 80x88 — keeps them tight instead of dropping them on the name.
+        {" "}
+        <Prop>above</Prop> is anchored to the frame&apos;s top edge, so a bubble stays attached whatever height it is.
+        And the box a table is drawn in is clipped with a <Prop>FIT_BLEED</Prop> margin rather than at its own edge, so a
+        bubble or a glow that reaches just past the box is drawn rather than cut off.
+      </P>
+      <P>
+        The frame&apos;s own rows are kept at or above <Prop>MIN_TEXT_PX</Prop> on screen whatever the table is scaled to
+        — an 11px name is 6.6px in a 725px container and 3px on a phone without it. Pass <Prop>minTextPx={'{0}'}</Prop>{" "}
+        to switch that off. A frame can be named with <Prop>label</Prop>, and the two highlights are drawn differently: a
+        current seat is an outline, a winner is a heavier one with a gold wash and a second inset ring behind it — they
+        used to be the same gold ring at two brightnesses, which is the same state as far as anyone at the table can
+        tell.
+      </P>
+
       <Demo
         title="Interactive"
         description={<><Prop>onClick</Prop> makes the frame a real button: <Prop>role=&quot;button&quot;</Prop>, <Prop>tabIndex=0</Prop>, Enter and Space both fire, and a focus ring appears.</>}
@@ -867,6 +910,13 @@ export function CounterPage() {
         </div>
       </Demo>
 
+      <P>
+        The settled amount is a live region, so a screen reader hears <Prop>&quot;Main: 240&quot;</Prop> once rather than
+        sixty frames of a count-up. Inside a table the amount and its label are also kept at or above{" "}
+        <Prop>MIN_TEXT_PX</Prop> on screen, like a seat&apos;s own rows — pass <Prop>minTextPx={'{0}'}</Prop> to switch
+        that off.
+      </P>
+
       <Api slug="counter" />
     </>
   );
@@ -903,6 +953,34 @@ export function PlayingCardPage() {
           <PlayingCard card="As" size="md" />
           <PlayingCard card="As" size="lg" />
           <CardBack size="lg" />
+        </div>
+      </Demo>
+
+      <Demo
+        title="Four colours"
+        description={
+          <>
+            <Prop>fourColor</Prop> draws diamonds blue and clubs green, so a suit is not carried by red-versus-black
+            alone — and at <Prop>xs</Prop> there is no room for the suit letter either, so on a small card the hue is the
+            only cue there is. Opt-in, because it is not what a physical deck looks like. The accessible name is
+            unchanged either way.
+          </>
+        }
+        code={`<PlayingCard card="Ad" fourColor />
+<CardRow cards={["Ad", "Ac"]} fourColor />`}
+        previewClassName="p-4"
+      >
+        <div className="flex flex-col gap-3">
+          {[false, true].map((fourColor) => (
+            <div key={String(fourColor)} className="flex items-center gap-3">
+              <span className="w-20 shrink-0 font-mono text-[11px] text-neutral-400">
+                {fourColor ? "fourColor" : "standard"}
+              </span>
+              {["As", "Ah", "Ad", "Ac"].map((card) => (
+                <PlayingCard key={card} card={card} size="md" fourColor={fourColor} />
+              ))}
+            </div>
+          ))}
         </div>
       </Demo>
 

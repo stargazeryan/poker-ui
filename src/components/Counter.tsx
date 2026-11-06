@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
+import { MIN_TEXT_PX, readableScale, useDesignScale } from "../designScale";
 import { COUNT_UP_MS } from "../motion";
+
+/** The size `Counter` draws at — `text-sm`, and what the text floor is measured against. */
+const COUNTER_TEXT_PX = 14;
 
 /**
  * The default rendering of an amount: the number, grouped by the locale, with no
@@ -29,6 +33,14 @@ export interface CounterProps {
   format?: (amount: number) => string;
   /** Animate the amount counting up when it changes. Default true. */
   animate?: boolean;
+  /**
+   * The smallest px this counter may be drawn at on screen. A counter inside a
+   * table is inside a scaled design box, where 14px becomes 8.4px in a 725px
+   * container and 3.9px on a phone; the amount and its label are compensated back
+   * up to this floor, never by more than `MAX_TEXT_SCALE`. Default `MIN_TEXT_PX`
+   * (10); `0` switches it off.
+   */
+  minTextPx?: number;
   className?: string;
 }
 
@@ -128,16 +140,35 @@ function CountUp({ value, format }: { value: number; format: (n: number) => stri
  * frames of "173", "198", "219"…. `data-counter-value` marks the animated half,
  * which is the one the tests measure.
  */
-export function Counter({ amount, label, format = defaultFormat, animate = true, className }: CounterProps) {
+export function Counter({
+  amount,
+  label,
+  format = defaultFormat,
+  animate = true,
+  minTextPx = MIN_TEXT_PX,
+  className,
+}: CounterProps) {
   const settled = format(amount);
+  const textScale = readableScale(useDesignScale(), COUNTER_TEXT_PX, minTextPx);
   return (
-    <div className={cn("flex items-center gap-2 font-mono text-sm text-gold", className)}>
-      {label && <span className="text-neutral-400">{label}</span>}
-      <span className="whitespace-nowrap rounded-full border border-gold/50 bg-neutral-900/80 px-3 py-1 shadow-inner">
+    <div
+      className={cn("flex items-center gap-2 font-mono text-sm text-gold", className)}
+      style={textScale === 1 ? undefined : { transform: `scale(${textScale})`, transformOrigin: "center" }}
+    >
+      {label && <span className="text-muted">{label}</span>}
+      <span className="whitespace-nowrap rounded-full border border-gold/50 bg-surface/80 px-3 py-1 shadow-inner">
         <span aria-hidden="true" data-counter-value>
           {animate ? <CountUp value={amount} format={format} /> : settled}
         </span>
-        <span className="sr-only">{label ? `${label}: ${settled}` : settled}</span>
+        {/*
+         * The settled amount is written once beside the animated one, so a screen
+         * reader gets "240" instead of sixty frames of 173, 198, 219. It is a live
+         * region now: the count-up used to be silent, because a changed span that
+         * no live region covers is not announced.
+         */}
+        <span className="sr-only" aria-live="polite">
+          {label ? `${label}: ${settled}` : settled}
+        </span>
       </span>
     </div>
   );

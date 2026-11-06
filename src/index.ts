@@ -28,8 +28,9 @@ export {
 } from "./color";
 
 export { SIZES, type CardSize, type ChipSize, type Size } from "./sizes";
-export { CARD_HEIGHT, CARD_WIDTH } from "./cardSize";
+export { CARD_HEIGHT, CARD_WIDTH, cardSizeFor, type CardSizeFit } from "./cardSize";
 export { COUNT_UP_MS, FLIP_MS, STAGGER_MS } from "./motion";
+export { MAX_TEXT_SCALE, MIN_TEXT_PX, readableScale, useDesignScale } from "./designScale";
 
 /* ------------------------------------------------------------------- cards -- */
 
@@ -107,6 +108,7 @@ export {
 /* -------------------------------------------------------------- components -- */
 
 export {
+  FIT_BLEED,
   FitBox,
   MAX_FIT_ASPECT,
   MIN_FIT_ASPECT,
@@ -134,6 +136,21 @@ export { Seat, type SeatProps } from "./components/Seat";
 export { Confetti, type ConfettiProps } from "./components/Confetti";
 
 export { Counter, type CounterProps } from "./components/Counter";
+
+export {
+  TIMER_SIZE,
+  TurnTimer,
+  type TurnTimerProps,
+  type TurnTimerSize,
+} from "./components/TurnTimer";
+
+export {
+  MARKER_SIZE,
+  Marker,
+  type MarkerProps,
+  type MarkerSize,
+  type MarkerTone,
+} from "./components/Marker";
 
 export {
   CardTable,

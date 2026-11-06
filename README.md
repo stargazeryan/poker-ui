@@ -12,6 +12,9 @@ seats, cards, and — one subpath over — chips.
 - 🎴 **`PlayingCard`** / **`CardBack`** / **`CardRow`** / **`CardFan`** /
   **`CardSlot`**
 - 🧮 **`Counter`** — a labelled amount that counts up
+- ⏳ **`TurnTimer`** — a countdown ring, drawn from one number you own
+- 🔘 **`Marker`** — a themed disc for a position (a dealer button, a bid marker)
+- 🎚️ **`AmountSlider`** — a labelled amount control with quick-set buttons
 - 🪙 **`ChipStack`** / **`Chip`** — in `@stargazeryan/poker-ui/wager`
 - 📦 **`FitBox`** + **`frames.ts`** — the scaling and the positioning, on their
   own, for a layout that is none of the three
@@ -206,12 +209,14 @@ tables cannot drift. The short version:
 | `RoundTable` / `SquareTable` | the same minus the shape knobs they already decided |
 | `DealerTable` | `head`, `headWidth`, `headHeight`, `headY`, `renderHand(i, box)`, `handCount`, `handWidth`, `handHeight`, `handGap`, `handY`, `designWidth`, `designHeight`, `fit`, `renderOverlay(geometry)`, `className` |
 | `FitBox` | `designWidth`, `designHeight`, `fit`, `children` (**called** with `{ width, height, scale }`), `className` |
-| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
-| `Counter` | `amount`, `label`, `format`, `animate` |
-| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label` |
+| `Seat` | states `isActive`, `isWinner`, `isDimmed`, `animated`; `onClick`, `label`, `minTextPx`, `width`, `height`, `className`, `frameClassName`, `frameStyle`. Slots: `header`, `children`, `footer`, `overlay`, `above`, `below`, `topLeft`, `topRight`, `topCenter` |
+| `Counter` | `amount`, `label`, `format`, `animate`, `minTextPx` |
+| `TurnTimer` | `remaining`, `size`, `stroke`, `tone`, `label`, `title`, `className` |
+| `Marker` | `children`, `size`, `tone`, `label`, `className` |
+| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label`, `fourColor` |
 | `CardBack` | `size`, `label`, `className` |
-| `CardRow` | `cards`, `size`, `animation` (`"deal" \| "flip" \| false`), `stagger`, `animationKey`, `slots`, `placeholder`, `className` |
-| `CardFan` | `cards`, `size`, `overlap`, `arc`, `className` |
+| `CardRow` | `cards`, `size`, `animation` (`"deal" \| "flip" \| false`), `stagger`, `animationKey`, `slots`, `placeholder`, `fourColor`, `label`, `className` |
+| `CardFan` | `cards`, `size`, `overlap`, `arc`, `fourColor`, `label`, `className` |
 | `CardSlot` | `size`, `label`, `children`, `className` |
 | `Confetti` | `count`, `colors`, `className` |
 
@@ -219,8 +224,9 @@ In `@stargazeryan/poker-ui/wager`:
 
 | Component | Props |
 | --- | --- |
-| `ChipStack` | `amount`, `size`, `denominations`, `maxChips` (default 12), `label`, `className` |
+| `ChipStack` | `amount`, `size`, `layout` (`"stack"` \| `"pile"`), `denominations`, `maxChips` (default 12), `label`, `className` |
 | `Chip` | `value`, `color`, `colorClassName`, `spotColor`, `size`, `label`, `className` |
+| `AmountSlider` | `value`, `onChange`, `max`, `min`, `step`, `format`, `quick`, `label`, `disabled`, `className` |
 
 Everything the components do is also available as a pure function, one module per
 concern:
@@ -232,7 +238,8 @@ concern:
 | `layout` | `layoutTable`, `fitSeatScale`, `defaultSeatPlacement`, `seatPoint`, `tableRadii`, `seatRingRadii`, `ellipseBox`, `ROW_FRACTION`, `SEAT_SHRINK_FLOOR`, `RIM_GAP`, `GLOW_GAP`, `DESIGN_W`, `DESIGN_H`, `DEFAULT_*` |
 | `geometry` | `seatAngle`, `ellipsePoint`, `ringPoints` |
 | `cards` | `parseCard`, `describeCard`, `getRankName`, `getSuitName`, `getSuitSymbol`, `isRedSuit`, `isKnownSuit` |
-| `cardSize` | `CARD_WIDTH`, `CARD_HEIGHT` |
+| `cardSize` | `CARD_WIDTH`, `CARD_HEIGHT`, `cardSizeFor` |
+| `designScale` | `useDesignScale`, `readableScale`, `MIN_TEXT_PX`, `MAX_TEXT_SCALE` |
 | `color` | `parseColor`, `relativeLuminance`, `flatten`, `contrastRatio`, `mostVisible` |
 | `sizes` | `SIZES` |
 | `motion` | `COUNT_UP_MS`, `STAGGER_MS`, `FLIP_MS` |
@@ -310,6 +317,32 @@ To keep "you" at the bottom, reorder your seat array so the viewer is index 0 �
 the package adds no offset. Seat 0 sits at `startAngle` (default 90°, directly
 below the centre).
 
+## Reading it at any size
+
+The design box is scaled to fit its container, and **text is scaled with it** —
+which is fine until the container is small. Measured: an 11px seat name is drawn
+at 6.6px in a 725px-wide container and at 3px on a 390px phone.
+
+So the components that draw their own text keep it at or above a floor. `Seat`
+and `Counter` publish the scale they are inside through `useDesignScale()`, and
+their own rows are compensated up to `MIN_TEXT_PX` (10) — never by more than
+`MAX_TEXT_SCALE` (3), so a table shrunk to a stamp stays one. `minTextPx={0}`
+turns it off per component, and anything you draw yourself can do the same:
+
+```tsx
+const scale = useDesignScale();   // 1 outside a table, or before measurement
+```
+
+| Related | What |
+| --- | --- |
+| `cardSizeFor(box, count)` | The largest card size whose `count` cards fit a frame — so a seat fills its own box instead of being handed a size by hand, and a ring that shrinks its frames shrinks their cards with them. |
+| `FIT_BLEED` | How far outside the design box a decoration may spill before it is clipped (40px). The box used to clip at its own edge, which cut off a seat's bubble, its countdown pill and the winner glow itself. |
+| `--color-line` | The outline a declared ring is drawn with, measured at 3.5:1 against the lightest felt and 7.1:1 against its base. It used to be `border-white/10` — 1.2:1, which is invisible. |
+
+Floating slots (`above`, `below`, `topCenter`, `topLeft`, `topRight`) hang off
+the frame by a fraction of it, and `above` is anchored to the frame's top edge,
+so a bubble stays attached at any frame size.
+
 ## Animations
 
 All on by default, each toggleable:
@@ -360,22 +393,32 @@ per-component overrides:
   --color-felt: #0b3d2e;
   --color-gold: #ffcc33;
   --color-chip-blue: #1d4ed8;
+  --color-surface: #ffffff;   /* the seat frame and the counter pill */
+  --color-surface-ink: #111111;
+  --color-line: #7a5c12;      /* the outline a declared ring is drawn with */
 }
 ```
 
 The docs site lists every token with the value it ships and has a live editor
 that sets these properties on a wrapper.
 
+The **furniture** — the seat frame, the counter pill, the chip count — is tokens
+now too: `--color-surface`, `--color-surface-border`, `--color-surface-ink` and
+`--color-muted`, plus `--color-line` for the outline a declared ring is drawn
+with. Those were Tailwind's own neutrals hard-coded into two components, which is
+why a light or a branded table meant overriding a class on every component
+instead of setting a token once.
+
 Two things are deliberately not tokens of ours:
 
 - `Confetti`'s `colors` is a prop, because those colours land in inline styles
   that Tailwind's tree-shaking cannot see.
-- the neutral furniture — the seat frame's body and border, the card face, the
-  red/black suit ink — is Tailwind's own palette rather than a token, so it is
-  restyled with `frameClassName` on `Seat` and `className` elsewhere. Overriding
-  `--color-felt` moves the felt; putting the seat frames on a light theme is a
-  class. Reach for a token where the package defines one, and for a class where
-  it does not.
+- the **card face** and the standard deck's ink — white stock, red hearts and
+  diamonds, black spades and clubs — are Tailwind's palette rather than a token,
+  because they are what a playing card looks like rather than what the table
+  looks like. Restyle them with `className` (and `frameClassName` on `Seat`), and
+  reach for `fourColor` on `PlayingCard` / `CardRow` / `CardFan` when the suit has
+  to be carried by more than red-versus-black.
 
 ## Docs site and development
 

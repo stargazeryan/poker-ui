@@ -57,6 +57,9 @@ export const NAV = [
       { slug: "fit-box", title: "FitBox" },
       { slug: "seat", title: "Seat" },
       { slug: "counter", title: "Counter" },
+      { slug: "turn-timer", title: "TurnTimer" },
+      { slug: "marker", title: "Marker" },
+      { slug: "amount-slider", title: "AmountSlider" },
       { slug: "playing-card", title: "PlayingCard" },
       { slug: "card-back", title: "CardBack" },
       { slug: "card-row", title: "CardRow" },
@@ -298,6 +301,19 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "className", type: "string", description: "Extra classes on the outer element." },
       { name: "frameClassName", type: "string", description: "Extra classes on the inner frame, to override visuals." },
       { name: "frameStyle", type: "CSSProperties", description: "Inline styles for the inner frame." },
+      {
+        name: "label",
+        type: "string",
+        description:
+          "Accessible name for the frame — \"Seat 3\", \"Ryan\". The button's name when `onClick` is given, the group's name otherwise. Without it the frame is named by its contents, which for a seat holding two cards is a reading of the cards rather than of the seat.",
+      },
+      {
+        name: "minTextPx",
+        type: "number",
+        default: "MIN_TEXT_PX (10)",
+        description:
+          "The smallest px the frame's own rows are drawn at on screen. They are 11px in design space and a table scales its whole design box to fit — 6.6px in a 725px container, 3px on a phone. They are compensated back up to this floor, never by more than `MAX_TEXT_SCALE`. `0` switches it off.",
+      },
     ],
     slots: [
       { name: "header", type: "ReactNode", description: "Top row inside the frame — name, badges." },
@@ -328,6 +344,72 @@ export const COMPONENTS: ComponentDoc[] = [
           "Formatter for the amount. Defaults to a locale-grouped plain number. `formatBB` from `@stargazeryan/poker-ui/wager` is the opt-in big-blind helper.",
       },
       { name: "animate", type: "boolean", default: "true", description: "Count up smoothly when the amount changes." },
+      {
+        name: "minTextPx",
+        type: "number",
+        default: "MIN_TEXT_PX (10)",
+        description:
+          "The smallest px the amount and its label are drawn at on screen. A counter inside a table is inside a scaled design box, where 14px becomes 8.4px in a 725px container and 3.9px on a phone; the text is compensated back up to this floor. `0` switches it off.",
+      },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "turn-timer",
+    title: "TurnTimer",
+    interfaceName: "TurnTimerProps",
+    summary:
+      "A countdown ring drawn from one number the caller owns — a turn timer, a deadline, an egg timer. It animates nothing and schedules nothing, so a game's clock stays in the game, and it is a `progressbar` rather than a live region, because a ring that ticks once a second would interrupt whatever is being read out.",
+    props: [
+      {
+        name: "remaining",
+        type: "number",
+        description:
+          "How much of the turn is **left**, `1` → `0`. `1` is a full ring, `0` an empty one. Clamped, so a caller mid-animation can hand over 1.0000001.",
+      },
+      { name: "size", type: '"sm" | "md" | "lg" | number', default: '"md"', description: "Ring diameter: 28 / 44 / 64px. A number is taken as px, so a timer can be sized off its seat frame." },
+      { name: "stroke", type: "number", default: "4", description: "Ring thickness, in px." },
+      {
+        name: "tone",
+        type: '"gold" | "warning" | "muted"',
+        default: '"gold"',
+        description: 'What the ring says at a glance: time left, nearly out (`--color-warning`), or paused.',
+      },
+      { name: "label", type: "ReactNode", description: "Content in the middle of the ring — a number of seconds, an icon." },
+      { name: "title", type: "string", default: '"turn timer"', description: "Accessible name. It is a `progressbar`, so the value is readable on demand." },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "marker",
+    title: "Marker",
+    interfaceName: "MarkerProps",
+    summary:
+      "A small disc that sits on a seat or a position — a dealer button, a bid marker, \"this is the button\". It carries no opinion about what it marks, which is why it is called a marker: every card room draws one, and every caller was drawing it by hand.",
+    props: [
+      { name: "children", type: "ReactNode", description: 'What is printed on the disc — `"D"`, `"1"`, a suit, an emoji.' },
+      { name: "size", type: '"sm" | "md" | "lg" | number', default: '"md"', description: "Disc diameter: 18 / 24 / 32px. A number is taken as px." },
+      { name: "tone", type: '"gold" | "dark" | "felt"', default: '"gold"', description: "The ink the disc is drawn in." },
+      { name: "label", type: "string", default: '"marker"', description: 'Accessible name — "dealer button", "bid marker".' },
+      { name: "className", type: "string", description: "Extra classes." },
+    ],
+  },
+  {
+    slug: "amount-slider",
+    title: "AmountSlider",
+    interfaceName: "AmountSliderProps",
+    summary:
+      "A labelled slider for choosing an amount, with optional quick-set buttons. The library's only control, and it is here because every betting client writes one and every one of them wrote it out of a bare `<input type=\"range\">`. Lives in `@stargazeryan/poker-ui/wager`.",
+    props: [
+      { name: "value", type: "number", description: "The amount being chosen, in chip units." },
+      { name: "onChange", type: "(value: number) => void", description: "Called with the new amount on every change, and from every quick button." },
+      { name: "max", type: "number", description: "The top of the range." },
+      { name: "min", type: "number", default: "0", description: "The bottom of the range. A `max` at or below it is repaired to one step past it." },
+      { name: "step", type: "number", default: "1", description: "Granularity — half a big blind, a whole one." },
+      { name: "format", type: "(amount: number) => string", default: "plain number", description: "Formats the readout, the `aria-valuetext` and nothing else. `formatBB` is the opt-in helper." },
+      { name: "quick", type: "QuickAmount[]", description: 'Buttons that jump the amount: `{ label, value }`. The values are yours — this control does not know what half of the pot is.' },
+      { name: "label", type: "string", default: '"amount"', description: "Names the control, as a real `<label>`." },
+      { name: "disabled", type: "boolean", default: "false", description: "Disables the slider and every quick button together." },
       { name: "className", type: "string", description: "Extra classes." },
     ],
   },
@@ -350,6 +432,13 @@ export const COMPONENTS: ComponentDoc[] = [
         type: "string",
         description:
           'Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather than the fragments "A" and "♠" a screen reader would otherwise read out. A null card forwards it to CardBack.',
+      },
+      {
+        name: "fourColor",
+        type: "boolean",
+        default: "false",
+        description:
+          "Draw the suit in four colours — diamonds blue, clubs green — so the suit is not carried by red-versus-black alone. At `xs`/`sm` there is no room for the suit letter either, so hue is the only cue on a small card. The accessible name is unchanged.",
       },
       { name: "className", type: "string", description: "Extra classes." },
     ],
@@ -396,6 +485,12 @@ export const COMPONENTS: ComponentDoc[] = [
           'What a `null` **within** `cards` means: a face-down card, or an undealt position. Past the end of the array is always empty.',
       },
       {
+        name: "fourColor",
+        type: "boolean",
+        default: "false",
+        description: "Draw every card in the row in the four-colour deck (see `PlayingCard`). Told to the row once rather than per card.",
+      },
+      {
         name: "label",
         type: "string",
         description:
@@ -416,6 +511,8 @@ export const COMPONENTS: ComponentDoc[] = [
       { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"lg"', description: "Card size." },
       { name: "overlap", type: "number", default: "0.55", description: "How much neighbouring cards overlap, 0–0.95 of a card width. `0` is a plain row." },
       { name: "arc", type: "number", default: "0", description: "Total spread in degrees. `0` is a flat overlapping row; 20–30 reads as a held hand." },
+      { name: "fitWidth", type: "number", description: "The width the fan has to fit, in px — usually a seat frame's. Give it and the **overlap is chosen for you**, brought together until the fan is no wider than this. It never pulls the cards apart past no overlap." },
+      { name: "fourColor", type: "boolean", default: "false", description: "Draw every card in the fan in the four-colour deck (see `PlayingCard`)." },
       {
         name: "label",
         type: "string",
@@ -447,6 +544,13 @@ export const COMPONENTS: ComponentDoc[] = [
     props: [
       { name: "amount", type: "number", description: "Amount in chip units — the smallest chip is 1. See `chipBreakdown`." },
       { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Chip width: 22 / 30 / 42px." },
+      {
+        name: "layout",
+        type: '"stack" | "pile"',
+        default: '"stack"',
+        description:
+          'How the chips are arranged. `"stack"` is one tower. `"pile"` cuts the tower into columns of at most `PILE_HEIGHT` (five) — how a bet that has been counted out sits on the felt, and far easier to count than one twelve-high tower at `sm` chip size.',
+      },
       {
         name: "denominations",
         type: "Denomination[]",
