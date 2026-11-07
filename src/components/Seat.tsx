@@ -8,6 +8,22 @@ import { useSeatSize } from "./seatSize";
 const ROW_TEXT_PX = 11;
 
 /**
+ * The winner's fill: gold mixed **into** the surface colour, not laid over it.
+ *
+ * Written as one arbitrary background-image on purpose. A `bg-gold/25` over
+ * `bg-surface/80` is a translucent wash over a translucent seat, so 20% of the felt
+ * comes through it and the winner is mossy green across the rail and amber off it.
+ * And a colour class next to a gradient class is a class tailwind-merge drops: the
+ * first attempt at this lost *both* `bg-surface/80` and the colour that was meant to
+ * replace it, leaving no background at all.
+ *
+ * Mixing into the surface keeps the fill themed — `--color-gold` and
+ * `--color-surface` are still the knobs — while making it opaque.
+ */
+const WINNER_WASH =
+  "bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--color-gold)_35%,var(--color-surface)),color-mix(in_oklab,var(--color-gold)_15%,var(--color-surface)))]";
+
+/**
  * How far a floating slot hangs off the frame, as a fraction of the frame.
  *
  * These were fixed px (-48px for `above`, -12px for `topLeft`). A ring shrinks
@@ -105,10 +121,11 @@ export interface SeatProps {
  * state, so `isWinner` draws the frame and the caller passes the crown through
  * `topLeft`.
  *
- * **The two states are drawn differently, not at two brightnesses.** A current
- * seat is an outline; a winning one is an outline, a heavier border *and* a gold
- * wash inside the frame — they used to be the same gold ring at two opacities,
- * which is to say the same state as far as anyone at the table could tell.
+ * **The two states are drawn in different languages, not at two opacities.** A
+ * current seat is an *outline*: a gold border and a halo, dark inside. A winning
+ * one is *filled*: the same outline under a gold wash across the whole frame.
+ * Telling them apart by border width and a 10% tint was telling them apart by
+ * nothing.
  *
  * **Its own text is kept above a floor.** The rows are compensated for the scale
  * the surrounding table is drawn at, so a name is not three pixels tall on a
@@ -148,9 +165,22 @@ export function Seat({
   const activeClass = animated
     ? "border-2 border-gold animate-turn-glow"
     : "border-2 border-gold shadow-[0_0_18px_color-mix(in_oklab,var(--color-gold)_50%,transparent)]";
+  /*
+   * An outline says "this seat is in play"; a **filled** frame says "this one won".
+   *
+   * They used to be the same gold ring with the same gold glow, told apart by a 1px
+   * border and a 10% tint — which, put side by side, is one state at two opacities:
+   * the tint is barely a tint, and the second hairline inside the border only made
+   * the border look thicker. A fill is a different kind of mark, and it is the one
+   * cue here that survives greyscale.
+   *
+   * WINNER_WASH is that fill. It replaces the seat's own `bg-surface/80` — the two
+   * are the same tailwind-merge group — which is the point: a winner is a solid
+   * object, not a tinted window.
+   */
   const winnerClass = animated
-    ? "border-[3px] border-gold bg-gold/10 animate-winner-glow"
-    : "border-[3px] border-gold bg-gold/10 shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)]";
+    ? `border-2 border-gold animate-winner-glow ${WINNER_WASH}`
+    : `border-2 border-gold shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)] ${WINNER_WASH}`;
 
   const interactive = onClick !== undefined;
   const frameRole = interactive ? "button" : label !== undefined ? "group" : undefined;
@@ -223,12 +253,6 @@ export function Seat({
           frameClassName,
         )}
       >
-        {isWinner && (
-          // A second, inset outline — a separate element rather than another
-          // box-shadow, because the winner glow *is* a box-shadow and the two
-          // would overwrite each other.
-          <span aria-hidden="true" className="pointer-events-none absolute inset-[3px] rounded-[13px] border border-gold/60" />
-        )}
         {header !== undefined && (
           <div className="flex w-full shrink-0 items-center justify-between gap-1 text-[11px]" style={textRow("center")}>
             {header}
