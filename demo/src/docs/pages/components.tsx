@@ -302,7 +302,9 @@ function SeatGapDemo() {
         <CardTable
           seatCount={count}
           seatGap={gap}
-          renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} />}
+          renderSeat={(i, box) => (
+            <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} cards={null} />
+          )}
           center={<Counter label="Main" amount={487} />}
         />
       </div>
@@ -467,6 +469,7 @@ function CardTablePlayground() {
               isActive={i === 0 && bool("glow")}
               isWinner={bool("confetti") && i === 0}
               cardSize="xs"
+              cards={i === 0 ? SAMPLE.hand : null}
             />
           )}
           center={
@@ -521,7 +524,7 @@ export function CardTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={count}
-              renderSeat={renderPlayers()}
+              renderSeat={renderPlayers({ cards: null })}
               center={<Counter label="Main" amount={487} />}
             />
           </div>
@@ -554,7 +557,7 @@ export function CardTablePage() {
             seatCount={6}
             rings={[BET_RING]}
             slots={betSlots(SAMPLE.bets)}
-            renderSeat={renderPlayers()}
+            renderSeat={renderPlayers({ cards: null })}
             center={<Counter label="Main" amount={487} />}
           />
         </div>
@@ -598,6 +601,7 @@ export function CardTablePage() {
                   height={box.height}
                   isActive={turn && i === 2}
                   isWinner={winner && i === 2}
+                  cards={null}
                 />
               )}
               center={<Counter label="Main" amount={487} />}
@@ -854,6 +858,50 @@ export function SeatPage() {
           <Field label="clicks:" value={clicks} />
         </div>
       </Demo>
+
+      <Demo
+        title="A plate, and the same thing sideways"
+        description="Three answers to the same question. A plate is a frame with nothing in it but who is sitting there — which is what a seat whose cards the viewer cannot read should be — and a plate wants less height, because the default frame is sized for two cards. A landscape frame with a row in children is the left/right split: the player on one side, the cards they are showing on the other."
+        code={`<Seat width={160} height={176} header={<b>Seat 3</b>} footer={waiting}>\n  <span>47 BB</span>\n</Seat>\n\n<Seat width={160} height={104} header={<b>Seat 5</b>}>\n  <span>50 BB</span>\n</Seat>\n\n<Seat width={240} height={96}>\n  <div className="flex w-full items-center justify-between gap-3">\n    <span>Seat 0 · 100 BB</span>\n    <CardRow cards={SAMPLE.hand} size="sm" />\n  </div>\n</Seat>`}
+      >
+        <div className="flex flex-wrap items-start justify-center gap-10">
+          <Seat
+            width={160}
+            height={176}
+            header={<span className="w-full truncate text-center font-semibold">Seat 3</span>}
+            footer={<span className="w-full text-center text-[10px] text-surface-ink/60">waiting</span>}
+          >
+            <span className="font-mono text-base text-gold-light">47 BB</span>
+          </Seat>
+          <Seat
+            width={160}
+            height={104}
+            header={<span className="w-full truncate text-center font-semibold">Seat 5</span>}
+            footer={<span className="w-full text-center text-[10px] text-surface-ink/60">folded</span>}
+          >
+            <span className="font-mono text-base text-gold-light">50 BB</span>
+          </Seat>
+          <Seat width={240} height={96}>
+            <div className="flex w-full items-center justify-between gap-3">
+              <span className="flex min-w-0 flex-col text-left">
+                <span className="truncate text-[11px] font-semibold">Seat 0</span>
+                <span className="font-mono text-[11px] text-gold-light">100 BB</span>
+              </span>
+              <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
+            </div>
+          </Seat>
+        </div>
+      </Demo>
+
+      <P>
+        <strong>Which cards belong in a frame?</strong> The ones the viewer can read. The worked examples put a hand in
+        your seat and nowhere else, because an opponent&apos;s two card backs are a pattern rather than a hand — at{" "}
+        <Prop>md</Prop> that pattern is <strong>40% of the frame&apos;s area</strong> (measured on the six-seat flop
+        example). A seat holding hidden cards is better as a plate: name, stack, timer, in the space the cards would
+        have taken. Public hands are the other case — which is why twenty-one&apos;s dealer and a shedding
+        game&apos;s thirteen cards are still drawn inside their frames. And a plate wants less height: 176 is sized
+        for two cards, and the same content in 104 reads tighter rather than cramped.
+      </P>
 
       <Api slug="seat" />
     </>

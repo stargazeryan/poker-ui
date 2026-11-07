@@ -52,40 +52,38 @@ export function TurnTimerPage() {
         title="On a seat"
         description={
           <>
-            <Prop>below</Prop> reads as a countdown badge under the frame; <Prop>topRight</Prop> as a small one where
-            a badge goes. A number in px is taken as px, so a timer can be cut to the size the table laid the seat out
-            for — <Prop>box.width</Prop>.
+            <Prop>below</Prop> reads as a countdown badge under the frame; <Prop>above</Prop> as one over it. A
+            number in px is taken as px, so a timer can be cut to the size the table laid the seat out for —{" "}
+            <Prop>box.width</Prop>.
           </>
         }
-        code={`<Seat below={<TurnTimer remaining={0.6} size="sm" label={12} />} />\n<Seat topRight={<TurnTimer remaining={0.6} size={24} stroke={3} />} />`}
+        code={`<Seat below={<TurnTimer remaining={0.6} size="sm" label={12} />} />\n<Seat above={<TurnTimer remaining={0.6} size={24} stroke={3} />} />`}
       >
         <div className="flex flex-wrap items-start justify-center gap-10">
           <Seat
             isActive
             width={160}
             height={176}
-            topRight={<TurnTimer remaining={remaining} size={24} stroke={3} tone={remaining < 0.25 ? "warning" : "gold"} title="time left" />}
+            above={<TurnTimer remaining={remaining} size={24} stroke={3} tone={remaining < 0.25 ? "warning" : "gold"} title="time left" />}
             header={<span className="w-full text-center font-semibold">Your turn</span>}
           >
-            <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
+            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>
           </Seat>
           <Seat
             width={160}
             height={176}
             below={<TurnTimer remaining={remaining} size="sm" label={seconds} />}
             header={<span className="w-full text-center font-semibold">Seat 2</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[2], 20)}</span>}
           >
-            <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
+            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[2], 20)}</span>
           </Seat>
           <Seat
             width={160}
             height={176}
             below={<TurnTimer remaining={remaining} size={56} stroke={5} label={seconds} tone="muted" />}
             header={<span className="w-full text-center font-semibold">Seat 3</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>}
           >
-            <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
+            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>
           </Seat>
         </div>
       </Demo>
@@ -94,7 +92,17 @@ export function TurnTimerPage() {
         <Prop>overlay</Prop> is centred on the frame and painted <em>over</em> the seat&apos;s own content, so a ring
         there crosses the cards, crosses the name, and prints its label on the card faces. This page used to show
         exactly that, as the way to do it — it is the way <em>not</em> to. Use <Prop>below</Prop>, or{" "}
-        <Prop>topRight</Prop> for a small one.
+        <Prop>topCenter</Prop> for one over the frame.
+      </Callout>
+
+      <Callout tone="warn" title="And not on the edge.">
+        Every slot that overhangs the frame — <Prop>topLeft</Prop>, <Prop>topRight</Prop>, <Prop>topCenter</Prop> —
+        overhangs by a fraction of the frame&apos;s height, 8px on a 176px seat, so anything taller than that
+        straddles the border. That is exactly right for a <Prop>Marker</Prop>, which should look pinned to the seat.
+        It is exactly wrong for a ring: a ring is read from its silhouette, so a border crossing it cuts the thing you
+        are looking at — checked at 6x, an arc on a corner reads as a blob with a bite out of it, its dark track
+        notching the border and its gold stroke merging into an active seat&apos;s gold frame. Keep the silhouette
+        whole: <Prop>above</Prop>, <Prop>below</Prop>, or the frame&apos;s own interior.
       </Callout>
 
       <P>
@@ -166,9 +174,8 @@ export function MarkerPage() {
             height={176}
             topCenter={<Marker>D</Marker>}
             header={<span className="w-full text-center font-semibold">Seat 0</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>}
           >
-            <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
+            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>
           </Seat>
           <Seat
             isWinner

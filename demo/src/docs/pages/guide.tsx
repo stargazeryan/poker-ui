@@ -136,7 +136,7 @@ export function GettingStarted() {
               width={box.width}
               height={box.height}
               isActive={i === 3}
-              cards={i % 2 === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+              cards={i === 0 ? SAMPLE.hand : null}
             />
           )}
           center={
@@ -228,7 +228,15 @@ export function Theming() {
             <RoundTable
               seatCount={6}
               rings={[BET_RING]}
-              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} />}
+              renderSeat={(i, box) => (
+                <PlayerSeat
+                  index={i}
+                  width={box.width}
+                  height={box.height}
+                  isActive={i === 3}
+                  cards={i === 0 ? SAMPLE.hand : null}
+                />
+              )}
               center={
                 <div className="flex flex-col items-center gap-3">
                   <CardRow cards={SAMPLE.board.slice(0, 3)} size="lg" animation="flip" />

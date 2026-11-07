@@ -87,8 +87,12 @@ export interface PlayerSeatProps {
   isActive?: boolean;
   isWinner?: boolean;
   isDimmed?: boolean;
-  /** Defaults to the sample hand, face up. */
-  cards?: (string | null)[];
+  /**
+   * The cards in the frame — or `null` for a **plate**: a seat whose cards the
+   * viewer cannot read shows the stack in their place instead of two card backs
+   * that say nothing. Defaults to the sample hand, face up.
+   */
+  cards?: (string | null)[] | null;
   /**
    * Defaults to the largest size that fits `width`/`height` — `cardSizeFor`.
    * A hand-written size is how the default seat ended up two-thirds empty.
@@ -117,11 +121,13 @@ export function PlayerSeat({
   footer,
 }: PlayerSeatProps) {
   const stack = SAMPLE.stacks[index % SAMPLE.stacks.length];
+  const shown = cards ?? [];
   // The frame is the thing that knows how much room there is. Outside a table
   // nothing reported a size, so `sm` is the honest fallback.
   const size =
     cardSize ??
-    (width !== undefined && height !== undefined ? cardSizeFor({ width, height }, cards.length) : "sm");
+    (width !== undefined && height !== undefined ? cardSizeFor({ width, height }, shown.length || 1) : "sm");
+  const stackLine = <span className="w-full text-center font-mono text-gold-light">{formatBB(stack, 20)}</span>;
 
   return (
     <Seat
@@ -135,9 +141,13 @@ export function PlayerSeat({
           {label ?? (index === 0 ? "You" : `Seat ${index}`)}
         </span>
       }
-      footer={footer ?? <span className="w-full text-center font-mono text-gold-light">{formatBB(stack, 20)}</span>}
+      footer={cards === null ? footer : (footer ?? stackLine)}
     >
-      <CardRow cards={[...cards]} size={size} />
+      {cards === null ? (
+        <span className="font-mono text-base text-gold-light">{formatBB(stack, 20)}</span>
+      ) : (
+        <CardRow cards={[...shown]} size={size} />
+      )}
     </Seat>
   );
 }

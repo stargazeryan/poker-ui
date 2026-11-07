@@ -48,13 +48,16 @@ describe("the flop example", () => {
   });
 
   it("puts exactly the cards on the board that the street says", () => {
-    // No wagers here, so every `role="img"` in the tree is a card: 12 in the six
-    // seats, plus however many are on the board.
+    // No wagers here, so every `role="img"` in the tree is a card. The example
+    // draws exactly one hand — yours — because an opponent's face-down cards are a
+    // pattern rather than information: the count is two, plus the board. The other
+    // two examples that DO draw hands in seats are the shedding and twenty-one
+    // games, where every hand is public.
     for (const [street, cards] of [
-      [0, 12],
-      [3, 15],
-      [4, 16],
-      [5, 17],
+      [0, 2],
+      [3, 5],
+      [4, 6],
+      [5, 7],
     ] as const) {
       const { container, unmount } = render(<FlopPokerExample street={street} bets={[0, 0, 0, 0, 0, 0]} />);
       expect(container.querySelectorAll('[role="img"]'), `${street} on board`).toHaveLength(cards);

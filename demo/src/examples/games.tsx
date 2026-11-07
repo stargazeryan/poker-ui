@@ -76,9 +76,10 @@ export function FlopPokerExample({
           width={box.width}
           height={box.height}
           isActive={activeSeat === i}
-          // Yours is face up; nobody else's is. `PlayerSeat` handles the name
-          // and the stack, which is the part every demo wants identically.
-          cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+          // Yours is face up, and only yours — because only yours is information.
+          // Everyone else is a plate: two card backs are a pattern rather than a
+          // hand, and at `md` that pattern is 40% of the seat frame's area.
+          cards={i === 0 ? SAMPLE.hand : null}
           label={i === 0 ? "You" : `Seat ${i}`}
         />
       )}

@@ -91,13 +91,13 @@ export function TableTypesPage() {
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">RoundTable</div>
           <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
-            <RoundTable seatCount={6} renderSeat={renderPlayers()} />
+            <RoundTable seatCount={6} renderSeat={renderPlayers({ cards: null })} />
           </div>
         </div>
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">SquareTable</div>
           <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
-            <SquareTable cornerRadius={70} seatCount={4} renderSeat={renderPlayers()} />
+            <SquareTable cornerRadius={70} seatCount={4} renderSeat={renderPlayers({ cards: null })} />
           </div>
         </div>
         <div>
@@ -174,7 +174,7 @@ export function RoundTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={count}
-              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 0} />}
+              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 0} cards={null} />}
             />
           </div>
         </div>
@@ -208,7 +208,7 @@ export function RoundTablePage() {
               seatCount={6}
               rings={line ? [BET_RING] : undefined}
               slots={line ? betSlots(SAMPLE.bets) : undefined}
-              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} />}
+              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} cards={null} />}
               center={<Counter label="Main" amount={SAMPLE.pot} />}
             />
           </div>
@@ -266,7 +266,7 @@ export function SquareTablePage() {
             ))}
           </Row>
           <div className="aspect-[4/3] max-h-[560px] w-full">
-            <SquareTable cornerRadius={corner} seatCount={count} renderSeat={renderPlayers()} />
+            <SquareTable cornerRadius={corner} seatCount={count} renderSeat={renderPlayers({ cards: null })} />
           </div>
         </div>
       </Demo>
