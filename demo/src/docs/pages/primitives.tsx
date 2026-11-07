@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CardRow, Marker, Seat, TurnTimer } from "@stargazeryan/poker-ui";
 import { AmountSlider, formatBB } from "@stargazeryan/poker-ui/wager";
 import { Api, Sec } from "./components";
-import { Btn, Demo, Field, P, Prop, Row, Stepper } from "../ui";
+import { Btn, Callout, Demo, Field, P, Prop, Row, Stepper } from "../ui";
 import { SAMPLE } from "../../examples/parts";
 
 /*
@@ -52,19 +52,19 @@ export function TurnTimerPage() {
         title="On a seat"
         description={
           <>
-            Through <Prop>overlay</Prop> it becomes a ring around the frame; through <Prop>below</Prop>, a small one
-            under it. A number in px is taken as px, so a timer can be cut to the size the table laid the seat out for
-            — <Prop>box.width</Prop>.
+            <Prop>below</Prop> reads as a countdown badge under the frame; <Prop>topRight</Prop> as a small one where
+            a badge goes. A number in px is taken as px, so a timer can be cut to the size the table laid the seat out
+            for — <Prop>box.width</Prop>.
           </>
         }
-        code={`<Seat overlay={<TurnTimer remaining={0.6} size={110} label={12} />} />\n<Seat below={<TurnTimer remaining={0.6} size="sm" label={12} />} />`}
+        code={`<Seat below={<TurnTimer remaining={0.6} size="sm" label={12} />} />\n<Seat topRight={<TurnTimer remaining={0.6} size={24} stroke={3} />} />`}
       >
         <div className="flex flex-wrap items-start justify-center gap-10">
           <Seat
             isActive
             width={160}
             height={176}
-            overlay={<TurnTimer remaining={remaining} size={110} label={seconds} tone={remaining < 0.25 ? "warning" : "gold"} />}
+            topRight={<TurnTimer remaining={remaining} size={24} stroke={3} tone={remaining < 0.25 ? "warning" : "gold"} title="time left" />}
             header={<span className="w-full text-center font-semibold">Your turn</span>}
           >
             <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
@@ -78,8 +78,24 @@ export function TurnTimerPage() {
           >
             <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
           </Seat>
+          <Seat
+            width={160}
+            height={176}
+            below={<TurnTimer remaining={remaining} size={56} stroke={5} label={seconds} tone="muted" />}
+            header={<span className="w-full text-center font-semibold">Seat 3</span>}
+            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>}
+          >
+            <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
+          </Seat>
         </div>
       </Demo>
+
+      <Callout tone="warn" title="Not the overlay slot.">
+        <Prop>overlay</Prop> is centred on the frame and painted <em>over</em> the seat&apos;s own content, so a ring
+        there crosses the cards, crosses the name, and prints its label on the card faces. This page used to show
+        exactly that, as the way to do it — it is the way <em>not</em> to. Use <Prop>below</Prop>, or{" "}
+        <Prop>topRight</Prop> for a small one.
+      </Callout>
 
       <P>
         A screen reader gets it as a <Prop>progressbar</Prop> with{" "}
