@@ -210,8 +210,9 @@ export function BankingExample({
         <PlayerSeat
           index={i}
           isWinner={won && wagers[i] > 0}
-          cards={SAMPLE.faceDown}
-          cardSize="md"
+          // A bank game's seats hold wagers, not hands — the cards are the gate in
+          // the head — so two backs here would claim a hand the game does not deal.
+          cards={null}
           footer={
             wagers[i] > 0 ? (
               <span className="w-full text-center">

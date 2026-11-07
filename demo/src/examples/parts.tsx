@@ -141,13 +141,15 @@ export function PlayerSeat({
           {label ?? (index === 0 ? "You" : `Seat ${index}`)}
         </span>
       }
-      footer={cards === null ? footer : (footer ?? stackLine)}
+      /*
+       * A plate draws no cards and nothing where they would be — the empty middle is
+       * the mark. It keeps the same footer every other seat has, because the stack is
+       * the one number on a table and it cannot be shouted in one seat's middle and
+       * whispered in the next seat's footer.
+       */
+      footer={footer ?? stackLine}
     >
-      {cards === null ? (
-        <span className="font-mono text-base text-gold-light">{formatBB(stack, 20)}</span>
-      ) : (
-        <CardRow cards={[...shown]} size={size} />
-      )}
+      {cards === null ? null : <CardRow cards={[...shown]} size={size} />}
     </Seat>
   );
 }

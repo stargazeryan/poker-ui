@@ -862,25 +862,21 @@ export function SeatPage() {
       <Demo
         title="A plate, and the same thing sideways"
         description="Three answers to the same question. A plate is a frame with nothing in it but who is sitting there — which is what a seat whose cards the viewer cannot read should be — and a plate wants less height, because the default frame is sized for two cards. A landscape frame with a row in children is the left/right split: the player on one side, the cards they are showing on the other."
-        code={`<Seat width={160} height={176} header={<b>Seat 3</b>} footer={waiting}>\n  <span>47 BB</span>\n</Seat>\n\n<Seat width={160} height={104} header={<b>Seat 5</b>}>\n  <span>50 BB</span>\n</Seat>\n\n<Seat width={240} height={96}>\n  <div className="flex w-full items-center justify-between gap-3">\n    <span>Seat 0 · 100 BB</span>\n    <CardRow cards={SAMPLE.hand} size="sm" />\n  </div>\n</Seat>`}
+        code={`<Seat width={160} height={176} header={<b>Seat 3</b>} footer={<span>47 BB</span>} />\n\n<Seat width={160} height={104} header={<b>Seat 5</b>} footer={<span>50 BB</span>} />\n\n<Seat width={240} height={96}>\n  <div className="flex w-full items-center justify-between gap-3">\n    <span>Seat 0 · 100 BB</span>\n    <CardRow cards={SAMPLE.hand} size="sm" />\n  </div>\n</Seat>`}
       >
         <div className="flex flex-wrap items-start justify-center gap-10">
           <Seat
             width={160}
             height={176}
             header={<span className="w-full truncate text-center font-semibold">Seat 3</span>}
-            footer={<span className="w-full text-center text-[10px] text-surface-ink/60">waiting</span>}
-          >
-            <span className="font-mono text-base text-gold-light">47 BB</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">47 BB</span>}
+          />
           <Seat
             width={160}
             height={104}
             header={<span className="w-full truncate text-center font-semibold">Seat 5</span>}
-            footer={<span className="w-full text-center text-[10px] text-surface-ink/60">folded</span>}
-          >
-            <span className="font-mono text-base text-gold-light">50 BB</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">50 BB</span>}
+          />
           <Seat width={240} height={96}>
             <div className="flex w-full items-center justify-between gap-3">
               <span className="flex min-w-0 flex-col text-left">
@@ -897,10 +893,11 @@ export function SeatPage() {
         <strong>Which cards belong in a frame?</strong> The ones the viewer can read. The worked examples put a hand in
         your seat and nowhere else, because an opponent&apos;s two card backs are a pattern rather than a hand — at{" "}
         <Prop>md</Prop> that pattern is <strong>40% of the frame&apos;s area</strong> (measured on the six-seat flop
-        example). A seat holding hidden cards is better as a plate: name, stack, timer, in the space the cards would
-        have taken. Public hands are the other case — which is why twenty-one&apos;s dealer and a shedding
-        game&apos;s thirteen cards are still drawn inside their frames. And a plate wants less height: 176 is sized
-        for two cards, and the same content in 104 reads tighter rather than cramped.
+        example). A seat holding hidden cards is better as a plate: the same name and stack every seat has, and
+        nothing where the cards would be — the empty middle is the mark. Public hands are the other case — which is why twenty-one&apos;s dealer and a shedding
+        game&apos;s thirteen cards are still drawn inside their frames; the bank game&apos;s seats are plates on the
+        same grounds, because there the cards are the gate in the head and a seat holds a wager. And a plate wants
+        less height, too: 176 is sized for two cards, so the same two rows in 104 read tighter rather than cramped.
       </P>
 
       <Api slug="seat" />

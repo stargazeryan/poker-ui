@@ -66,25 +66,22 @@ export function TurnTimerPage() {
             height={176}
             above={<TurnTimer remaining={remaining} size={24} stroke={3} tone={remaining < 0.25 ? "warning" : "gold"} title="time left" />}
             header={<span className="w-full text-center font-semibold">Your turn</span>}
-          >
-            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>}
+          />
           <Seat
             width={160}
             height={176}
             below={<TurnTimer remaining={remaining} size="sm" label={seconds} />}
             header={<span className="w-full text-center font-semibold">Seat 2</span>}
-          >
-            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[2], 20)}</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[2], 20)}</span>}
+          />
           <Seat
             width={160}
             height={176}
             below={<TurnTimer remaining={remaining} size={56} stroke={5} label={seconds} tone="muted" />}
             header={<span className="w-full text-center font-semibold">Seat 3</span>}
-          >
-            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>}
+          />
         </div>
       </Demo>
 
@@ -92,7 +89,7 @@ export function TurnTimerPage() {
         <Prop>overlay</Prop> is centred on the frame and painted <em>over</em> the seat&apos;s own content, so a ring
         there crosses the cards, crosses the name, and prints its label on the card faces. This page used to show
         exactly that, as the way to do it — it is the way <em>not</em> to. Use <Prop>below</Prop>, or{" "}
-        <Prop>topCenter</Prop> for one over the frame.
+        <Prop>above</Prop> for one over the frame.
       </Callout>
 
       <Callout tone="warn" title="And not on the edge.">
@@ -174,9 +171,8 @@ export function MarkerPage() {
             height={176}
             topCenter={<Marker>D</Marker>}
             header={<span className="w-full text-center font-semibold">Seat 0</span>}
-          >
-            <span className="font-mono text-base text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>
-          </Seat>
+            footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[0], 20)}</span>}
+          />
           <Seat
             isWinner
             width={160}
