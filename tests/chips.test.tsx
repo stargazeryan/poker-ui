@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { render } from "@testing-library/react";
 import { Chip, ChipStack } from "../src/wager/Chip";
 import {
   DEFAULT_DENOMINATIONS,
+  SPOT_CLASSES,
   chipBreakdown,
   chipCount,
   chipSpotColor,
@@ -199,6 +201,39 @@ describe("edge spots stay visible on every chip", () => {
     expect([...container.querySelectorAll("rect")].every((r) => r.getAttribute("fill") === "rgba(0,0,255,0.9)")).toBe(
       true,
     );
+  });
+
+  it("lets the spots be painted by a class, for a body colour the maths cannot read", () => {
+    // A body repainted by a `@theme` override is not a colour this code can
+    // measure: the spots kept the ink chosen for the old hex, so a chip painted
+    // dark ended up with dark spots. The class is the way out.
+    const { container } = render(<Chip value={1} color="#ecf0f1" spotClassName={SPOT_CLASSES.light} />);
+    const rects = [...container.querySelectorAll("rect")];
+    expect(rects).toHaveLength(8);
+    expect(rects.every((r) => r.getAttribute("class") === SPOT_CLASSES.light)).toBe(true);
+    // and the measured colour is still underneath it, as the fallback
+    expect(rects[0].getAttribute("fill")).toBe(chipSpotColor("#ecf0f1"));
+  });
+
+  it("carries the per-denomination spot class through ChipStack", () => {
+    const { container } = render(
+      <ChipStack amount={1} denominations={[{ value: 1, color: "#ecf0f1", spotClassName: SPOT_CLASSES.light }]} />,
+    );
+    expect([...container.querySelectorAll("rect")].every((r) => r.getAttribute("class") === SPOT_CLASSES.light)).toBe(
+      true,
+    );
+  });
+
+  it("ships the spot tokens at the same two inks the maths picks", () => {
+    // `SPOT_CLASSES` and `chipSpotColor` name the same two inks, and the tokens
+    // behind the classes carry the same values — or a repainted chip and a
+    // measured one would not look the same.
+    const compact = (s: string) => s.replace(/,\s*/g, ",").replace(/\s+/g, " ");
+    // a root-relative path rather than `import.meta.url`: this file runs in
+    // jsdom, where `import.meta.url` is not a `file:` URL
+    const css = compact(readFileSync("src/styles.css", "utf8"));
+    expect(css).toContain(`--color-chip-spot: ${chipSpotColor("#1a1a2e")};`);
+    expect(css).toContain(`--color-chip-spot-ink: ${chipSpotColor("#ecf0f1")};`);
   });
 });
 

@@ -91,6 +91,15 @@ describe("Seat", () => {
   });
 });
 
+/**
+ * The animated half of a `Counter`.
+ *
+ * The settled amount is also in the tree, written once for assistive tech, so
+ * measuring the whole container would pass even if the count-up never ran.
+ */
+const shown = (container: HTMLElement): string =>
+  container.querySelector("[data-counter-value]")?.textContent ?? "";
+
 describe("Counter", () => {
   it("renders a plain number by default — it does not invent a unit", () => {
     const { container } = render(<Counter amount={240} animate={false} />);
@@ -118,9 +127,17 @@ describe("Counter", () => {
 
   it("counts up to a new amount when it changes", async () => {
     const { container, rerender } = render(<Counter amount={100} />);
-    expect(container.textContent).toContain("100");
+    expect(shown(container)).toBe("100");
     rerender(<Counter amount={240} />);
-    await waitFor(() => expect(container.textContent).toContain("240"), { timeout: 2000 });
+    await waitFor(() => expect(shown(container)).toBe("240"), { timeout: 2000 });
+  });
+
+  it("writes the settled amount once for assistive tech, not every frame", () => {
+    const { container } = render(<Counter amount={240} label="Main" />);
+    // the number that moves is a presentational effect, so it is not read out
+    expect(container.querySelector("[data-counter-value]")?.getAttribute("aria-hidden")).toBe("true");
+    // and the value a screen reader gets is the one the amount settled on
+    expect(container.querySelector(".sr-only")?.textContent).toBe("Main: 240");
   });
 
   it("jumps straight to the new amount under prefers-reduced-motion", () => {
@@ -140,7 +157,7 @@ describe("Counter", () => {
       const { container, rerender } = render(<Counter amount={100} />);
       rerender(<Counter amount={240} />);
       // synchronously, with no animation frames in between
-      expect(container.textContent).toContain("240");
+      expect(shown(container)).toBe("240");
     } finally {
       if (original) window.matchMedia = original;
       else delete (window as unknown as Record<string, unknown>).matchMedia;

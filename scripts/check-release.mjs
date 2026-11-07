@@ -77,7 +77,19 @@ if (pack.status !== 0) {
   const paths = (info?.files ?? []).map((f) => f.path);
   const has = (p) => paths.includes(p);
 
-  const required = ["dist/index.js", "dist/index.cjs", "dist/index.d.ts", "dist/index.d.cts", "src/styles.css", "README.md", "LICENSE"];
+  // Both stylesheets are published entry points — `styles.css` is the Tailwind
+  // source, `compiled.css` the pre-built one — so a broken `build:css` step has
+  // to fail here rather than ship an import that resolves to nothing.
+  const required = [
+    "dist/index.js",
+    "dist/index.cjs",
+    "dist/index.d.ts",
+    "dist/index.d.cts",
+    "src/styles.css",
+    "dist/compiled.css",
+    "README.md",
+    "LICENSE",
+  ];
   for (const file of required) {
     has(file) ? ok(`tarball contains ${file}`) : fail(`tarball is missing ${file}`);
   }

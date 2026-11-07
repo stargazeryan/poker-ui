@@ -29,7 +29,7 @@ const LAYOUT_EXPORTS = [
   { name: "ellipsePoint(cx, cy, rx, ry, angleDeg)", type: "Point", description: "Point on an ellipse at an angle. Screen coordinates, so 90° is below the centre." },
   { name: "ringPoints(count, cx, cy, rx, ry, startAngle?)", type: "Point[]", description: "`count` evenly spaced points on an ellipse — handy for any ring, not just seats." },
   { name: "layoutTable(options)", type: "Layout", description: "Everything the table draws for one configuration: the surface and its boxes (table / felt / rim / glow), the frame size after auto-shrink, every seat centre, plus `ringBox(radius)` and `slotPoint(index, radius)` to place a declared ring or slot on the real surface. The component computes no geometry of its own." },
-  { name: "ellipseBox(dw, dh, rx, ry)", type: "EllipseBox", description: "Turn radii into the inset box of an absolutely-positioned ellipse — the one place that conversion happens." },
+  { name: "ellipseBox(dw, dh, rx, ry)", type: "Box", description: "Turn radii into the inset box of an absolutely-positioned ellipse — the one place that conversion happens." },
   { name: "minFrameSeparation(frames)", type: "number", description: "Smallest gap between any two frames. Negative means they overlap." },
   { name: "fitSeatScale(options)", type: "number", description: "The uniform scale the auto-shrink settles on for a given configuration — over a ring, a perimeter, a row or a grid." },
   { name: "frames.ts: ringFrames / rowFrames / gridFrames / perimeterFrames / fitFrameScale / minFrameSeparation / FRAME_SHRINK_FLOOR", type: "FrameBox[] | number", description: "The positioning strategies on their own, with no table around them: a frame is just a rectangle at a point, so these lay out a ring of options, a blackjack row, a grid or a rectangle's edge with the same auto-shrink a table uses. This is the escape hatch for a seating that is none of the three table shapes." },
@@ -59,7 +59,9 @@ function GeometryPlayground() {
         <Stepper label="index" value={safeIndex} min={0} max={count - 1} onChange={setIndex} />
       </Row>
 
-      <div className="grid gap-4 sm:grid-cols-[200px_1fr] sm:items-center">
+      {/* `minmax(0,1fr)`, not a bare `1fr`: the content column holds code samples
+          whose min-content width can otherwise stretch the track and the page. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
         <svg viewBox="0 0 600 400" className="w-full rounded-lg border border-white/10 bg-black/20">
           <ellipse cx="300" cy="200" rx="120" ry="80" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
           <line x1="300" y1="200" x2={one.x} y2={one.y} stroke="rgba(243,156,18,0.6)" strokeWidth="1.5" strokeDasharray="4 4" />

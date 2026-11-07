@@ -11,6 +11,7 @@
 
 export {
   DEFAULT_DENOMINATIONS,
+  SPOT_CLASSES,
   chipBreakdown,
   chipCount,
   chipSpotColor,
@@ -19,6 +20,7 @@ export {
   type Denomination,
 } from "./chips";
 
-export { Chip, ChipStack, type ChipProps, type ChipStackProps } from "./Chip";
+export { Chip, ChipStack, PILE_HEIGHT, type ChipProps, type ChipStackProps } from "./Chip";
+export { AmountSlider, type AmountSliderProps, type QuickAmount } from "./AmountSlider";
 
 export { BB, formatBB } from "./format";

@@ -83,6 +83,38 @@ try {
     `<!doctype html><html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>`,
   );
 
+  /*
+   * The *other* consumer: no Tailwind at all, one import of the compiled
+   * stylesheet. It is a second entry in the same app so it costs one build, and
+   * it is the only thing that proves `dist/compiled.css` is a complete
+   * stylesheet rather than a file that needs a Tailwind build to become one.
+   */
+  writeFileSync(
+    join(app, "compiled.html"),
+    `<!doctype html><html><body><div id="root"></div><script type="module" src="/src/compiled-entry.tsx"></script></body></html>`,
+  );
+
+  writeFileSync(
+    join(app, "src", "compiled-entry.tsx"),
+    `import { createRoot } from "react-dom/client";
+import { RoundTable, Seat, CardRow, Counter } from "@stargazeryan/poker-ui";
+import { ChipStack } from "@stargazeryan/poker-ui/wager";
+import "@stargazeryan/poker-ui/compiled.css";
+
+createRoot(document.getElementById("root")!).render(
+  <RoundTable
+    seatCount={4}
+    renderSeat={(i, box) => (
+      <Seat width={box.width} height={box.height} isActive={i === 0} footer={<Counter amount={240} />}>
+        <CardRow cards={["As", "Kh"]} size="sm" />
+        <ChipStack amount={25} size="sm" />
+      </Seat>
+    )}
+  />,
+);
+`,
+  );
+
   // app.css — copied from the README's "Setup (Tailwind v4)" section verbatim,
   // plus a token override to prove theming works.
   writeFileSync(
@@ -183,7 +215,15 @@ createRoot(document.getElementById("root")!).render(
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir: "dist" } });
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  build: {
+    outDir: "dist",
+    // Two entries: the README's Tailwind app, and one that never touches
+    // Tailwind and imports the compiled stylesheet instead.
+    rollupOptions: { input: { index: "index.html", compiled: "compiled.html" } },
+  },
+});
 `,
   );
 
@@ -209,11 +249,19 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
   run(bin("vite"), ["build"], app, { NODE_ENV: "production" });
 
   const assets = join(app, "dist", "assets");
-  const cssFile = readdirSync(assets).find((f) => f.endsWith(".css"));
-  if (!cssFile) throw new Error(`no CSS emitted in ${assets}: ${readdirSync(assets).join(", ")}`);
+  const files = readdirSync(assets);
+  // Two entries, so pick the stylesheets by name: `index-*` is the Tailwind
+  // app's, `compiled-*` is the one built from the package's compiled CSS alone.
+  const cssFile =
+    files.find((f) => f.startsWith("index-") && f.endsWith(".css")) ?? files.find((f) => f.endsWith(".css"));
+  if (!cssFile) throw new Error(`no CSS emitted in ${assets}: ${files.join(", ")}`);
   const css = readFileSync(join(assets, cssFile), "utf8");
-  const jsFile = readdirSync(assets).find((f) => f.endsWith(".js"));
-  const js = jsFile ? readFileSync(join(assets, jsFile), "utf8") : "";
+  const plainCssFile = files.find((f) => f.startsWith("compiled-") && f.endsWith(".css"));
+  // every chunk, not just one: the two entries split the bundle differently
+  const js = files
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => readFileSync(join(assets, f), "utf8"))
+    .join("\n");
 
   console.log(`\nasserting on ${cssFile} (${(css.length / 1024).toFixed(1)} kB)\n`);
 
@@ -236,6 +284,11 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     // themselves.
     [".fill-chip-black", /\.fill-chip-black\s*{/],
     [".fill-chip-blue", /\.fill-chip-blue\s*{/],
+    // The edge-spot inks, which nothing uses by default: they exist for a
+    // consumer who repaints a chip's body from a token, so a build that dropped
+    // them would leave exactly that consumer with invisible spots.
+    [".fill-chip-spot", /\.fill-chip-spot\s*{/],
+    [".fill-chip-spot-ink", /\.fill-chip-spot-ink\s*{/],
   ];
   for (const [label, re] of utilities) {
     (re.test(css) ? ok : fail)(`utility present: ${label}`);
@@ -272,6 +325,8 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     "--color-chip-red",
     "--color-chip-black",
     "--color-chip-blue",
+    "--color-chip-spot",
+    "--color-chip-spot-ink",
     // removed as dead: nothing in the package or the docs referenced them
     "--color-wood",
   ];
@@ -283,6 +338,57 @@ export default defineConfig({ plugins: [react(), tailwindcss()], build: { outDir
     } else {
       present ? ok(`token referenced by the components is emitted: ${token}`) : fail(`token missing: ${token}`);
     }
+  }
+
+  /*
+   * A ceiling rather than a budget.
+   *
+   * This is the consumer app's entire stylesheet — Tailwind's preflight, the
+   * package's utilities and its tokens — so it is a tripwire for the kind of
+   * regression that ships every keyframe to every consumer (the problem the
+   * tree-shaking assertions above exist for), not a precise measure of what the
+   * package weighs. 15% of headroom over today's number, to be worth having.
+   */
+  const sizeKb = css.length / 1024;
+  const ceilingKb = 32;
+  sizeKb <= ceilingKb
+    ? ok(`the whole consumer stylesheet is ${sizeKb.toFixed(1)} kB (ceiling ${ceilingKb} kB)`)
+    : fail(
+        `the consumer stylesheet is ${sizeKb.toFixed(1)} kB, over the ${ceilingKb} kB ceiling — did a new utility, token or animation land?`,
+      );
+
+  /*
+   * The compiled stylesheet, on its own.
+   *
+   * `dist/compiled.css` is what a consumer *without* Tailwind imports, and it
+   * ships as-is: nothing on their side tree-shakes it, so it has to be complete
+   * — every utility, token and keyframe the components use — and it has to be
+   * harmless, which means no preflight, because a reset inside a component
+   * library's stylesheet rewrites the app's own base styles.
+   */
+  if (!plainCssFile) {
+    fail("no stylesheet came from the Tailwind-free entry — does `npm run build` produce dist/compiled.css?");
+  } else {
+    const plain = readFileSync(join(assets, plainCssFile), "utf8");
+    const wanted = [
+      [".animate-turn-glow", /\.animate-turn-glow\s*\{/],
+      [".fill-chip-black", /\.fill-chip-black\s*\{/],
+      ["--color-felt", /--color-felt:/],
+      ["@keyframes turn-glow", /@keyframes turn-glow/],
+    ];
+    for (const [label, re] of wanted) {
+      re.test(plain)
+        ? ok(`the compiled stylesheet carries ${label}`)
+        : fail(`the compiled stylesheet is missing ${label}`);
+    }
+    const preflightMarkers = [/box-sizing/, /-webkit-text-size-adjust/, /:where\(html\)/];
+    preflightMarkers.some((re) => re.test(plain))
+      ? fail("the compiled stylesheet contains Tailwind's preflight, which would reset a consumer's base styles")
+      : ok("the compiled stylesheet carries no preflight, so importing it cannot reset a consumer's app");
+    const plainKb = plain.length / 1024;
+    plainKb <= ceilingKb
+      ? ok(`the compiled stylesheet is ${plainKb.toFixed(1)} kB (ceiling ${ceilingKb} kB)`)
+      : fail(`the compiled stylesheet is ${plainKb.toFixed(1)} kB, over the ${ceilingKb} kB ceiling`);
   }
 
   /*

@@ -9,6 +9,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: nothing here writes to the repository, and without this block
+# the job's token carries the repository default instead.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -31,11 +36,29 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
+      - name: Lint
+        run: npm run lint
+
+      # The coverage gate is this same run: one pass, thresholds enforced. An
+      # untested module or a deleted test used to be invisible in CI.
+      - name: Unit tests, with the coverage gate
+        run: npm run test:coverage
 
       - name: Build the package
         run: npm run build
+
+      # Does a consumer's TypeScript resolve the types the way that consumer
+      # resolves modules? The package ships dual ESM/CJS with a separate .d.ts
+      # and .d.cts, and which one you get depends on the *consumer's* module
+      # setting — a shape that can look right here and still hand a CJS project
+      # ESM types. It did: a single top-level `types` condition served both
+      # systems, and `dist/index.d.cts` was never reachable.
+      #
+      # `no-resolution` is ignored because the two stylesheet subpaths are
+      # assets: a bundler imports them, they have no declarations to resolve, and
+      # that is the only question this tool asks about them.
+      - name: Check the types resolve for both module systems
+        run: npx --yes @arethetypeswrong/cli@0.18.5 --pack . --ignore-rules no-resolution
 
       - name: Check the published package from a real consumer app
         run: npm run test:consumer
@@ -44,3 +67,42 @@ jobs:
       # itself evidence that the packed artefact works.
       - name: Build the docs site from the packed package
         run: npm run docs:build
+
+  # The peer floor, on the floor.
+  #
+  # `peerDependencies` promises react >= 18 and every other job here runs React
+  # 19, so the bottom of that range was never checked — which is how five
+  # "useLayoutEffect does nothing on the server" warnings per server render got
+  # out. (The runtime half was measured by hand before this job existed, with the
+  # built package and react-dom 18.3.1: all fourteen components render, no
+  # failures, and five warnings — fixed since by choosing the effect per
+  # environment. `tests/ssr.test.tsx` asserts React stays silent, so the unit
+  # tests below are what would catch that warning coming back.)
+  #
+  # The type half could not be measured in the same session — running tsc is
+  # refused by that sandbox — so if this job is the first red one, expect it to be
+  # `@types/react@18` disagreeing with the shipped `.d.ts` rather than a flake.
+  # That is the answer this job exists to give.
+  verify-react-18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --include=dev
+
+      - name: Downgrade to the oldest React in the peer range
+        run: npm install --no-save react@18 react-dom@18 @types/react@18 @types/react-dom@18
+
+      - name: Report what is actually installed
+        run: node -p "'react ' + require('react/package.json').version + ' | react-dom ' + require('react-dom/package.json').version + ' | @types/react ' + require('@types/react/package.json').version"
+
+      - name: Typecheck against React 18 types
+        run: npm run typecheck
+
+      - name: Unit tests on React 18
+        run: npm test

@@ -15,6 +15,8 @@ import { setElementSize } from "./setup";
  */
 const sizedTo = (container: HTMLElement) => container.firstElementChild!.firstElementChild as HTMLElement;
 const designBox = (container: HTMLElement) => sizedTo(container).firstElementChild as HTMLElement;
+/** The factor out of `transform: scale(x)`, for caps that are not round numbers. */
+const scaleOf = (container: HTMLElement) => parseFloat(designBox(container).style.transform.replace(/[^\d.]/g, ""));
 
 describe("FitBox", () => {
   it("never scales up: a container bigger than the design box is just more empty space", () => {
@@ -84,5 +86,29 @@ describe("FitBox", () => {
       </FitBox>,
     );
     expect(designBox(smaller.container).style.transform).toBe("scale(0.5)");
+  });
+
+  it("can be allowed to enlarge, up to the cap it is given", () => {
+    setElementSize(2400, 1800); // twice the 1200x900 default
+    const { container } = render(<FitBox maxScale={2}>{() => <div />}</FitBox>);
+
+    expect(designBox(container).style.transform).toBe("scale(2)");
+    expect(sizedTo(container).style.width).toBe("2400px");
+  });
+
+  it("fills the container when the cap is Infinity — what 0.8.x always did", () => {
+    setElementSize(2400, 1200); // the height is the constraint here: 1200 / 900
+    const { container } = render(<FitBox maxScale={Infinity}>{() => <div />}</FitBox>);
+
+    expect(scaleOf(container)).toBeCloseTo(4 / 3, 6);
+    expect(parseFloat(sizedTo(container).style.width)).toBeCloseTo(1600, 3);
+  });
+
+  it("treats a nonsense cap as the default one, rather than NaN in a style", () => {
+    setElementSize(2400, 1800);
+    const { container } = render(<FitBox maxScale={Number.NaN}>{() => <div />}</FitBox>);
+
+    expect(designBox(container).style.transform).toBe("scale(1)");
+    expect(sizedTo(container).style.width).toBe("1200px");
   });
 });

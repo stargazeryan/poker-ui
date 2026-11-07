@@ -34,10 +34,50 @@ body {
 /* a checkerboard so transparent-background demos read clearly */
 .doc-preview {
   background-image:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.022) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(255, 255, 255, 0.022) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.022) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.022) 75%);
+    linear-gradient(45deg, rgba(255, 255, 255, 0.013) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.013) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.013) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.013) 75%);
   background-size: 22px 22px;
   background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+  /*
+   * A demo can be wider than the column — a row of five 96px cards needs 512px
+   * inside a 335px box, and a column-flex wrapper sizes to that max-content
+   * width. Scroll the demo itself rather than the whole page.
+   */
+  overflow-x: auto;
+}
+
+/*
+ * A demo stage is a flex item of `.doc-preview`, and `min-width: auto` let it
+ * refuse to shrink below its content's min-content width — which put the whole
+ * page into a 96px sideways scroll at a 390px viewport.
+ */
+.doc-preview > * {
+  min-width: 0;
+}
+
+/*
+ * Keyboard focus used to be the browser's default ring — rgb(16,16,16) on a
+ * near-black page, which is invisible. The library's own Seat draws a gold
+ * focus ring, so the docs chrome uses the same colour rather than inventing a
+ * second one.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-gold, #f0b429);
+  outline-offset: 2px;
+}
+
+/*
+ * Running text keeps a comfortable measure while the column stays 48rem wide,
+ * so demos, code blocks and prop tables still get the full width. Long lines
+ * were measuring ~100 characters against a 60–75 target.
+ */
+main :is(p, ul, ol, blockquote) {
+  max-width: 70ch;
+}
+
+/* ...but a demo may lay its own text out however it likes. */
+.doc-preview :is(p, ul, ol, blockquote) {
+  max-width: none;
 }

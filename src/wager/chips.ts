@@ -32,6 +32,19 @@ export interface Denomination {
    */
   spotColor?: string;
   /**
+   * Optional `fill-*` utility for the eight edge spots, applied over
+   * `spotColor` — the same rule as the body, where a class wins over the `fill`
+   * attribute.
+   *
+   * It exists because the two halves of a chip are painted from two different
+   * places that do not know about each other: the body from `className`, the
+   * spots from a colour `chipSpotColor` *measured* off `color`. Repaint a chip's
+   * body with a `@theme` override of `--color-chip-white` and the measurement
+   * still describes the old hex, so a chip repainted dark keeps dark spots.
+   * `spotClassName: SPOT_CLASSES.light` is the way out.
+   */
+  spotClassName?: string;
+  /**
    * Optional `fill-*` utility applied on top of `color`. The default set uses
    * these so the `--color-chip-*` theme tokens are actually emitted by Tailwind
    * (it only outputs a theme variable something references) and can therefore be
@@ -57,8 +70,23 @@ export const DEFAULT_DENOMINATIONS: Denomination[] = [
   { value: 1, color: "#ecf0f1", className: "fill-chip-white" },
 ];
 
-/** The two inks a chip's edge spots can be drawn in. */
+/** The two inks a chip's edge spots can be drawn in. The values `SPOT_CLASSES` names. */
 const SPOT_CANDIDATES = ["rgba(255,255,255,0.9)", "rgba(0,0,0,0.45)"] as const;
+
+/**
+ * Those same two inks as `fill-*` utilities, for spots that cannot be measured.
+ *
+ * `chipSpotColor` reads a body colour and picks the more visible of the two;
+ * these are for the body it *cannot* read — one painted by a theme token — where
+ * the answer has to come from CSS instead. The tokens behind them ship the same
+ * two values, so a measured spot and its class are the same colour.
+ */
+export const SPOT_CLASSES = {
+  /** `rgba(255, 255, 255, 0.9)` — the default, and the one for a dark body. */
+  light: "fill-chip-spot",
+  /** `rgba(0, 0, 0, 0.45)` — the one for a light body. */
+  ink: "fill-chip-spot-ink",
+} as const;
 
 /**
  * Spot colour for a chip body: whichever of the two inks is measurably more

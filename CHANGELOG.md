@@ -4,6 +4,297 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## 0.11.0 — readable at any size
+
+**0.10.0 was never published.** If you are upgrading from 0.9.0 — npm's latest —
+its section below is part of this release and worth reading first: the removed
+aliases are there, and they are the part a 0.9.0 consumer has to act on. It stays a
+section of its own rather than being folded into this one because the two passes
+were separate work.
+
+A pass over what the table looks like rather than what it does, and then the
+pieces it was missing: a countdown, a marker, the one control. Every item in
+**Changed** started as a measurement of the built docs site: a betting line at
+1.2:1 against the felt, a seat name drawn at 3px on a phone, a bubble cut off by
+the box it was drawn in, a winner and a current seat in the same gold. Read that
+section before upgrading — the render moves.
+
+Sizes, measured on this release: the compiled stylesheet is ~27 kB (was ~24 kB),
+and the consumer smoke test's stylesheet **is now 31.1 kB against its 32 kB
+ceiling** — the headroom the ceiling was written with is nearly spent, so the next
+addition to the shipped CSS wants the ceiling raised deliberately rather than
+bumped by a failure.
+
+### Changed
+
+- **A current seat and a winning seat are no longer the same drawing.** Both were
+  a gold ring with a gold glow, differing only in brightness (50%→95% against
+  90%→100%), so the two most important states were indistinguishable at a glance
+  and in greyscale. A current seat is a 2px outline; a winner is a 3px border, a
+  gold wash inside the frame and a second inset ring behind it. Both animations
+  are unchanged.
+- **A declared ring is drawn in `--color-line`, not `border-white/10`.** Measured
+  against the felt gradient, the old outline was 1.2–1.3:1 — a betting line
+  nobody could see. The token ships as `#ffd678`: 3.5:1 at the lightest end of the
+  felt, 7.1:1 at its base. Override the token to change it, or `className` on the
+  ring itself.
+- **Floating slots hang off the frame proportionally, and `above` is anchored to
+  the frame's top edge.** The offsets were fixed px, so on a ring that shrinks its
+  frames (a sixteen-seat ring is 80x88) a -48px bubble covered most of the seat.
+  At the default 160x176 every value lands on the px it replaced; `above` moves
+  from 48px above the frame to attached to it, so it fits the room the ring
+  already leaves. If you relied on the old gap, put the space back in your own
+  bubble.
+- **The design box clips with a margin instead of at its own edge.** `FitBox` used
+  `overflow-hidden`, which cut off anything declared outside a seat frame — the
+  action bubble, the countdown pill, the winner glow (a 40px blur). It is now
+  `overflow: clip` with `overflow-clip-margin: FIT_BLEED` (40px), so a decoration
+  that reaches just past the box is drawn while runaways are still contained. A
+  browser without `overflow-clip-margin` behaves exactly as before.
+- **A seat's own rows and a counter's amount are kept at or above `MIN_TEXT_PX`
+  (10) on screen.** The design box is scaled to fit, and text was scaled with it:
+  an 11px name was drawn at 6.6px in a 725px container and 3px on a 390px phone.
+  The components now publish the scale they are inside and compensate their own
+  text, never by more than `MAX_TEXT_SCALE` (3). Geometry is not compensated —
+  only the ink. `minTextPx={0}` switches it off per component.
+- **The furniture is themed by tokens.** `Seat`'s body, border and ink and
+  `Counter`'s pill and label were Tailwind's own neutrals, hard-coded in the two
+  components, so a light or branded table meant overriding a class per component.
+
+### Added
+
+- **`Seat`**: `label` (an accessible name for the frame, and the button's name
+  when `onClick` is given) and `minTextPx`. The frame also reports `data-state`
+  (`idle` / `active` / `winner` / `dimmed`) and `aria-current` on the current seat
+  — "whose turn" was colour-only until now.
+- **`Counter`**: `minTextPx`. Its settled amount is an `aria-live` region, so the
+  count-up stops being silent to a screen reader.
+- **`TurnTimer`** — a countdown ring drawn from one number the caller owns
+  (`remaining`, `size`, `stroke`, `tone`, `label`, `title`). It animates nothing and
+  schedules nothing, and it is a `progressbar` rather than a live region, because a
+  ring that ticks once a second would interrupt whatever is being read out.
+- **`Marker`** — the disc every card room draws and every caller drew by hand: a
+  dealer button, a bid marker, a rank badge. `children`, `size`, `tone`, `label`.
+  Neutral by name on purpose: it carries no opinion about what it marks.
+- **`AmountSlider`** (`/wager`) — the library's only control. A labelled range with
+  a formatted readout, the formatted amount as its `aria-valuetext`, and optional
+  quick-set buttons (`quick`), which is what the docs' own chip examples had been
+  writing out of a bare `<input type="range">`.
+- **`CardFan`**'s `fitWidth` — the fan chooses its own overlap to fit a width,
+  which is the half of that known gap that could be measured. `arc` stays
+  decorative, as documented, and is not touched.
+- **`--color-warning`** — the token `TurnTimer tone="warning"` draws with.
+- **`fourColor`** on `PlayingCard`, `CardRow` and `CardFan`: diamonds blue, clubs
+  green, so a suit is not carried by red-versus-black alone — the cue that is
+  missing is the one a colour-blind player needs, and at `xs`/`sm` there is no
+  room for the suit letter either. Opt-in; the accessible name is unchanged.
+- **`ChipStack`**: `layout="pile"` cuts a stack into columns of at most
+  `PILE_HEIGHT` (five) — how a counted bet sits on the felt. The `+N` count is a
+  legible pill rather than 10px of 40% ink.
+- **Tokens**: `--color-surface`, `--color-surface-border`, `--color-surface-ink`,
+  `--color-muted`, `--color-line` — all with pickers on the docs' theming page.
+- **Exports**: `cardSizeFor`, `useDesignScale`, `readableScale`, `MIN_TEXT_PX`,
+  `MAX_TEXT_SCALE`, `FIT_BLEED`, `PILE_HEIGHT`. `cardSizeFor(box, count)` is the
+  largest card size whose cards fit a frame, so a seat fills its own box and a
+  ring that shrinks its frames shrinks their cards with them.
+
+### Fixed
+
+- A seat's floating slots collided with its own `header` row on a shrunk ring;
+  the docs' slots demo showed `above` landing on the frame's name.
+- The winner glow and any float on the outermost seat were clipped by the design
+  box.
+- The shipped `.d.ts` named `useFitBox`'s ref with the React 19 spelling,
+  `RefObject<HTMLDivElement | null>`. `@types/react@18`'s `Ref<T>` wants a
+  `RefObject` whose type argument is *not* nullable, so a React 18 consumer's own
+  `npm run typecheck` failed on `ref={outerRef}` — and the repo's `verify-react-18`
+  job failed on it too. It is written out structurally now, which both ends of the
+  peer range accept.
+- `tests/ssr.test.tsx` ran in the jsdom environment, where the measuring effect is
+  chosen as the layout effect at module load, so a React 18 server render warned
+  five times in the file that exists to prove it does not. It runs without a DOM
+  now, where both React versions are silent.
+
+## 0.10.0 — the review pass
+
+A pass over 0.9.0's leftovers: three names that were doing nothing, a slot radius
+that did not clamp the way its ring did, two layouts recomputed on every render,
+and the tooling that would have caught all of it. **Removed** is the section to
+read before upgrading.
+
+### Removed
+
+- **`SeatLayout` and `EllipseBox`** — type aliases of `FrameBox` and `Box`, kept
+  as "the name the docs and older consumers know". They were the last of the
+  aliases 0.9.0 set out to delete (`layoutSeats` and `minSeatSeparation` went
+  with it); two names for one type is exactly what that release spent itself
+  removing. Use `FrameBox` and `Box`.
+- **`fitRowScale`'s `height` option** — a documented, required member of
+  `RowFitOptions` that the function never read (`void height;`). A public option
+  with no effect is worse than no option, because it reads like a knob. `width`,
+  `gap`, `maxWidth` and `fraction` are the ones that do something.
+- **The internal re-export shims** in `components/CardTable.tsx` and
+  `components/PlayingCard.tsx`, along with the comment claiming they kept "an
+  import from this module" working: the public entries never went through them,
+  and the only importers were this repo's own tests. Nothing public moves — the
+  exports map has only ever exposed the two entries and the stylesheets.
+
+### Added
+
+- **`@stargazeryan/poker-ui/compiled.css` — for a consumer who is not running
+  Tailwind.** Setup has always had one step people miss, and for a good reason: a
+  compiled package's class names are invisible to the consumer's Tailwind build
+  until they add `@source`, and missing it renders a styled component library
+  unstyled. That is unavoidable for a Tailwind app and pure friction for anyone
+  else, so `npm run build` now also emits the stylesheet already compiled —
+  utilities, tokens and keyframes in one ~24 kB file — exported as
+  `./compiled.css`. It carries deliberately **no preflight**: a reset shipped
+  inside a component library would rewrite the app's base styles on import. The
+  consumer smoke test builds a second entry that never touches Tailwind and
+  asserts the same utilities, tokens and keyframes reach it.
+- **`maxScale` — a larger container can enlarge the table again, on purpose.**
+  0.9.0 made the design box a maximum, which was the right call (the numbers
+  measured in it are real CSS px at 1:1), but it left "fill the container" with
+  two answers: raise `designWidth`/`designHeight`, or wrap the table in your own
+  `transform: scale()`. `FitBox`, `CardTable` and `DealerTable` take `maxScale`
+  now: `1` by default, so nothing changes; `2` grows the table to twice its
+  design size; `Infinity` fills the container at any size, which is what 0.8.x
+  did unconditionally.
+- **`CardRow` and `CardFan` take a `label`** — the row's accessible name, e.g.
+  `label="Your hand"`. A row of cards is a group that belongs together and
+  nothing said so: a screen reader got a string of `role="img"` cards with no
+  idea they were one hand. It is opt-in, and without it no role is added at all,
+  because *what* a row is belongs to the caller's game. The reserved positions
+  past the end of `cards` are `aria-hidden` now — they hold nothing, so they
+  should say nothing.
+- **`Chip` and `Denomination` take a `spotClassName`**, with `--color-chip-spot`
+  and `--color-chip-spot-ink` behind it. A chip's body is painted by a class and
+  its edge spots by a colour *measured* off `color` — the hex — and the two never
+  knew about each other. Repaint `--color-chip-white` from a `@theme` block, which
+  is the documented way to restyle a chip, and the body moves while the spots keep
+  the ink the maths chose for the old hex: a chip repainted dark keeps dark spots,
+  which is the invisible-spot problem this measurement was introduced to fix, back
+  again through the theming door. `SPOT_CLASSES.light` / `SPOT_CLASSES.ink` are
+  the two inks as classes; the measurement stays the default.
+- **The test suite has a coverage gate.** `@vitest/coverage-v8` was installed and
+  used by nothing: no `coverage` block, no thresholds, so an untested module or a
+  deleted test was invisible. `npm run test:coverage` measures `src/**` only —
+  measuring everything also counted the docs app and `demo/dist/assets/*.js`, a
+  built bundle that scores 0% and moves the total whenever the site is rebuilt —
+  and fails below 95% statements, 85% branches, 95% functions and 95% lines —
+  checked *per file*, not on the average, because an average absorbs one
+  collapsing module completely: `frames.ts` sat at 74.5% of branches with the
+  global gate green, and three exported helpers (`gridFrames`, `seatPoint`,
+  `ellipseBox`) had no test at all. They do now, along with the guards the
+  coverage report had been pointing at, which took the suite from 302 to 324
+  tests and `src/**` to 100% statements and lines. CI runs the gate in place of
+  the plain test run, so it is one pass rather than two.
+- **The consumer smoke test has a CSS ceiling.** It already asserted that every
+  utility and token *reaches* a consumer's stylesheet; it now also fails when that
+  stylesheet passes 32 kB (28.1 kB today). The number is the whole consumer app's
+  CSS, Tailwind's preflight included, so it is a tripwire for the class of
+  regression that ships every keyframe to everybody — not a budget.
+- **`npm run lint`** — an ESLint flat config (`eslint.config.js`) and an
+  `.editorconfig`, with the lint run added to CI. It is there for the class of
+  mistake this package has actually made: `react-hooks/rules-of-hooks` refuses
+  the hook-in-a-callback that `DealerTable`'s memoised layout had to avoid, and
+  on its first run it found a genuinely duplicated import in
+  `tests/layout.test.ts`. There is deliberately **no formatter** — prettier was
+  measured against this tree and asked for 1,300+ changed lines across half the
+  repository, nearly all of it un-picking the hand-laid-out rows in
+  `demo/src/docs` — so line breaking stays a human decision.
+
+### Changed
+
+- **Every `Counter` on the page shares one animation loop.** Each counter used to
+  own a rAF loop, so a settlement animating nine seat stacks ran nine callbacks,
+  nine updates per frame and nine render passes. They subscribe to a single loop
+  now, it stops when the last one has finished, and a frame that rounds to the
+  number already on screen no longer re-renders at all.
+- **`engines.node` is `>=20`.** Vite 6, Vitest 3 and ESLint 10 already required
+  it and CI builds on 20; `>=18` was a promise the toolchain could not keep.
+- **`CardTable` and `DealerTable` memoise their layout.** `layoutTable` does not
+  compute a layout, it searches for one — up to 51 shrink steps, each an O(n²)
+  sweep of every frame pair (6,120 of them on a 16-seat ring) — and it ran on
+  every render, so a table's cost was a function of how often its parent
+  re-rendered.
+- **`DealerTable` reads its surface from `tableSurface`** rather than running the
+  whole ring layout to keep two fields of it. Same felt, none of the ring.
+
+### Fixed
+
+- **A slot declared outside the surface is clamped to it.** `layout.slotPoint`
+  multiplied the radius straight through while `ringBox` clamped it, so a slot at
+  `radius: 1.2` was drawn 87px past the rail its own ring was pinned to — the
+  drift the shared `slotPoint` / `ringBox` pair exists to prevent, fixed for
+  0..1 and left broken outside it. Both clamp identically now, and
+  `MIN_SLOT_RADIUS` is a real floor rather than a constant nothing read.
+- **`Counter` exposes the amount, not the counting.** The number animates through
+  every intermediate value, so it is now `aria-hidden` and the settled amount is
+  written once beside it — a screen reader reads "Main: 240", not sixty frames of
+  "173", "198", "219".
+- **`Seat` takes the space key.** It fired `onClick` and left the default action
+  alone, so pressing space also scrolled the page.
+- **The edge glow is drawn on a table with no felt.** `glow` did nothing with
+  `deck={false}` — the default with `shape="none"` — because the entire surface
+  layer is skipped there, so `glow={isMyTurn}` asked for a halo and silently got
+  none. It is the one decoration that needs nothing drawn under it, so
+  `CardTable` and `DealerTable` draw it themselves now, and the prop means the
+  same thing on every shape. `watermark` and `ambient` stay tied to the felt, and
+  now say so: a watermark is drawn *on* the felt and the ambient light is a light
+  *on* it.
+- **`ellipseBox` and `surface.insetBox` are one implementation.** They were two
+  copies of the same conversion, which is how the reference page came to call one
+  of them "the one place that conversion happens".
+- **A CommonJS consumer was handed ESM types.** The exports map declared a single
+  top-level `types` condition for both module systems, so `.` and `./wager`
+  resolved to `dist/index.d.ts` however they were imported, and the built
+  `dist/index.d.cts` was unreachable — which is to say useless. `attw` reported
+  both entries as "Masquerading as ESM". Types are resolved per condition now,
+  and that check runs in CI.
+- **`fitRowScale` read "no width limit" as "no room".** `maxWidth: Infinity` — a
+  box that cannot constrain anything — returned the 0.5 floor and shrank the row,
+  while the docstring's own promise ("the largest uniform scale at which the row
+  fits") is satisfied at 1. Only a limit that is zero, negative or nonsense is the
+  floor now.
+- **React 18 logged five server-render warnings per page.** `FitBox` measured in a
+  `useLayoutEffect`, and React 18 warns that such an effect "does nothing on the
+  server" once per component that has one: measured on react-dom 18.3.1 with the
+  built package, the four table types and `FitBox` produced five warnings where
+  React 19 produces none. The effect is chosen per environment now, which removes
+  the warning without changing a rendered byte. `tests/ssr.test.tsx` renders every
+  component on the server and asserts React stays quiet.
+
+### Docs
+
+- **The `@stargazeryan/poker-ui/recipes` subpath does not exist** and never
+  shipped: the source comments pointed at it, `package.json` has never exported
+  it. They now point at the worked examples, `demo/src/examples/games.tsx`.
+- README's theming section claimed every colour comes from a theme token. It now
+  names the two exceptions.
+- `.gitattributes` normalises line endings to LF, so a checkout made on Windows
+  no longer turns the whole tree into a diff.
+
+### CI
+
+- **The types are checked the way a consumer resolves them.** The package ships
+  dual ESM/CJS with separate `.d.ts` and `.d.cts`, and which one a consumer gets
+  depends on *their* module setting — a shape that can look right here and still
+  resolve wrongly there, as it did. `attw` runs on the packed tarball in CI
+  (pinned, ignoring `no-resolution` for the two stylesheet subpaths, which are
+  assets with no declarations to resolve).
+- **The release gate required the entry points and `src/styles.css`, but not
+  `dist/compiled.css`** — the other published stylesheet, added in this release.
+  A broken `build:css` would have shipped an entry that resolves to nothing, with
+  the gate green.
+- **`permissions: contents: read`**, so the workflow's token is not the
+  repository default.
+- **A second job runs the suite on React 18**, the bottom of the peer range,
+  which nothing had ever checked. It downgrades `react`, `react-dom` and their
+  types and runs the type check and the unit tests — and the server-render test
+  in this release is what would fail if the measuring effect went back to warning
+  on 18.
+
 ## 0.9.0 — the design box is a maximum
 
 ### Changed

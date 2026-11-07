@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import {
   CardRow,
   Seat,
+  cardSizeFor,
   type CardSize,
+  type FrameBox,
   type SeatBox,
   type TableRing,
   type TableSlot,
@@ -70,7 +72,9 @@ export function betSlots(bets: readonly number[] = SAMPLE.bets, radius = BET_RAD
     {
       id: "bet",
       radius,
-      render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" /> : null),
+      // A bet sits on the felt as a pile of columns, not as one tall tower —
+      // at `sm` a twelve-high tower is a smear rather than a count.
+      render: (i) => (bets[i] ? <ChipStack amount={bets[i]} size="sm" layout="pile" /> : null),
     },
   ];
 }
@@ -85,7 +89,10 @@ export interface PlayerSeatProps {
   isDimmed?: boolean;
   /** Defaults to the sample hand, face up. */
   cards?: (string | null)[];
-  /** Defaults to `"sm"`. */
+  /**
+   * Defaults to the largest size that fits `width`/`height` — `cardSizeFor`.
+   * A hand-written size is how the default seat ended up two-thirds empty.
+   */
   cardSize?: CardSize;
   /** Defaults to "You" for seat 0 and "Seat n" otherwise. */
   label?: ReactNode;
@@ -105,11 +112,16 @@ export function PlayerSeat({
   isWinner,
   isDimmed,
   cards = SAMPLE.hand,
-  cardSize = "sm",
+  cardSize,
   label,
   footer,
 }: PlayerSeatProps) {
   const stack = SAMPLE.stacks[index % SAMPLE.stacks.length];
+  // The frame is the thing that knows how much room there is. Outside a table
+  // nothing reported a size, so `sm` is the honest fallback.
+  const size =
+    cardSize ??
+    (width !== undefined && height !== undefined ? cardSizeFor({ width, height }, cards.length) : "sm");
 
   return (
     <Seat
@@ -125,7 +137,7 @@ export function PlayerSeat({
       }
       footer={footer ?? <span className="w-full text-center font-mono text-gold-light">{formatBB(stack, 20)}</span>}
     >
-      <CardRow cards={[...cards]} size={cardSize} />
+      <CardRow cards={[...cards]} size={size} />
     </Seat>
   );
 }
@@ -139,5 +151,9 @@ export function renderPlayers(opts: Omit<PlayerSeatProps, "index"> = {}) {
 
 /** `renderHand` for a dealer table of `PlayerSeat`s. */
 export function renderHands(opts: Omit<PlayerSeatProps, "index"> = {}) {
-  return (index: number) => <PlayerSeat index={index} {...opts} />;
+  // The box is handed over so the hand's cards are sized to the frame the row
+  // was laid out for, rather than to whatever size was written by hand.
+  return (index: number, box: FrameBox) => (
+    <PlayerSeat index={index} width={box.width} height={box.height} {...opts} />
+  );
 }

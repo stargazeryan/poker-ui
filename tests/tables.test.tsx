@@ -180,6 +180,16 @@ describe("DealerTable", () => {
     }
   });
 
+  it("draws that glow even with no surface to hug", () => {
+    // `deck` is off with shape="none" — this table's bare form — and the whole
+    // surface layer is skipped there, which used to take the glow down with it,
+    // in silence.
+    setElementSize(1200, 900);
+    const { container } = render(<DealerTable handCount={2} shape="none" glow renderHand={hand} />);
+    expect(railOf(container)).toBeNull();
+    expect(container.querySelectorAll("div.animate-turn-glow")).toHaveLength(1);
+  });
+
   it("still paints nothing when asked not to", () => {
     setElementSize(1200, 900);
 

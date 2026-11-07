@@ -14,6 +14,9 @@ const SETUP = `
 @source "../node_modules/@stargazeryan/poker-ui";
 `;
 
+/** The no-Tailwind route: the same CSS, already built. */
+const COMPILED = `@import "@stargazeryan/poker-ui/compiled.css";`;
+
 const MINIMAL = `
 import { CardRow, Counter, RoundTable, Seat } from "@stargazeryan/poker-ui";
 
@@ -60,8 +63,23 @@ export function GettingStarted() {
       <H2>Install</H2>
       <CodeBlock code="npm install @stargazeryan/poker-ui" />
       <P>
-        Peer requirements: <Prop>react</Prop> and <Prop>react-dom</Prop> at 18 or newer, plus Tailwind CSS v4.
+        Peer requirements: <Prop>react</Prop> and <Prop>react-dom</Prop> at 18 or newer. Tailwind CSS v4 is needed
+        only if you build the CSS yourself — the package also ships the stylesheet already compiled.
       </P>
+
+      <H2>Or skip Tailwind entirely</H2>
+      <P>
+        The package ships the stylesheet already compiled — every utility, token and keyframe the components use, with{" "}
+        <strong>no preflight</strong>, so importing it cannot reset your app&apos;s base styles. One line, no Tailwind
+        in your build:
+      </P>
+      <CodeBlock code={COMPILED} />
+      <Callout title="Pick one route, not both.">
+        <Prop>styles.css</Prop> is Tailwind <em>source</em> — utilities as <Prop>@utility</Prop>, tokens as{" "}
+        <Prop>@theme</Prop> — and expects your own Tailwind v4 build to scan the package. <Prop>compiled.css</Prop>{" "}
+        is that same CSS already built, for apps that are not running Tailwind v4 at all. Importing both would emit
+        the utilities twice.
+      </Callout>
 
       <H2>Wire up Tailwind</H2>
       <P>
@@ -95,7 +113,7 @@ export function GettingStarted() {
       <Demo
         title="Six seats, live"
         description="One of the seats is yours, one is mid-turn, and the board is half dealt. The betting line is a ring this page declared — and the amounts on it are plain pills, because the guide does not pull in the chip editor."
-        previewClassName="h-[440px] w-full p-0 overflow-hidden"
+        previewClassName="aspect-[4/3] max-h-[560px] w-full p-0 overflow-hidden"
       >
         <RoundTable
           seatCount={6}
@@ -166,6 +184,10 @@ export function Theming() {
         <Prop>@theme</Prop> block and the table restyles — no <Prop>!important</Prop>, no CSS-in-JS, no per-component
         overrides.
       </P>
+      <P>
+        On the <Prop>compiled.css</Prop> route there is no <Prop>@theme</Prop> block to edit, so set the same custom
+        properties — <Prop>--color-felt</Prop> and the rest — yourself, exactly as the editor below does.
+      </P>
       <Callout title="This only works because the components actually reference the tokens.">
         Tailwind v4 emits a theme variable only when something uses it. In 0.5.0 the felt, rail, gold and card-back
         colours were hard-coded hex values, so none of the documented tokens reached the output CSS and overriding them
@@ -202,7 +224,7 @@ export function Theming() {
               reset
             </Btn>
           </div>
-          <div style={tokens as CSSProperties} className="h-[420px] w-full">
+          <div style={tokens as CSSProperties} className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={6}
               rings={[BET_RING]}
@@ -229,6 +251,13 @@ export function Theming() {
       </P>
       <ApiTable rows={TOKEN_ROWS} caption="Every token" />
       <P>
+        The furniture is a token now as well: <Prop>--color-surface</Prop>, <Prop>--color-surface-border</Prop>,{" "}
+        <Prop>--color-surface-ink</Prop> and <Prop>--color-muted</Prop> are what a seat frame and a counter pill are
+        drawn with, and <Prop>--color-line</Prop> is the outline a declared ring is drawn with. The first four used to be
+        Tailwind&apos;s own neutrals, hard-coded into the two components — which is why a light or a branded table meant
+        overriding a class on every component instead of setting a token once.
+      </P>
+      <P>
         Confetti colours are the one exception: they are inline styles, which Tailwind&apos;s tree-shaking cannot see, so
         they are a prop (<Prop>colors</Prop> on <Prop>Confetti</Prop>) rather than tokens.
       </P>
@@ -253,7 +282,7 @@ const GAPS: Array<[string, string]> = [
   ],
   [
     "CardFan's arc is decorative",
-    "CardFan overlaps a large hand so it fits, and arc splays the tops by rotating each card about a pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, the cards are not laid on a true circle, and nothing measures whether the fan actually fits the frame it is in. overlap is the control that matters for fitting; arc is the one that looks nice.",
+    "CardFan overlaps a large hand so it fits, and arc splays the tops by rotating each card about a pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, and the cards are not laid on a true circle. For fitting, pass fitWidth — usually a seat frame's — and the overlap is chosen from it, never looser than the overlap you asked for; arc is the one that only looks nice.",
   ],
   [
     "Reduced motion is per-component, not global",
@@ -273,15 +302,15 @@ const GAPS: Array<[string, string]> = [
   ],
   [
     "Accessibility is still incomplete",
-    "Cards and chips name themselves now (describeCard for the artwork, and the chip breakdown), but Counter has no aria-live so the count-up is silent to a screen reader, Seat's slots leave naming entirely to you, and the confetti is a purely visual reward. Suit colour is also the main cue at the small sizes, where there is no room for the suit letter.",
+    "Cards and chips name themselves (describeCard for the artwork, the chip breakdown), a Counter's settled amount is a live region, and a Seat can be given a name (label) and reports which seat is current. What is still yours: a Seat's slots are named by their content, and the confetti is a purely visual reward. A four-colour deck is available (PlayingCard fourColor) because a standard deck carries the suit by hue alone where there is no room for the suit letter — it is a prop rather than the default, because it is not what a physical deck looks like.",
   ],
   [
     "Units are yours, and nothing checks them",
     "Counter renders a plain number by default and formatBB(amount, bb) is an opt-in poker helper from the wager entry, because a big blind is a game rule and this is generic UI. The cost is that nothing stops you showing big-blind amounts in one place and chip amounts in another on the same table: the library has no unit concept, deliberately, so it cannot catch that for you.",
   ],
   [
-    "The design box scales with useLayoutEffect unconditionally",
-    "FitBox (and therefore every table type and CardTable) measures its container in a layout effect, which warns on the server. It is guarded by a \"use client\" banner, so it works in a client component, but SSR of a client component still logs the warning.",
+    "The design box is measured after mount, so the server's markup is unscaled",
+    "FitBox (and therefore every table type and CardTable) measures its container in a layout effect, so a server-rendered page ships the design box at 1:1 and it scales on the client — a layout shift rather than a crash, and one tests/ssr.test.tsx pins so that a change to the measuring has to say so. The built entry points carry a \"use client\" banner, which is what lets them be imported from a server-component tree. The React 18 warning this page used to list is gone: the effect is chosen per environment, which measurably took react-dom 18.3.1 from five warnings per page to none.",
   ],
   [
     "The overlay slot is pointer-events-none",
@@ -316,7 +345,7 @@ export function KnownGaps() {
       <Row className="mt-4">
         <Field
           label="fixed in this branch:"
-          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry"
+          value="glass-half-built tables · dead theme tokens · counter overshoot · deal replay · invisible chip spots · units and seat limits decided by components · reduced-motion scope · one source for the geometry and the seat frame size · CardTable owns no game state (overlay slot + standalone Confetti) · the package split into a game-agnostic core and a wager entry · five React 18 server-render warnings per page · a betting line at 1.2:1 · a nameplate drawn at 3px on a phone · a bubble clipped by the box it was drawn in · a winner and a current seat drawn the same · furniture that was not a token · a chip count at 10px of 40% ink · a suit carried by hue alone"
         />
       </Row>
     </>

@@ -259,8 +259,6 @@ export interface RowFitOptions {
   count: number;
   /** Preferred frame width. */
   width: number;
-  /** Preferred frame height. */
-  height: number;
   /** Clearance between neighbours. */
   gap: number;
   /** The widest the row may be, frame edge to frame edge. */
@@ -285,16 +283,17 @@ export interface RowFitOptions {
 export function fitRowScale({
   count,
   width,
-  height,
   gap,
   maxWidth,
   fraction = 1,
   floor = FRAME_SHRINK_FLOOR,
 }: RowFitOptions): number {
-  void height;
   const n = normCount(count);
   const limit = maxWidth * fraction;
-  if (!Number.isFinite(limit) || limit <= 0) return floor;
+  // A box with no width limit at all (`Infinity`) is not the same as a box that
+  // cannot hold the row: the first fits at scale 1, which the loop below already
+  // says. Only zero, a negative or a nonsense limit is the floor.
+  if (!(limit > 0)) return floor;
   for (let step = 0; step <= 50; step++) {
     const scale = 1 - step * 0.01;
     const w = Math.max(1, Math.round(width * scale));

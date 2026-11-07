@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { CardTable, type TableOverlayGeometry } from "../src/components/CardTable";
+import { Confetti } from "../src/components/Confetti";
+import { Seat } from "../src/components/Seat";
 import {
-  CardTable,
   DEFAULT_FELT_GAP,
   DEFAULT_MARGIN_X,
   DEFAULT_MARGIN_Y,
   DEFAULT_SEAT_GAP,
   DESIGN_H,
   DESIGN_W,
-  type TableOverlayGeometry,
-} from "../src/components/CardTable";
-import { Confetti } from "../src/components/Confetti";
-import { Seat } from "../src/components/Seat";
-import { GLOW_GAP, layoutTable } from "../src/layout";
+  GLOW_GAP,
+  layoutTable,
+} from "../src/layout";
 import { setElementSize } from "./setup";
 
 const insetPx = (el: HTMLElement): { top: number; right: number; bottom: number; left: number } => ({
@@ -197,6 +197,26 @@ describe("CardTable — declared rings and slots", () => {
     expect(ringInsets(container).top).toBeGreaterThanOrEqual(0);
   });
 
+  it("clamps a nonsense slot radius identically, so the content stays on its ring", () => {
+    // The ring clamped and the slot did not, so a slot declared at the same
+    // radius as its ring was drawn past the rail: 87px outside it at 1.2 on the
+    // default box, on a line the caller believed both were on.
+    setElementSize(1200, 900);
+    const { container } = render(
+      <CardTable
+        seatCount={4}
+        rings={[{ id: "line", radius: 9 }]}
+        slots={[{ id: "bet", radius: 9, render: (i) => <span>{i}</span> }]}
+        renderSeat={(i) => <div>{i}</div>}
+      />,
+    );
+    const line = ringInsets(container);
+    const slot = container.querySelector('[data-slot-index="0"]') as HTMLElement;
+    // Seat 0 sits at the bottom of the ellipse: on the ring's lower edge.
+    expect(px(slot.style.left)).toBeCloseTo(600, 3);
+    expect(px(slot.style.top)).toBeCloseTo(900 - line.top, 3);
+  });
+
   it("draws no ring and places no slot when the caller declares none", () => {
     const { container } = render(<CardTable seatCount={4} renderSeat={(i) => <div>{i}</div>} />);
     expect(container.querySelector('[data-part="ring"]')).toBeNull();
@@ -230,6 +250,15 @@ describe("CardTable — scaling and fit", () => {
     // scale = min(640/1200, 900/900) = 0.5333
     expect(px(wrapper(container).style.width)).toBeCloseTo(1200 * (640 / 1200), 3);
     expect(px(wrapper(container).style.height)).toBeCloseTo(900 * (640 / 1200), 3);
+  });
+
+  it("passes maxScale through, so a caller can let a big container enlarge the table", () => {
+    setElementSize(2400, 1800); // twice the design box on both axes
+    const capped = render(<CardTable renderSeat={(i) => <div>{i}</div>} />);
+    expect(px(wrapper(capped.container).style.width)).toBeCloseTo(1200, 3);
+
+    const filled = render(<CardTable maxScale={Infinity} renderSeat={(i) => <div>{i}</div>} />);
+    expect(px(wrapper(filled.container).style.width)).toBeCloseTo(2400, 3);
   });
 
   it("fills the container with fit=\"container\"", () => {
@@ -397,5 +426,38 @@ describe("CardTable — overlay and decorations", () => {
     expect(observe).toHaveBeenCalledTimes(1);
     unmount();
     expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CardTable — the edge glow", () => {
+  it("is drawn on a table with no rail and no felt", () => {
+    // `deck` is off with shape="none", so the surface layer never runs — and it
+    // used to take the glow down with it: the one decoration that needs nothing
+    // under it was dropped in silence.
+    const { container } = render(<CardTable shape="none" glow renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelectorAll("div.animate-turn-glow")).toHaveLength(1);
+    expect(container.querySelector('[data-part="glow"]')).toBeTruthy();
+    // and nothing else was painted: the ambient light does need a felt
+    expect(container.querySelectorAll(".animate-spotlight")).toHaveLength(0);
+  });
+
+  it("is drawn exactly once when the table does have a surface", () => {
+    const { container } = render(<CardTable glow renderSeat={(i) => <div>{i}</div>} />);
+    expect(container.querySelectorAll("div.animate-turn-glow")).toHaveLength(1);
+  });
+
+  it("is still not drawn unless the caller asks for it", () => {
+    const bare = render(<CardTable shape="none" renderSeat={(i) => <div>{i}</div>} />).container;
+    expect(bare.querySelectorAll('[data-part="glow"]')).toHaveLength(0);
+  });
+
+  it("does not draw a watermark without a felt to draw it on", () => {
+    // A watermark goes *on* the felt; with no felt there is nothing for it to be
+    // on, and the prop now says so instead of dropping it silently.
+    const { container } = render(
+      <CardTable shape="none" watermark={<span>♠♥♦♣</span>} renderSeat={(i) => <div>{i}</div>} />,
+    );
+    expect(container.querySelectorAll('[data-part="watermark"]')).toHaveLength(0);
+    expect(container.textContent).not.toContain("♠");
   });
 });

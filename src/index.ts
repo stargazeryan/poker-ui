@@ -8,7 +8,8 @@
  * - no betting line, no chip set, no big blind — those are the `./wager` entry
  *   point, because only the games that wager need them;
  * - no `PokerTable`, no `HoleCards`, no `Pot` — those are words one game uses.
- *   `./recipes` has the four worked examples.
+ *   The four worked examples are in the docs, `demo/src/examples/games.tsx`,
+ *   built out of this entry and `/wager` and nothing else.
  *
  * The components here *position and draw*; you decide *what is true*.
  */
@@ -27,8 +28,9 @@ export {
 } from "./color";
 
 export { SIZES, type CardSize, type ChipSize, type Size } from "./sizes";
-export { CARD_HEIGHT, CARD_WIDTH } from "./cardSize";
+export { CARD_HEIGHT, CARD_WIDTH, cardSizeFor, type CardSizeFit } from "./cardSize";
 export { COUNT_UP_MS, FLIP_MS, STAGGER_MS } from "./motion";
+export { MAX_TEXT_SCALE, MIN_TEXT_PX, readableScale, useDesignScale } from "./designScale";
 
 /* ------------------------------------------------------------------- cards -- */
 
@@ -99,15 +101,14 @@ export {
   seatPoint,
   seatRingRadii,
   tableRadii,
-  type EllipseBox,
   type Layout,
   type LayoutOptions,
-  type SeatLayout,
 } from "./layout";
 
 /* -------------------------------------------------------------- components -- */
 
 export {
+  FIT_BLEED,
   FitBox,
   MAX_FIT_ASPECT,
   MIN_FIT_ASPECT,
@@ -135,6 +136,21 @@ export { Seat, type SeatProps } from "./components/Seat";
 export { Confetti, type ConfettiProps } from "./components/Confetti";
 
 export { Counter, type CounterProps } from "./components/Counter";
+
+export {
+  TIMER_SIZE,
+  TurnTimer,
+  type TurnTimerProps,
+  type TurnTimerSize,
+} from "./components/TurnTimer";
+
+export {
+  MARKER_SIZE,
+  Marker,
+  type MarkerProps,
+  type MarkerSize,
+  type MarkerTone,
+} from "./components/Marker";
 
 export {
   CardTable,

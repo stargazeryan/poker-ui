@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import {
-  CardBack,
-  CardFan,
-  CardRow,
-  CardSlot,
-  PlayingCard,
-  getSuitSymbol,
-  parseCard,
-} from "../src/components/PlayingCard";
+import { CardBack, CardFan, CardRow, CardSlot, PlayingCard } from "../src/components/PlayingCard";
+import { getSuitSymbol, parseCard } from "../src/cards";
 import { CARD_HEIGHT, CARD_WIDTH } from "../src/cardSize";
+
+describe("CardFan", () => {
+  it("is a flat overlapping row by default, and splays when given an arc", () => {
+    // `arc` defaults to 0, which is a row: nothing may be rotated or given a
+    // pivot it does not use.
+    const flat = render(<CardFan cards={["As", "Kh", "Qd"]} />).container;
+    expect(flat.querySelector("[style*='transform-origin']")).toBeNull();
+
+    // arc 60 over three cards is -30 / 0 / +30, so the middle card stays flat
+    // and the outer two pivot about a point below the row — a held hand.
+    const fanned = render(<CardFan cards={["As", "Kh", "Qd"]} arc={60} />).container;
+    expect(fanned.querySelectorAll("[style*='transform-origin']")).toHaveLength(2);
+    expect(fanned.querySelectorAll("[style*='rotate(-30deg)']")).toHaveLength(1);
+    expect(fanned.querySelectorAll("[style*='rotate(30deg)']")).toHaveLength(1);
+  });
+
+  it("leaves a single card flat even in an arc — there is nothing to splay it against", () => {
+    const one = render(<CardFan cards={["As"]} arc={90} />).container;
+    expect(one.querySelector("[style*='transform-origin']")).toBeNull();
+    expect(one.querySelector("[style*='rotate(']")).toBeNull();
+  });
+});
 
 describe("parseCard", () => {
   it("splits a compact card code into rank + suit", () => {
@@ -225,5 +240,30 @@ describe("CardSlot and CardFan", () => {
     // the middle card of three sits at the centre of the arc, so only the two
     // outer ones are rotated
     expect(rotated).toHaveLength(2);
+  });
+});
+
+describe("naming a group of cards", () => {
+  // A row or a fan is a group of cards that belong together, and nothing said so:
+  // a screen reader got a string of images with no idea they were one hand. The
+  // name is opt-in, because *what* a row is belongs to the caller's game.
+  it("groups a CardRow under its label, and adds no role without one", () => {
+    const named = render(<CardRow cards={["As", "Kh"]} label="Your hand" />).container;
+    expect(named.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe("Your hand");
+    expect(render(<CardRow cards={["As", "Kh"]} />).container.querySelector('[role="group"]')).toBeNull();
+  });
+
+  it("groups a CardFan under its label, and adds no role without one", () => {
+    const named = render(<CardFan cards={["As", "Kh", "Qd"]} label="Meld" />).container;
+    expect(named.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe("Meld");
+    expect(render(<CardFan cards={["As"]} />).container.querySelector('[role="group"]')).toBeNull();
+  });
+
+  it("hides reserved-but-empty positions from assistive tech", () => {
+    const { container } = render(<CardRow cards={["As"]} slots={3} />);
+    // the two positions past the end of `cards` hold nothing, so they say nothing
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(2);
+    // while the card itself is still announced
+    expect(container.querySelectorAll('[role="img"]')).toHaveLength(1);
   });
 });

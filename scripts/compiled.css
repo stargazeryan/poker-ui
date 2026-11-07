@@ -1,0 +1,25 @@
+/*
+ * The input for `dist/compiled.css` — this package's own stylesheet, compiled.
+ *
+ * `@source "../dist"` is the only source of utilities here: what a consumer
+ * needs is the classes the *package* draws with, and the built JS is where those
+ * class names live. Automatic content detection is still on (it comes with the
+ * utilities layer), so the two dirs that are not the library are excluded
+ * explicitly — otherwise the docs site's own markup would ship utilities in a
+ * component library's stylesheet.
+ *
+ * Preflight is deliberately left out. This file is for a consumer who is *not*
+ * running Tailwind: shipping a reset inside a component library's CSS would
+ * rewrite their app's base styles the moment they import it. Tokens, utilities
+ * and keyframes only, which is why `tailwindcss/theme.css` and
+ * `tailwindcss/utilities.css` are imported instead of `tailwindcss`.
+ */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "../dist";
+@source not "../demo";
+@source not "../tests";
+@source not "../scripts";
+
+@import "../src/styles.css";

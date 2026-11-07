@@ -32,22 +32,22 @@ import {
   formatBB,
   type Denomination,
 } from "@stargazeryan/poker-ui/wager";
-import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper } from "../ui";
+import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
 import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
 
-function Sec({ slug }: { slug: string }) {
+export function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{doc.summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(doc.summary)}</p>
       <H2>Examples</H2>
     </>
   );
 }
 
-function Api({ slug }: { slug: string }) {
+export function Api({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
   return (
     <>
@@ -216,8 +216,34 @@ const entries = chipBreakdown(487);
 
       <Api slug="chip-stack" />
 
+      <Demo
+        title="A pile, not a tower"
+        description={
+          <>
+            <Prop>layout=&quot;pile&quot;</Prop> cuts the stack into columns of at most <Prop>PILE_HEIGHT</Prop> (five) —
+            how a bet that has been counted out actually sits on the felt, and far easier to count than one tall tower at
+            a seat&apos;s chip size.
+          </>
+        }
+        code={`<ChipStack amount={1000} size="sm" layout="pile" />`}
+      >
+        <div className="flex items-end justify-center gap-10">
+          <ChipStack
+            amount={1000}
+            size="sm"
+            label={<span className="font-mono text-[10px] text-neutral-400">stack</span>}
+          />
+          <ChipStack
+            amount={1000}
+            size="sm"
+            layout="pile"
+            label={<span className="font-mono text-[10px] text-neutral-400">pile</span>}
+          />
+        </div>
+      </Demo>
+
       <H2>Chip</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["chip"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["chip"].summary)}</p>
       <Demo
         title="The default set"
         description={
@@ -272,7 +298,7 @@ function SeatGapDemo() {
         <Field label="closest gap:" value={`${actual.toFixed(1)}px`} />
         <Field label="shrunk:" value={shrunk ? "yes" : "no"} />
       </Row>
-      <div className="h-[380px] w-full">
+      <div className="aspect-[4/3] max-h-[560px] w-full">
         <CardTable
           seatCount={count}
           seatGap={gap}
@@ -309,6 +335,8 @@ const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
   deck: true,
   ambient: true,
   fit: "design",
+  // the cap the playground's slider can reach; 1 is the library's default
+  maxScale: 1,
   className: false,
   // Not CardTable props: what the *caller* decides to declare and draw.
   glow: true,
@@ -348,7 +376,7 @@ function CardTablePlayground() {
 
   return (
     <>
-      <div className="grid gap-3 border-b border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 border-b border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {numeric.map((c) => (
           <Stepper
             key={c.prop}
@@ -406,7 +434,7 @@ function CardTablePlayground() {
         <Field label="shrunk:" value={geo.seatW < num("seatWidth") - 0.5 || geo.seatH < num("seatHeight") - 0.5 ? "yes" : "no"} />
       </Row>
 
-      <div className="h-[440px] w-full">
+      <div className="aspect-[4/3] max-h-[560px] w-full">
         <CardTable
           seatCount={count}
           startAngle={num("startAngle")}
@@ -458,7 +486,9 @@ export function CardTablePage() {
   const [turn, setTurn] = useState(true);
   const [winner, setWinner] = useState(false);
 
-  const angles = Array.from({ length: count }, (_, i) => `${seatAngle(i, count).toFixed(0)}°`).join(" / ");
+  // `seatAngle` is deliberately unwrapped — seat 5 of 6 is 390° — but a readout
+  // for humans should stay in 0–360.
+  const angles = Array.from({ length: count }, (_, i) => `${(((seatAngle(i, count) % 360) + 360) % 360).toFixed(0)}°`).join(" / ");
 
   return (
     <>
@@ -488,7 +518,7 @@ export function CardTablePage() {
               </Btn>
             ))}
           </Row>
-          <div className="h-[400px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={count}
               renderSeat={renderPlayers()}
@@ -519,7 +549,7 @@ export function CardTablePage() {
   renderSeat={(i, box) => <Seat width={box.width} height={box.height} />}
 />`}
       >
-        <div className="h-[400px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <CardTable
             seatCount={6}
             rings={[BET_RING]}
@@ -556,7 +586,7 @@ export function CardTablePage() {
               showdown
             </Btn>
           </Row>
-          <div className="h-[400px] w-full">
+          <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={6}
               glow={turn}
@@ -687,7 +717,7 @@ export function CardTablePage() {
       </P>
 
       <H2>Confetti</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["confetti"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["confetti"].summary)}</p>
       <Api slug="confetti" />
       <Demo
         title="Confetti"
@@ -793,6 +823,23 @@ export function SeatPage() {
         </Seat>
       </Demo>
 
+      <P>
+        A floating slot hangs off the frame by a fraction of its height rather than by a fixed pixel offset, so a ring
+        that shrinks its frames — sixteen seats end up at 80x88 — keeps them tight instead of dropping them on the name.
+        {" "}
+        <Prop>above</Prop> is anchored to the frame&apos;s top edge, so a bubble stays attached whatever height it is.
+        And the box a table is drawn in is clipped with a <Prop>FIT_BLEED</Prop> margin rather than at its own edge, so a
+        bubble or a glow that reaches just past the box is drawn rather than cut off.
+      </P>
+      <P>
+        The frame&apos;s own rows are kept at or above <Prop>MIN_TEXT_PX</Prop> on screen whatever the table is scaled to
+        — an 11px name is 6.6px in a 725px container and 3px on a phone without it. Pass <Prop>minTextPx={'{0}'}</Prop>{" "}
+        to switch that off. A frame can be named with <Prop>label</Prop>, and the two highlights are drawn differently: a
+        current seat is an outline, a winner is a heavier one with a gold wash and a second inset ring behind it — they
+        used to be the same gold ring at two brightnesses, which is the same state as far as anyone at the table can
+        tell.
+      </P>
+
       <Demo
         title="Interactive"
         description={<><Prop>onClick</Prop> makes the frame a real button: <Prop>role=&quot;button&quot;</Prop>, <Prop>tabIndex=0</Prop>, Enter and Space both fire, and a focus ring appears.</>}
@@ -863,6 +910,13 @@ export function CounterPage() {
         </div>
       </Demo>
 
+      <P>
+        The settled amount is a live region, so a screen reader hears <Prop>&quot;Main: 240&quot;</Prop> once rather than
+        sixty frames of a count-up. Inside a table the amount and its label are also kept at or above{" "}
+        <Prop>MIN_TEXT_PX</Prop> on screen, like a seat&apos;s own rows — pass <Prop>minTextPx={'{0}'}</Prop> to switch
+        that off.
+      </P>
+
       <Api slug="counter" />
     </>
   );
@@ -899,6 +953,34 @@ export function PlayingCardPage() {
           <PlayingCard card="As" size="md" />
           <PlayingCard card="As" size="lg" />
           <CardBack size="lg" />
+        </div>
+      </Demo>
+
+      <Demo
+        title="Four colours"
+        description={
+          <>
+            <Prop>fourColor</Prop> draws diamonds blue and clubs green, so a suit is not carried by red-versus-black
+            alone — and at <Prop>xs</Prop> there is no room for the suit letter either, so on a small card the hue is the
+            only cue there is. Opt-in, because it is not what a physical deck looks like. The accessible name is
+            unchanged either way.
+          </>
+        }
+        code={`<PlayingCard card="Ad" fourColor />
+<CardRow cards={["Ad", "Ac"]} fourColor />`}
+        previewClassName="p-4"
+      >
+        <div className="flex flex-col gap-3">
+          {[false, true].map((fourColor) => (
+            <div key={String(fourColor)} className="flex items-center gap-3">
+              <span className="w-20 shrink-0 font-mono text-[11px] text-neutral-400">
+                {fourColor ? "fourColor" : "standard"}
+              </span>
+              {["As", "Ah", "Ad", "Ac"].map((card) => (
+                <PlayingCard key={card} card={card} size="md" fourColor={fourColor} />
+              ))}
+            </div>
+          ))}
         </div>
       </Demo>
 
@@ -1050,7 +1132,7 @@ export function CardRowPage() {
       <Api slug="card-row" />
 
       <H2>CardFan</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{DOC_BY_SLUG["card-fan"].summary}</p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["card-fan"].summary)}</p>
       <Demo
         title="Overlap, and an arc"
         description={

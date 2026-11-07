@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "../cn";
 import {
   DEFAULT_FELT_GAP,
@@ -16,21 +16,7 @@ import {
 import type { SeatPlacement, TableShape } from "../surface";
 import { FitBox, type DesignBox } from "./FitBox";
 import { SeatSizeContext } from "./seatSize";
-import { TableRim, TableSurface } from "./TableSurface";
-
-/* Re-exported so an import from this module keeps working; the constants live
- * in `layout.ts` and `surface.ts` with the rest of the geometry. */
-export {
-  DEFAULT_FELT_GAP,
-  DEFAULT_MARGIN_X,
-  DEFAULT_MARGIN_Y,
-  DEFAULT_SEAT_GAP,
-  DEFAULT_SEAT_H,
-  DEFAULT_SEAT_W,
-  DESIGN_H,
-  DESIGN_W,
-} from "../layout";
-export { DEFAULT_CORNER_FRACTION } from "../surface";
+import { TableGlow, TableRim, TableSurface } from "./TableSurface";
 
 /** Geometry CardTable laid a seat frame out for, handed to `renderSeat`. */
 export interface SeatBox {
@@ -138,8 +124,8 @@ export interface CardTableProps {
    *
    * `"row"` is the layout a dealer/player arrangement wants — never a ring.
    * For anything these three cannot express, use `<FitBox>` with `frames.ts`
-   * directly; that is exactly what the recipes in `@stargazeryan/poker-ui/recipes`
-   * do, and it is why the blackjack recipe has no table component in it.
+   * directly — `DealerTable` is exactly that — or compose it in your own app,
+   * the way the docs' worked examples do (`demo/src/examples/games.tsx`).
    */
   seatPlacement?: SeatPlacement;
   /**
@@ -157,6 +143,10 @@ export interface CardTableProps {
    * Nothing is drawn by default. A suit watermark is a card-room decoration, not
    * part of a table, so a game that is not played on green felt does not inherit
    * one.
+   *
+   * **It needs a felt**, because a watermark is drawn *on* one: with
+   * `deck={false}` (the default with `shape="none"`) there is nothing for it to
+   * be on, and it is not drawn.
    */
   watermark?: ReactNode;
   /** Extra classes for the rail, to restyle or replace it. */
@@ -187,6 +177,10 @@ export interface CardTableProps {
    * what a turn is. Draw it here rather than in `renderOverlay`: the overlay
    * layer is above the seats, so a halo drawn there sits on top of the seat
    * frames instead of behind them.
+   *
+   * It is drawn on a table with no felt as well (`deck={false}`, the default
+   * with `shape="none"`), where it hugs the design box — the one decoration
+   * that needs nothing under it.
    */
   glow?: boolean;
   /**
@@ -220,8 +214,8 @@ export interface CardTableProps {
    * px. Frames shrink uniformly (down to 50%) until it is honoured, which is what
    * keeps 9–10 seat tables from looking cramped and what lets 11–16 seat tables
    * lay out at all. `0` disables it.
-   * Every Seat inside the table is told the frame size through context, so this
-   * applies to the `seats` array form too.
+   * Every `Seat` inside the table is told the frame size through context, so a
+   * bare `<Seat />` follows the ring without the size being threaded through.
    * Default 24.
    */
   seatGap?: number;
@@ -247,6 +241,15 @@ export interface CardTableProps {
    *   Use this for phone-portrait layouts.
    */
   fit?: "design" | "container";
+  /**
+   * How far a **larger** container may enlarge the table. Default `1`: the design
+   * box is a maximum, so a 1600px container draws a 1200px table, centred.
+   *
+   * `maxScale={2}` lets it grow to twice the design size and
+   * `maxScale={Infinity}` fills the container at any size — the pre-0.9.0
+   * behaviour, for a caller who wants the table to track the window.
+   */
+  maxScale?: number;
   className?: string;
 }
 
@@ -272,9 +275,9 @@ const px = (b: Box) => ({
  * belongs to one game.
  */
 export function CardTable(props: CardTableProps) {
-  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", className } = props;
+  const { designWidth = DESIGN_W, designHeight = DESIGN_H, fit = "design", maxScale, className } = props;
   return (
-    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} className={className}>
+    <FitBox designWidth={designWidth} designHeight={designHeight} fit={fit} maxScale={maxScale} className={className}>
       {(design) => <Table {...props} design={design} />}
     </FitBox>
   );
@@ -310,21 +313,48 @@ function Table({
   const requested = Math.floor(seatCount);
   const count = Number.isFinite(requested) ? Math.max(1, requested) : 1;
 
-  const layout = layoutTable({
-    count,
-    designWidth: design.width,
-    designHeight: design.height,
-    marginX,
-    marginY,
-    feltGap,
-    seatWidth,
-    seatHeight,
-    seatGap,
-    startAngle,
-    shape,
-    cornerRadius,
-    seatPlacement,
-  });
+  /*
+   * Memoised on the values the layout reads.
+   *
+   * `layoutTable` does not compute a layout, it *searches* for one: it re-runs
+   * the whole arrangement at each of up to 51 shrink steps, and each step is an
+   * O(n²) sweep of every frame pair (a 16-seat ring is 6,120 of them). Rebuilding
+   * that on every render made a table's cost a function of how often its parent
+   * re-rendered — a countdown, a hover, a keystroke anywhere above it.
+   */
+  const layout = useMemo(
+    () =>
+      layoutTable({
+        count,
+        designWidth: design.width,
+        designHeight: design.height,
+        marginX,
+        marginY,
+        feltGap,
+        seatWidth,
+        seatHeight,
+        seatGap,
+        startAngle,
+        shape,
+        cornerRadius,
+        seatPlacement,
+      }),
+    [
+      count,
+      design.width,
+      design.height,
+      marginX,
+      marginY,
+      feltGap,
+      seatWidth,
+      seatHeight,
+      seatGap,
+      startAngle,
+      shape,
+      cornerRadius,
+      seatPlacement,
+    ],
+  );
 
   const { seatW, seatH } = layout;
 
@@ -341,13 +371,20 @@ function Table({
         />
       )}
 
+      {/*
+       * No rail and no felt were asked for, but the glow is the one decoration
+       * that needs nothing drawn under it: `glow={isMyTurn}` means the same
+       * thing on a bare table as on a felted one (see `TableGlow`).
+       */}
+      {glow && !deck && <TableGlow layout={layout} />}
+
       {/* caller-declared outlines: a betting line, a muck ring, a target zone */}
       {rings?.map((ring) => (
         <div
           key={ring.id}
           data-ring={ring.id}
           data-part="ring"
-          className={cn("absolute border-2 border-white/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]", ring.className)}
+          className={cn("absolute border-2 border-line shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]", ring.className)}
           style={{ borderRadius: layout.ringRadius(ring.radius), ...px(layout.ringBox(ring.radius)) }}
           aria-hidden="true"
         />

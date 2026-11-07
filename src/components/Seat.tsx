@@ -1,7 +1,34 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../cn";
+import { MIN_TEXT_PX, readableScale, useDesignScale } from "../designScale";
 import { DEFAULT_SEAT_H, DEFAULT_SEAT_W } from "../layout";
 import { useSeatSize } from "./seatSize";
+
+/** The size `Seat` draws its own rows at — what the text floor is measured against. */
+const ROW_TEXT_PX = 11;
+
+/**
+ * How far a floating slot hangs off the frame, as a fraction of the frame.
+ *
+ * These were fixed px (-48px for `above`, -12px for `topLeft`). A ring shrinks
+ * its frames — a sixteen-seat ring ends up at 80x88 — and against a frame that
+ * size a 48px offset is most of the seat: the bubble covered the name, and in
+ * the docs' own slots demo `above` landed on the `header` row.
+ *
+ * At the default 160x176 every value below rounds to the px it replaced, except
+ * `above`, which is now anchored to the frame's top edge (`bottom: 100%`) instead
+ * of a fixed offset — so it stays attached whatever height the bubble is, and
+ * lands inside the room the ring already leaves for it.
+ */
+const FLOAT = {
+  above: 0.03,
+  below: 0.02,
+  topCenter: 0.045,
+  topLeft: 0.068,
+  topRight: 0.045,
+  /** Horizontal inset of the corner slots, as a fraction of the frame width. */
+  cornerX: 0.05,
+} as const;
 
 export interface SeatProps {
   /**
@@ -17,6 +44,21 @@ export interface SeatProps {
   animated?: boolean;
   /** Optional click handler (e.g. "sit here"). */
   onClick?: () => void;
+  /**
+   * Accessible name for the frame — "Seat 3", "Ryan". It becomes the button's
+   * name when `onClick` is given and the group's name otherwise. Without it a
+   * frame is named by what is inside it, which for a seat holding two cards is a
+   * reading of the cards rather than of the seat.
+   */
+  label?: string;
+  /**
+   * The smallest px this frame's own rows may be drawn at on screen. The rows are
+   * 11px in design space, and a table scales its whole design box to fit its
+   * container — 6.6px on a 725px-wide container, 3px on a phone. They are
+   * compensated back up to this floor, never by more than `MAX_TEXT_SCALE`.
+   * Default `MIN_TEXT_PX` (10); `0` switches it off.
+   */
+  minTextPx?: number;
 
   /** Slot: top row inside the frame — name / badges. */
   header?: ReactNode;
@@ -62,6 +104,16 @@ export interface SeatProps {
  * It draws no default decoration. A crown over the winner is a decoration, not a
  * state, so `isWinner` draws the frame and the caller passes the crown through
  * `topLeft`.
+ *
+ * **The two states are drawn differently, not at two brightnesses.** A current
+ * seat is an outline; a winning one is an outline, a heavier border *and* a gold
+ * wash inside the frame — they used to be the same gold ring at two opacities,
+ * which is to say the same state as far as anyone at the table could tell.
+ *
+ * **Its own text is kept above a floor.** The rows are compensated for the scale
+ * the surrounding table is drawn at, so a name is not three pixels tall on a
+ * phone — see `minTextPx`. The corner badges and `topCenter` are left alone: they
+ * carry icons and decorations, not the label.
  */
 export function Seat({
   isActive = false,
@@ -69,6 +121,8 @@ export function Seat({
   isDimmed = false,
   animated = true,
   onClick,
+  label,
+  minTextPx = MIN_TEXT_PX,
   header,
   children,
   footer,
@@ -88,52 +142,106 @@ export function Seat({
   const frameWidth = width ?? laidOut?.width ?? DEFAULT_SEAT_W;
   const frameHeight = height ?? laidOut?.height ?? DEFAULT_SEAT_H;
 
+  const scale = useDesignScale();
+  const textScale = readableScale(scale, ROW_TEXT_PX, minTextPx);
+
   const activeClass = animated
-    ? "border-gold animate-turn-glow"
-    : "border-gold shadow-[0_0_18px_color-mix(in_oklab,var(--color-gold)_50%,transparent)]";
+    ? "border-2 border-gold animate-turn-glow"
+    : "border-2 border-gold shadow-[0_0_18px_color-mix(in_oklab,var(--color-gold)_50%,transparent)]";
   const winnerClass = animated
-    ? "border-gold animate-winner-glow"
-    : "border-gold shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)]";
+    ? "border-[3px] border-gold bg-gold/10 animate-winner-glow"
+    : "border-[3px] border-gold bg-gold/10 shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_90%,transparent)]";
+
+  const interactive = onClick !== undefined;
+  const frameRole = interactive ? "button" : label !== undefined ? "group" : undefined;
+
+  /** A vertical float offset, as a fraction of the frame height. */
+  const out = (fraction: number) => Math.round(frameHeight * fraction);
+  /** A horizontal float offset, as a fraction of the frame width. */
+  const side = (fraction: number) => Math.round(frameWidth * fraction);
+  /** The floor, applied to the rows that carry text. */
+  const textRow = (origin: CSSProperties["transformOrigin"]): CSSProperties | undefined =>
+    textScale === 1 ? undefined : { transform: `scale(${textScale})`, transformOrigin: origin };
 
   return (
     <div className={cn("relative flex flex-col items-center", className)} style={{ width: frameWidth }}>
       {topCenter !== undefined && (
-        <div className="absolute -top-2 left-1/2 z-20 flex -translate-x-1/2 gap-1">{topCenter}</div>
+        <div className="absolute left-1/2 z-20 flex -translate-x-1/2 gap-1" style={{ top: -out(FLOAT.topCenter) }}>
+          {topCenter}
+        </div>
       )}
-      {topLeft !== undefined && <div className="absolute -top-3 -left-2 z-40">{topLeft}</div>}
-      {topRight !== undefined && <div className="absolute -top-2 -right-2 z-40">{topRight}</div>}
+      {topLeft !== undefined && (
+        <div className="absolute z-40" style={{ top: -out(FLOAT.topLeft), left: -side(FLOAT.cornerX) }}>
+          {topLeft}
+        </div>
+      )}
+      {topRight !== undefined && (
+        <div className="absolute z-40" style={{ top: -out(FLOAT.topRight), right: -side(FLOAT.cornerX) }}>
+          {topRight}
+        </div>
+      )}
       {above !== undefined && (
-        <div className="pointer-events-none absolute -top-12 left-1/2 z-30 -translate-x-1/2">{above}</div>
+        <div
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 -translate-x-1/2"
+          style={{ marginBottom: out(FLOAT.above) }}
+        >
+          {/* Wrapped rather than scaled in place: the container carries the
+              centring translate, and a `transform` on it would fight it. */}
+          <div style={textRow("bottom center")}>{above}</div>
+        </div>
       )}
 
       <div
-        role={onClick ? "button" : undefined}
-        tabIndex={onClick ? 0 : undefined}
+        role={frameRole}
+        aria-label={frameRole ? label : undefined}
+        // "The current seat in the ring", in the sense a nav marks the current
+        // page — the one programmatic signal that this is the seat in play.
+        aria-current={isActive ? "true" : undefined}
+        data-state={isWinner ? "winner" : isActive ? "active" : isDimmed ? "dimmed" : "idle"}
+        tabIndex={interactive ? 0 : undefined}
         onClick={onClick}
         onKeyDown={
-          onClick
+          interactive
             ? (e) => {
-                if (e.key === "Enter" || e.key === " ") onClick();
+                if (e.key !== "Enter" && e.key !== " ") return;
+                // The frame is a button, so it takes the key: without this,
+                // space fired the handler *and* scrolled the page.
+                e.preventDefault();
+                onClick?.();
               }
             : undefined
         }
         style={{ width: frameWidth, height: frameHeight, ...frameStyle }}
         className={cn(
-          "relative flex flex-col items-center justify-between gap-1 rounded-2xl border bg-neutral-900/80 p-2 text-neutral-100 transition",
-          "border-neutral-700",
+          "relative flex flex-col items-center justify-between gap-1 rounded-2xl border bg-surface/80 p-2 text-surface-ink transition",
+          "border-surface-border",
           isActive && activeClass,
           isWinner && winnerClass,
           isDimmed && "opacity-50",
-          onClick && "cursor-pointer hover:border-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
+          interactive &&
+            "cursor-pointer hover:border-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
           frameClassName,
         )}
       >
+        {isWinner && (
+          // A second, inset outline — a separate element rather than another
+          // box-shadow, because the winner glow *is* a box-shadow and the two
+          // would overwrite each other.
+          <span aria-hidden="true" className="pointer-events-none absolute inset-[3px] rounded-[13px] border border-gold/60" />
+        )}
         {header !== undefined && (
-          <div className="flex w-full shrink-0 items-center justify-between gap-1 text-[11px]">{header}</div>
+          <div className="flex w-full shrink-0 items-center justify-between gap-1 text-[11px]" style={textRow("center")}>
+            {header}
+          </div>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">{children}</div>
         {footer !== undefined && (
-          <div className="flex w-full shrink-0 items-center justify-between text-[11px] text-neutral-300">{footer}</div>
+          <div
+            className="flex w-full shrink-0 items-center justify-between text-[11px] text-surface-ink/75"
+            style={textRow("center")}
+          >
+            {footer}
+          </div>
         )}
 
         {overlay !== undefined && (
@@ -141,7 +249,14 @@ export function Seat({
         )}
       </div>
 
-      {below !== undefined && <div className="mt-1 flex flex-col items-center gap-1">{below}</div>}
+      {below !== undefined && (
+        <div
+          className="flex flex-col items-center gap-1"
+          style={{ marginTop: out(FLOAT.below), ...textRow("top center") }}
+        >
+          {below}
+        </div>
+      )}
     </div>
   );
 }

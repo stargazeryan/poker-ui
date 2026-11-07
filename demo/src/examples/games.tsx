@@ -332,14 +332,14 @@ export function GameGallery() {
             </button>
           ))}
         </div>
-        <div className="h-[460px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <FlopPokerExample street={street} />
         </div>
       </section>
 
       <section>
         <h3 className="mb-3 font-semibold text-neutral-100">A shedding game — SquareTable</h3>
-        <div className="h-[460px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <SheddingExample />
         </div>
       </section>
@@ -357,7 +357,7 @@ export function GameGallery() {
             settle
           </button>
         </div>
-        <div className="h-[460px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <BankingExample won={won} />
         </div>
       </section>
@@ -389,7 +389,7 @@ export function GameGallery() {
             ))}
           </span>
         </div>
-        <div className="h-[460px] w-full">
+        <div className="aspect-[4/3] max-h-[560px] w-full">
           <TwentyOneExample dealerHidden={dealerHidden} hands={DEFAULT_HANDS.slice(0, handsLeft)} />
         </div>
       </section>
