@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../cn";
 import { DesignScaleContext } from "../designScale";
 import { DESIGN_H, DESIGN_W } from "../layout";
@@ -123,7 +123,19 @@ export function useFitBox({
   fit = "design",
   maxScale = 1,
 }: FitBoxOptions = {}): {
-  outerRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Attach to the element you want measured.
+   *
+   * Written out structurally — `{ current: T | null }` — rather than named as
+   * `RefObject<HTMLDivElement | null>`, because the two React type versions at the
+   * ends of the peer range disagree about that name. `@types/react@18`'s `Ref<T>`
+   * wants a `RefObject` whose type argument is *not* nullable, so naming it the 19
+   * way typechecks here (19 types are installed), ships in this package's `.d.ts`,
+   * and then fails in a React 18 consumer's own project — which is the one thing the
+   * `verify-react-18` CI job exists to catch. Both versions accept this shape, and it
+   * names no version-specific type for them to disagree about.
+   */
+  outerRef: { current: HTMLDivElement | null };
   design: DesignBox;
 } {
   const outerRef = useRef<HTMLDivElement>(null);

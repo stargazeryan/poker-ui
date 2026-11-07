@@ -104,6 +104,16 @@ bumped by a failure.
   the docs' slots demo showed `above` landing on the frame's name.
 - The winner glow and any float on the outermost seat were clipped by the design
   box.
+- The shipped `.d.ts` named `useFitBox`'s ref with the React 19 spelling,
+  `RefObject<HTMLDivElement | null>`. `@types/react@18`'s `Ref<T>` wants a
+  `RefObject` whose type argument is *not* nullable, so a React 18 consumer's own
+  `npm run typecheck` failed on `ref={outerRef}` — and the repo's `verify-react-18`
+  job failed on it too. It is written out structurally now, which both ends of the
+  peer range accept.
+- `tests/ssr.test.tsx` ran in the jsdom environment, where the measuring effect is
+  chosen as the layout effect at module load, so a React 18 server render warned
+  five times in the file that exists to prove it does not. It runs without a DOM
+  now, where both React versions are silent.
 
 ## 0.10.0 — the review pass
 

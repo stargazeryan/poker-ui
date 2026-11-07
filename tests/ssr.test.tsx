@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import {
@@ -27,9 +28,16 @@ import { Chip, ChipStack } from "../src/wager";
  *
  * The claim turned out to be version-specific, and measuring beat guessing: on
  * react-dom 18.3.1 the built package produced five "useLayoutEffect does nothing
- * on the server" warnings per render, and on React 19 none. The effect is now
- * chosen per environment, so both are silent — this file pins the React 19 half
- * (the one this repo can run), and the React 18 half was measured by hand.
+ * on the server" warnings per render, and on React 19 none. The effect is chosen
+ * per environment — `typeof window === "undefined" ? useEffect : useLayoutEffect`
+ * — and that is a decision made once per **process**, at module load.
+ *
+ * Which is why this file runs in the `node` environment and not in the default
+ * one: under jsdom `window` exists, so the module picks the layout effect, and a
+ * React 18 server render inside that same process warns — a file whose job is to
+ * prove the render is silent, failing for running in the wrong environment. With
+ * no DOM at all, both React versions are silent and this pins both halves rather
+ * than the one the repo happens to run.
  */
 const seat = (index: number, box: SeatBox) => (
   <Seat key={index} width={box.width} height={box.height} header={`p${index}`} />
