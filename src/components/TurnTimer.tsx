@@ -41,8 +41,13 @@ const TONE_CLASS: Record<NonNullable<TurnTimerProps["tone"]>, string> = {
  * A countdown ring — a turn timer, a deadline, an egg timer.
  *
  * Drawn from one number the caller owns, so a game's clock stays in the game: it
- * animates nothing and schedules nothing. Put it in a `Seat`'s `overlay` for a
- * ring on the frame, or in `below` for one under it.
+ * animates nothing and schedules nothing.
+ *
+ * Where it goes on a `Seat` matters more than how it is sized. `below` reads as a
+ * countdown badge under the frame; `topRight` reads as a small one in the corner.
+ * **Not `overlay`**: that slot is centred on the frame and painted *over* the
+ * seat's own content, so a ring there crosses the cards, crosses the header, and
+ * prints its label on the card faces.
  *
  * ```tsx
  * <Seat below={<TurnTimer remaining={msLeft / msTotal} tone={msLeft < 5000 ? "warning" : "gold"} />} />
@@ -69,7 +74,19 @@ export function TurnTimer({
   const radius = (px - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const textScale = readableScale(useDesignScale(), 14, MIN_TEXT_PX);
+  /**
+   * The label follows the ring. It used to be a fixed 14px, which is a stamp
+   * inside a 28px badge ("13" touching the rim) and lost inside a 110px one.
+   */
+  const labelPx = Math.max(9, Math.min(22, Math.round(px * 0.3)));
+  /** What the ring can hold, in multiples of the label's own size. */
+  const inner = Math.max(6, px - 2 * stroke);
+  /**
+   * The text floor still applies, but never past the ring: a number that overflows
+   * its ring is not more legible than a small one, it is noise. The comparison is
+   * in design space, where the ring and its label scale together.
+   */
+  const textScale = Math.min(readableScale(useDesignScale(), labelPx, MIN_TEXT_PX), inner / labelPx);
 
   return (
     <div
@@ -104,8 +121,8 @@ export function TurnTimer({
       </svg>
       {label !== undefined && (
         <span
-          className="absolute font-mono text-[14px] leading-none text-surface-ink"
-          style={textScale === 1 ? undefined : { transform: `scale(${textScale})` }}
+          className="absolute font-mono leading-none text-surface-ink"
+          style={{ fontSize: labelPx, ...(textScale === 1 ? null : { transform: `scale(${textScale})` }) }}
         >
           {label}
         </span>

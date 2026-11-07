@@ -73,8 +73,27 @@ describe("TurnTimer", () => {
       <CardTable seatCount={1} renderSeat={() => null} center={<TurnTimer remaining={0.5} label="12" />} />,
     );
     const label = [...container.querySelectorAll("span")].find((el) => el.textContent === "12") as HTMLElement;
-    // 14px at 0.5 is 7px on screen: compensated back up to the floor, like a seat's name
-    expect(14 * 0.5 * scaleIn(label)).toBeGreaterThanOrEqual(MIN_TEXT_PX - 0.001);
+    // 13px at 0.5 is 6.5px on screen: compensated back up to the floor, like a seat's name
+    const onScreen = parseFloat(label.style.fontSize) * 0.5 * scaleIn(label);
+    expect(onScreen).toBeGreaterThanOrEqual(MIN_TEXT_PX - 0.001);
+  });
+
+  it("sizes the label to the ring, and never lets it overflow one", () => {
+    const labelOf = (props: Parameters<typeof TurnTimer>[0]) => {
+      const { container } = render(<TurnTimer {...props} label="13" />);
+      const el = [...container.querySelectorAll("span")].find((s) => s.textContent === "13") as HTMLElement;
+      return { px: parseFloat(el.style.fontSize), m: scaleIn(el), ring: container.firstElementChild as HTMLElement };
+    };
+    const sm = labelOf({ remaining: 0.5, size: "sm" });
+    const lg = labelOf({ remaining: 0.5, size: "lg" });
+    expect(sm.px).toBeLessThan(lg.px);
+
+    // at 1:1 too, so the ring is the constraint and not the table's scale
+    for (const size of ["sm", "md", "lg"] as const) {
+      const { px, m, ring } = labelOf({ remaining: 0.5, size });
+      const inner = parseFloat(ring.style.width) - 2 * 4; // the default stroke
+      expect(px * m, `${size}: label inside its ring`).toBeLessThanOrEqual(inner + 0.5);
+    }
   });
 });
 
