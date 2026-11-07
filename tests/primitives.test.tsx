@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
-import { CardFan, MARKER_SIZE, Marker, TIMER_SIZE, TurnTimer, cardSizeFor } from "../src/index";
+import { CardFan, CardTable, MARKER_SIZE, MIN_TEXT_PX, Marker, TIMER_SIZE, TurnTimer, cardSizeFor } from "../src/index";
 import { AmountSlider, formatBB } from "../src/wager";
+import { setElementSize } from "./setup";
 
 /**
  * The pieces that are not a table, a seat or a card: a countdown, a disc, the one
@@ -15,6 +16,11 @@ import { AmountSlider, formatBB } from "../src/wager";
  */
 
 const px = (value: string) => Number(value.replace("px", ""));
+/** The factor out of an element's `transform: scale(x)`. */
+const scaleIn = (el: HTMLElement): number => {
+  const match = /scale\(([\d.]+)\)/.exec(el.style.transform);
+  return match ? Number(match[1]) : 1;
+};
 
 describe("TurnTimer", () => {
   const ring = (container: HTMLElement) => container.querySelector('[role="progressbar"]') as HTMLElement;
@@ -59,9 +65,16 @@ describe("TurnTimer", () => {
     expect(progress(render(<TurnTimer remaining={0.5} tone="muted" />).container).getAttribute("class")).toContain("stroke-muted");
   });
 
-  it("puts its label in the middle and keeps it above the floor inside a scaled table", () => {
-    const { container } = render(<TurnTimer remaining={0.5} label="12" />);
-    expect(container.textContent).toBe("12");
+  it("puts its label in the middle, and keeps it above the floor inside a scaled table", () => {
+    expect(render(<TurnTimer remaining={0.5} label="12" />).container.textContent).toBe("12");
+
+    setElementSize(600, 450); // half the design box
+    const { container } = render(
+      <CardTable seatCount={1} renderSeat={() => null} center={<TurnTimer remaining={0.5} label="12" />} />,
+    );
+    const label = [...container.querySelectorAll("span")].find((el) => el.textContent === "12") as HTMLElement;
+    // 14px at 0.5 is 7px on screen: compensated back up to the floor, like a seat's name
+    expect(14 * 0.5 * scaleIn(label)).toBeGreaterThanOrEqual(MIN_TEXT_PX - 0.001);
   });
 });
 
@@ -152,6 +165,12 @@ describe("AmountSlider", () => {
     // a non-finite max is not a range either
     const nan = render(<AmountSlider value={5} onChange={() => {}} max={Number.NaN} />).container;
     expect(Number(slider(nan).getAttribute("max"))).toBeGreaterThan(0);
+  });
+
+  it("does not let a non-finite min or amount become a style the browser cannot draw", () => {
+    const { container } = render(<AmountSlider value={Number.NaN} onChange={() => {}} min={Number.NaN} max={100} />);
+    expect(slider(container).getAttribute("min")).toBe("0");
+    expect(slider(container).value).toBe("0");
   });
 
   it("offers the shortcuts as buttons, and marks the one the amount is sitting on", () => {
