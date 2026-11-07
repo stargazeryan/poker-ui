@@ -187,18 +187,30 @@ describe("a current seat and a winning seat are not the same drawing", () => {
     expect(seat({ isWinner: true }).container.querySelector("[aria-current]")).toBeNull();
   });
 
-  it("gives the winner a heavier border, a gold wash and a second outline the current seat does not have", () => {
+  it("fills the winner and leaves the current seat an outline, at the same weight", () => {
     const winner = seat({ isWinner: true }).container.querySelector("[data-state]") as HTMLElement;
     const active = seat({ isActive: true }).container.querySelector("[data-state]") as HTMLElement;
 
-    expect(winner.className).toContain("border-[3px]");
-    expect(winner.className).toContain("bg-gold/10");
-    expect(winner.querySelector('span[aria-hidden="true"]')).not.toBeNull();
-
+    // a fill over the frame, not a stronger border: the two are told apart by the
+    // kind of mark, so neither outweighs the other
+    // a fill, and an opaque one: the gold is mixed *into* the surface colour, so
+    // the felt cannot tint the winner where the seat crosses the rail
+    expect(winner.className).toContain("linear-gradient");
+    expect(winner.className).toContain("color-mix");
+    expect(winner.className).toContain("var(--color-surface)");
+    expect(winner.className).toContain("border-2");
+    // the seat's own surface colour stays; the opaque wash is layered over it
+    expect(winner.className).toContain("bg-surface/80");
     expect(active.className).toContain("border-2");
-    expect(active.className).not.toContain("bg-gold/10");
+    expect(active.className).not.toContain("linear-gradient");
+    expect(active.className).not.toContain("bg-gold/");
+
+    // and the second outline that made the border read as one thick one is gone
+    expect(winner.querySelector('span[aria-hidden="true"]')).toBeNull();
     expect(active.querySelector('span[aria-hidden="true"]')).toBeNull();
+
     // both still carry the gold, and the animations the docs promise
+    expect(active.className).toContain("border-gold");
     expect(active.className).toContain("animate-turn-glow");
     expect(winner.className).toContain("animate-winner-glow");
   });

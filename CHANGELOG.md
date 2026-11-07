@@ -27,12 +27,14 @@ bumped by a failure.
 
 ### Changed
 
-- **A current seat and a winning seat are no longer the same drawing.** Both were
-  a gold ring with a gold glow, differing only in brightness (50%→95% against
+- **A current seat and a winning seat are drawn in different languages.** Both
+  were a gold ring with a gold glow, differing only in brightness (50%→95% against
   90%→100%), so the two most important states were indistinguishable at a glance
-  and in greyscale. A current seat is a 2px outline; a winner is a 3px border, a
-  gold wash inside the frame and a second inset ring behind it. Both animations
-  are unchanged.
+  and in greyscale. A current seat stays an **outline** — a 2px gold border and a
+  halo, dark inside. A winner is **filled**: the same border under a gold wash
+  across the frame, drawn opaque so the felt cannot tint it — every other seat is
+  `bg-surface/80`, which under a bright wash is mossy green where the seat crosses
+  the felt and amber where it crosses the rail. Both animations are unchanged.
 - **A declared ring is drawn in `--color-line`, not `border-white/10`.** Measured
   against the felt gradient, the old outline was 1.2–1.3:1 — a betting line
   nobody could see. The token ships as `#ffd678`: 3.5:1 at the lightest end of the
