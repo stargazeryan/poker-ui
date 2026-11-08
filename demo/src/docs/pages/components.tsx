@@ -35,7 +35,7 @@ import {
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
-import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
+import { SAMPLE, BET_RING, betSlots, PlayerInfo, SeatRow, handHalf, renderPlayers } from "../../examples/parts";
 
 export function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
@@ -279,13 +279,13 @@ function SeatGapDemo() {
     marginX: DEFAULT_MARGIN_X,
     marginY: DEFAULT_MARGIN_Y,
     feltGap: DEFAULT_FELT_GAP,
-    seatWidth: 160,
-    seatHeight: 176,
+    seatWidth: 240,
+    seatHeight: 112,
     seatGap: gap,
     startAngle: 90,
   });
   const actual = minFrameSeparation(geo.seats);
-  const shrunk = geo.seatW < 160 || geo.seatH < 176;
+  const shrunk = geo.seatW < 240 || geo.seatH < 112;
 
   return (
     <>
@@ -302,12 +302,18 @@ function SeatGapDemo() {
         <CardTable
           seatCount={count}
           seatGap={gap}
-          /* A ring's frames are one size, so a table of plates can say what a plate
-             needs: the docs' own short-frame demo uses 104. */
-          seatWidth={160}
-          seatHeight={104}
+          /* A seat is a row, so the frame is landscape: 240x112 is what keeps `md`
+             cards beside the name instead of behind it. */
+          seatWidth={240}
+          seatHeight={112}
           renderSeat={(i, box) => (
-            <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} cards={null} />
+            <SeatRow
+              width={box.width}
+              height={box.height}
+              isActive={i === 1}
+              info={<PlayerInfo index={i} />}
+              hold={handHalf()}
+            />
           )}
           center={<Counter label="Main" amount={487} />}
         />
@@ -327,8 +333,8 @@ function SeatGapDemo() {
 const PLAYGROUND_INITIAL: Record<string, number | boolean | string> = {
   seatCount: 6,
   startAngle: 90,
-  seatWidth: 160,
-  seatHeight: 176,
+  seatWidth: 240,
+  seatHeight: 112,
   seatGap: 24,
   designWidth: DESIGN_W,
   designHeight: DESIGN_H,
@@ -466,14 +472,15 @@ function CardTablePlayground() {
           glow={bool("glow")}
           renderOverlay={() => (bool("confetti") ? <Confetti colors={[...palette.colors]} /> : null)}
           renderSeat={(i, box) => (
-            <PlayerSeat
-              index={i}
+            <SeatRow
               width={box.width}
               height={box.height}
               isActive={i === 0 && bool("glow")}
               isWinner={bool("confetti") && i === 0}
-              cardSize="xs"
-              cards={i === 0 ? SAMPLE.hand : null}
+              info={<PlayerInfo index={i} />}
+              // The half sizes its own cards now, so the playground's frame steppers
+              // (`seatWidth`/`seatHeight`) reach the hand without a `cardSize` here.
+              hold={handHalf(i === 0 ? SAMPLE.hand : SAMPLE.faceDown)}
             />
           )}
           center={
@@ -528,9 +535,9 @@ export function CardTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={count}
-              seatWidth={160}
-              seatHeight={104}
-              renderSeat={renderPlayers({ cards: null })}
+              seatWidth={240}
+              seatHeight={112}
+              renderSeat={renderPlayers()}
               center={<Counter label="Main" amount={487} />}
             />
           </div>
@@ -563,9 +570,9 @@ export function CardTablePage() {
             seatCount={6}
             rings={[BET_RING]}
             slots={betSlots(SAMPLE.bets)}
-            seatWidth={160}
-            seatHeight={104}
-            renderSeat={renderPlayers({ cards: null })}
+            seatWidth={240}
+            seatHeight={112}
+            renderSeat={renderPlayers()}
             center={<Counter label="Main" amount={487} />}
           />
         </div>
@@ -600,18 +607,18 @@ export function CardTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={6}
-              seatWidth={160}
-              seatHeight={104}
+              seatWidth={240}
+              seatHeight={112}
               glow={turn}
               renderOverlay={() => (winner ? <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} /> : null)}
               renderSeat={(i, box) => (
-                <PlayerSeat
-                  index={i}
+                <SeatRow
                   width={box.width}
                   height={box.height}
                   isActive={turn && i === 2}
                   isWinner={winner && i === 2}
-                  cards={null}
+                  info={<PlayerInfo index={i} />}
+                  hold={handHalf()}
                 />
               )}
               center={<Counter label="Main" amount={487} />}
@@ -879,44 +886,73 @@ export function SeatPage() {
       </Demo>
 
       <Demo
-        title="A plate, and the same thing sideways"
-        description="Three answers to the same question. A plate is a frame with nothing in it but who is sitting there — which is what a seat whose cards the viewer cannot read should be — and a plate wants less height, because the default frame is sized for two cards. A landscape frame with a row in children is the left/right split: the player on one side, the cards they are showing on the other."
-        code={`<Seat width={160} height={176} header={<b>Seat 3</b>} footer={<span>47 BB</span>} />\n\n<Seat width={160} height={104} header={<b>Seat 5</b>} footer={<span>50 BB</span>} />\n\n<Seat width={240} height={96}>\n  <div className="flex w-full items-center justify-between gap-3">\n    <span>Seat 0 · 100 BB</span>\n    <CardRow cards={SAMPLE.hand} size="sm" />\n  </div>\n</Seat>`}
+        title="The container: two halves that never meet"
+        description={
+          <>
+            A seat on these tables is a <strong>container</strong> with two halves. The left half is who is sitting
+            there — a name and a stack. The right half is what they are holding: a hand, a chip stack, or nothing at
+            all. Neither half knows about the other; the container knows only how big the frame is. The frames on the
+            right are the same container filled three ways.
+          </>
+        }
+        code={`<Seat width={240} height={112}>\n  <div className="flex w-full items-center justify-between gap-2">\n    <span className="shrink-0" style={{ width: 72 }}>{info}</span>\n    <span className="shrink-0">{hold}</span>\n  </div>\n</Seat>`}
       >
         <div className="flex flex-wrap items-start justify-center gap-10">
-          <Seat
-            width={160}
-            height={176}
-            header={<span className="w-full truncate text-center font-semibold">Seat 3</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">47 BB</span>}
-          />
-          <Seat
-            width={160}
-            height={104}
-            header={<span className="w-full truncate text-center font-semibold">Seat 5</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">50 BB</span>}
-          />
-          <Seat width={240} height={96}>
-            <div className="flex w-full items-center justify-between gap-3">
-              <span className="flex min-w-0 flex-col text-left">
-                <span className="truncate text-[11px] font-semibold">Seat 0</span>
-                <span className="font-mono text-[11px] text-gold-light">100 BB</span>
-              </span>
-              <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
-            </div>
-          </Seat>
+          <div className="rounded-xl border border-dashed border-sky-400/40 p-4">
+            <div className="mb-3 text-[10px] tracking-wider text-sky-300 uppercase">the container</div>
+            <Seat width={240} height={112}>
+              <div className="flex w-full items-center justify-between gap-2">
+                <span
+                  className="flex shrink-0 items-center justify-center rounded-md border border-dashed border-sky-400/50 text-center text-[10px] text-sky-200"
+                  style={{ width: 72, height: 88 }}
+                >
+                  seat info
+                </span>
+                <span
+                  className="flex shrink-0 items-center justify-center rounded-md border border-dashed border-sky-400/50 px-4 text-center text-[10px] text-sky-200"
+                  style={{ height: 88 }}
+                >
+                  the hand
+                </span>
+              </div>
+            </Seat>
+          </div>
+          <div className="flex flex-wrap items-start gap-6">
+            {[
+              { info: <PlayerInfo index={0} />, hold: <CardRow cards={SAMPLE.hand} size="md" animation={false} /> },
+              { info: <PlayerInfo index={5} stack={null} />, hold: <ChipStack amount={60} size="sm" /> },
+              { info: <PlayerInfo index={4} />, hold: null },
+            ].map((half, i) => (
+              <Seat key={i} width={240} height={112}>
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className="shrink-0" style={{ width: 72 }}>
+                    {half.info}
+                  </span>
+                  <span className="shrink-0">{half.hold}</span>
+                </div>
+              </Seat>
+            ))}
+          </div>
         </div>
       </Demo>
 
       <P>
-        <strong>Which cards belong in a frame?</strong> The ones the viewer can read. The worked examples put a hand in
-        your seat and nowhere else, because an opponent&apos;s two card backs are a pattern rather than a hand — at{" "}
-        <Prop>md</Prop> that pattern is <strong>40% of the frame&apos;s area</strong> (measured on the six-seat flop
-        example). A seat holding hidden cards is better as a plate: the same name and stack every seat has, and
-        nothing where the cards would be — the empty middle is the mark. Public hands are the other case — which is why twenty-one&apos;s dealer and a shedding
-        game&apos;s thirteen cards are still drawn inside their frames; the bank game&apos;s seats are plates on the
-        same grounds, because there the cards are the gate in the head and a seat holds a wager. And a plate wants
-        less height, too: 176 is sized for two cards, so the same two rows in 104 read tighter rather than cramped.
+        <strong>The container has two halves and the halves never meet.</strong> The left half is who is sitting
+        there; the right half is what they are holding. That is why a hand stays a <Prop>CardRow</Prop> and a wager
+        stays a <Prop>ChipStack</Prop>, and why neither is a prop of the seat: the container splits a frame and{" "}
+        <em>nothing else</em>, so a table can put a fan in the right half, or chips, or nothing, without the left half
+        hearing about it.
+      </P>
+
+      <P>
+        It used to be a column — name, hand, stack, all in one 160x176 frame — and in a column the hand and the name
+        compete for the same middle: at <Prop>md</Prop> two cards are <strong>40% of a portrait frame&apos;s
+        area</strong> (measured on the six-seat flop example), which made a hidden hand the largest thing in a seat
+        that is mostly about who is sitting there. A row wants a landscape frame: 240x112 keeps <Prop>md</Prop> cards
+        and drops the two rows a portrait frame was reserving height for, and 240x96 drops the hand to{" "}
+        <Prop>sm</Prop> — both measured, which is why the number is 112. Two seats keep the column, for the same
+        reason: a shedding game&apos;s thirteen cards are a fan rather than a row, and a bank game&apos;s seat holds a
+        wager, which is what its right half carries.
       </P>
 
       <Api slug="seat" />

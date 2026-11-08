@@ -101,9 +101,20 @@ if (pack.status !== 0) {
 
   const maps = (info?.files ?? []).filter((f) => f.path.endsWith(".map"));
   const mapBytes = maps.reduce((sum, f) => sum + f.size, 0);
-  console.log(
-    `  \u001b[2m${maps.length} sourcemap(s), ${(mapBytes / 1024).toFixed(0)}kB of ${((info?.unpackedSize ?? 0) / 1024).toFixed(0)}kB unpacked — list the extensions you ship in package.json's "files" to drop them — npm 12 ignores .npmignore for anything a "files" entry already covers\u001b[0m`,
-  );
+  /*
+   * A hint only when there is something to hint about. This used to print
+   * unconditionally, so a tarball with no maps at all was told to drop its maps —
+   * and the mechanism it named, `.npmignore`, is ignored by npm 12 for anything a
+   * `files` entry already covers. What works is listing the extensions the package
+   * ships, so that is what the hint says when there is something to say.
+   */
+  if (maps.length) {
+    console.log(
+      `  \u001b[2m${maps.length} sourcemap(s), ${(mapBytes / 1024).toFixed(0)}kB of ${((info?.unpackedSize ?? 0) / 1024).toFixed(0)}kB unpacked — list the extensions you ship in package.json's "files" to drop them\u001b[0m`,
+    );
+  } else {
+    ok(`no sourcemaps in the tarball (${((info?.unpackedSize ?? 0) / 1024).toFixed(0)}kB unpacked)`);
+  }
 }
 
 if (failures.length) {
