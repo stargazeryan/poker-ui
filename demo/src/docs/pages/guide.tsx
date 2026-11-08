@@ -3,7 +3,7 @@ import { CardRow, Counter, RoundTable } from "@stargazeryan/poker-ui";
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, CodeBlock, Demo, Field, H2, P, Prop, Row } from "../ui";
 import { COLOUR_TOKENS, TOKENS } from "../inventory";
-import { SAMPLE, BET_RADIUS, BET_RING, PlayerSeat } from "../../examples/parts";
+import { SAMPLE, BET_RADIUS, BET_RING, PlayerInfo, SeatRow, handHalf } from "../../examples/parts";
 
 /* --------------------------------------------------------- getting started -- */
 
@@ -133,13 +133,12 @@ export function GettingStarted() {
             },
           ]}
           renderSeat={(i, box) => (
-            <PlayerSeat
-              index={i}
+            <SeatRow
               width={box.width}
               height={box.height}
               isActive={i === 3}
-              layout="row"
-              cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+              info={<PlayerInfo index={i} />}
+              hold={handHalf(i === 0 ? SAMPLE.hand : SAMPLE.faceDown)}
             />
           )}
           center={
@@ -234,13 +233,12 @@ export function Theming() {
               seatHeight={112}
               rings={[BET_RING]}
               renderSeat={(i, box) => (
-                <PlayerSeat
-                  index={i}
+                <SeatRow
                   width={box.width}
                   height={box.height}
                   isActive={i === 3}
-                  layout="row"
-                  cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+                  info={<PlayerInfo index={i} />}
+                  hold={handHalf(i === 0 ? SAMPLE.hand : SAMPLE.faceDown)}
                 />
               )}
               center={

@@ -13,7 +13,7 @@ import { ChipStack } from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG, type ApiRow } from "../registry";
 import { BankingExample } from "../../examples/games";
-import { BET_RING, PlayerSeat, SAMPLE, betSlots, renderHands, renderPlayers } from "../../examples/parts";
+import { BET_RING, PlayerInfo, SAMPLE, SeatRow, betSlots, handHalf, renderHands, renderPlayers } from "../../examples/parts";
 
 /**
  * The three table types, plus the overview that puts them side by side.
@@ -91,13 +91,13 @@ export function TableTypesPage() {
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">RoundTable</div>
           <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
-            <RoundTable seatCount={6} seatWidth={240} seatHeight={112} renderSeat={renderPlayers({ layout: "row" })} />
+            <RoundTable seatCount={6} seatWidth={240} seatHeight={112} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
           <div className="mb-2 font-mono text-[11px] text-neutral-400">SquareTable</div>
           <div className="aspect-[4/3] max-h-[560px] overflow-hidden rounded-lg border border-white/10">
-            <SquareTable cornerRadius={70} seatCount={4} seatWidth={240} seatHeight={112} renderSeat={renderPlayers({ layout: "row" })} />
+            <SquareTable cornerRadius={70} seatCount={4} seatWidth={240} seatHeight={112} renderSeat={renderPlayers()} />
           </div>
         </div>
         <div>
@@ -176,7 +176,15 @@ export function RoundTablePage() {
               seatCount={count}
               seatWidth={240}
               seatHeight={112}
-              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 0} layout="row" />}
+              renderSeat={(i, box) => (
+                <SeatRow
+                  width={box.width}
+                  height={box.height}
+                  isActive={i === 0}
+                  info={<PlayerInfo index={i} />}
+                  hold={handHalf()}
+                />
+              )}
             />
           </div>
         </div>
@@ -212,7 +220,15 @@ export function RoundTablePage() {
               slots={line ? betSlots(SAMPLE.bets) : undefined}
               seatWidth={240}
               seatHeight={112}
-              renderSeat={(i, box) => <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 3} layout="row" />}
+              renderSeat={(i, box) => (
+                <SeatRow
+                  width={box.width}
+                  height={box.height}
+                  isActive={i === 3}
+                  info={<PlayerInfo index={i} />}
+                  hold={handHalf()}
+                />
+              )}
               center={<Counter label="Main" amount={SAMPLE.pot} />}
             />
           </div>
@@ -270,7 +286,7 @@ export function SquareTablePage() {
             ))}
           </Row>
           <div className="aspect-[4/3] max-h-[560px] w-full">
-            <SquareTable cornerRadius={corner} seatCount={count} seatWidth={240} seatHeight={112} renderSeat={renderPlayers({ layout: "row" })} />
+            <SquareTable cornerRadius={corner} seatCount={count} seatWidth={240} seatHeight={112} renderSeat={renderPlayers()} />
           </div>
         </div>
       </Demo>
@@ -332,16 +348,14 @@ export function DealerTablePage() {
                 </Seat>
               }
               renderHand={(i, box) => (
-                <PlayerSeat
-                  index={i}
+                <SeatRow
                   width={box.width}
                   height={box.height}
                   isActive={i === 0}
-                  footer={
-                    <span className="w-full text-center">
-                      <ChipStack amount={(i + 1) * 25} size="sm" />
-                    </span>
+                  info={
+                    <PlayerInfo index={i} stack={null} extra={<ChipStack amount={(i + 1) * 25} size="sm" />} />
                   }
+                  hold={handHalf()}
                 />
               )}
             />

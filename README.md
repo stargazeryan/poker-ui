@@ -132,7 +132,7 @@ you have not written yet can use it today.
 | Is there a betting line? | **You** — `rings={[{ id: "line", radius: 0.72 }]}` |
 | What goes on it? | **You** — `slots={[{ id: "bet", radius: 0.72, render }]}`, one piece of content per seat |
 | What unit is `240`? | **You** — pass `format` to `Counter`; `formatBB(amount, bb)` is the opt-in poker helper in `/wager` |
-| What goes inside a seat? | **You** — slots: 0 cards, 13 cards, an avatar, buttons, anything — and a seat is a row: the player on the left, what they hold on the right, with a hidden hand drawn as backs rather than competing with the name for the middle |
+| What goes inside a seat? | **You** — slots: 0 cards, 13 cards, an avatar, buttons, anything. A seat is a container with two halves that do not know each other: who is sitting there on the left, what they are holding on the right — a hand, a fan, a chip stack, nothing. The examples draw a hidden hand as backs there, beside the name rather than in its way |
 
 ### One way to do each thing
 

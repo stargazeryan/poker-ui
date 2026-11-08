@@ -35,7 +35,7 @@ import {
 import { ApiTable, Btn, Callout, Demo, Field, H2, P, Prop, Row, Stepper, inlineMd } from "../ui";
 import { DOC_BY_SLUG } from "../registry";
 import { CARD_TABLE_CONTROLS, CONFETTI_PALETTES } from "../inventory";
-import { SAMPLE, BET_RING, betSlots, PlayerSeat, renderPlayers } from "../../examples/parts";
+import { SAMPLE, BET_RING, betSlots, PlayerInfo, SeatRow, handHalf, renderPlayers } from "../../examples/parts";
 
 export function Sec({ slug }: { slug: string }) {
   const doc = DOC_BY_SLUG[slug];
@@ -307,7 +307,13 @@ function SeatGapDemo() {
           seatWidth={240}
           seatHeight={112}
           renderSeat={(i, box) => (
-            <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} layout="row" />
+            <SeatRow
+              width={box.width}
+              height={box.height}
+              isActive={i === 1}
+              info={<PlayerInfo index={i} />}
+              hold={handHalf()}
+            />
           )}
           center={<Counter label="Main" amount={487} />}
         />
@@ -466,15 +472,15 @@ function CardTablePlayground() {
           glow={bool("glow")}
           renderOverlay={() => (bool("confetti") ? <Confetti colors={[...palette.colors]} /> : null)}
           renderSeat={(i, box) => (
-            <PlayerSeat
-              index={i}
+            <SeatRow
               width={box.width}
               height={box.height}
               isActive={i === 0 && bool("glow")}
               isWinner={bool("confetti") && i === 0}
-              layout="row"
-              cardSize="xs"
-              cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+              info={<PlayerInfo index={i} />}
+              // The half sizes its own cards now, so the playground's frame steppers
+              // (`seatWidth`/`seatHeight`) reach the hand without a `cardSize` here.
+              hold={handHalf(i === 0 ? SAMPLE.hand : SAMPLE.faceDown)}
             />
           )}
           center={
@@ -531,7 +537,7 @@ export function CardTablePage() {
               seatCount={count}
               seatWidth={240}
               seatHeight={112}
-              renderSeat={renderPlayers({ layout: "row" })}
+              renderSeat={renderPlayers()}
               center={<Counter label="Main" amount={487} />}
             />
           </div>
@@ -566,7 +572,7 @@ export function CardTablePage() {
             slots={betSlots(SAMPLE.bets)}
             seatWidth={240}
             seatHeight={112}
-            renderSeat={renderPlayers({ layout: "row" })}
+            renderSeat={renderPlayers()}
             center={<Counter label="Main" amount={487} />}
           />
         </div>
@@ -606,13 +612,13 @@ export function CardTablePage() {
               glow={turn}
               renderOverlay={() => (winner ? <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} /> : null)}
               renderSeat={(i, box) => (
-                <PlayerSeat
-                  index={i}
+                <SeatRow
                   width={box.width}
                   height={box.height}
                   isActive={turn && i === 2}
                   isWinner={winner && i === 2}
-                  layout="row"
+                  info={<PlayerInfo index={i} />}
+                  hold={handHalf()}
                 />
               )}
               center={<Counter label="Main" amount={487} />}
@@ -880,46 +886,73 @@ export function SeatPage() {
       </Demo>
 
       <Demo
-        title="A row, and a plate"
-        description="How the examples draw a seat: a row — the player on the left, what they are holding on the right — in a landscape frame, because a portrait one makes the hand and the name compete for the same middle. It is a composition rather than a prop (a div in children, usually the height a portrait frame cannot spare), which is why the frames below are 112 and 96 rather than 176. The third frame is the other case: a seat with nothing to hold."
-        code={`<Seat width={160} height={176} header={<b>Seat 3</b>} footer={<span>47 BB</span>} />\n\n<Seat width={160} height={104} header={<b>Seat 5</b>} footer={<span>50 BB</span>} />\n\n<Seat width={240} height={112}>\n  <div className="flex w-full items-center justify-between gap-3">\n    <span>Seat 0 · 100 BB</span>\n    <CardRow cards={SAMPLE.hand} size="sm" />\n  </div>\n</Seat>`}
+        title="The container: two halves that never meet"
+        description={
+          <>
+            A seat on these tables is a <strong>container</strong> with two halves. The left half is who is sitting
+            there — a name and a stack. The right half is what they are holding: a hand, a chip stack, or nothing at
+            all. Neither half knows about the other; the container knows only how big the frame is. The frames on the
+            right are the same container filled three ways.
+          </>
+        }
+        code={`<Seat width={240} height={112}>\n  <div className="flex w-full items-center justify-between gap-2">\n    <span className="shrink-0" style={{ width: 72 }}>{info}</span>\n    <span className="shrink-0">{hold}</span>\n  </div>\n</Seat>`}
       >
         <div className="flex flex-wrap items-start justify-center gap-10">
-          <Seat
-            width={160}
-            height={176}
-            header={<span className="w-full truncate text-center font-semibold">Seat 3</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">47 BB</span>}
-          />
-          <Seat
-            width={160}
-            height={104}
-            header={<span className="w-full truncate text-center font-semibold">Seat 5</span>}
-            footer={<span className="w-full text-center font-mono text-gold-light">50 BB</span>}
-          />
-          <Seat width={240} height={112}>
-            <div className="flex w-full items-center justify-between gap-3">
-              <span className="flex min-w-0 flex-col text-left">
-                <span className="truncate text-[11px] font-semibold">Seat 0</span>
-                <span className="font-mono text-[11px] text-gold-light">100 BB</span>
-              </span>
-              <CardRow cards={SAMPLE.hand} size="md" animation={false} />
-            </div>
-          </Seat>
+          <div className="rounded-xl border border-dashed border-sky-400/40 p-4">
+            <div className="mb-3 text-[10px] tracking-wider text-sky-300 uppercase">the container</div>
+            <Seat width={240} height={112}>
+              <div className="flex w-full items-center justify-between gap-2">
+                <span
+                  className="flex shrink-0 items-center justify-center rounded-md border border-dashed border-sky-400/50 text-center text-[10px] text-sky-200"
+                  style={{ width: 72, height: 88 }}
+                >
+                  seat info
+                </span>
+                <span
+                  className="flex shrink-0 items-center justify-center rounded-md border border-dashed border-sky-400/50 px-4 text-center text-[10px] text-sky-200"
+                  style={{ height: 88 }}
+                >
+                  the hand
+                </span>
+              </div>
+            </Seat>
+          </div>
+          <div className="flex flex-wrap items-start gap-6">
+            {[
+              { info: <PlayerInfo index={0} />, hold: <CardRow cards={SAMPLE.hand} size="md" animation={false} /> },
+              { info: <PlayerInfo index={5} stack={null} />, hold: <ChipStack amount={60} size="sm" /> },
+              { info: <PlayerInfo index={4} />, hold: null },
+            ].map((half, i) => (
+              <Seat key={i} width={240} height={112}>
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className="shrink-0" style={{ width: 72 }}>
+                    {half.info}
+                  </span>
+                  <span className="shrink-0">{half.hold}</span>
+                </div>
+              </Seat>
+            ))}
+          </div>
         </div>
       </Demo>
 
       <P>
-        <strong>A seat is a row, not a column.</strong> The player — name, stack — on the left, and what they are
-        holding on the right. It used to be a column, and in a column the hand and the name compete for the same
-        middle: at <Prop>md</Prop> two cards are <strong>40% of a portrait frame&apos;s area</strong> (measured on the
-        six-seat flop example), which made a hidden hand the largest thing in a seat that is mostly about who is
-        sitting there. Beside the name, each is legible — and the hand is still drawn: yours face up, everyone
-        else&apos;s face down, because the split separates the hand from the name rather than removing it. A row wants
-        a landscape frame: 240x112 keeps <Prop>md</Prop> cards and drops the two rows a portrait frame was reserving
-        height for (both measured — 240x96 drops the hand to <Prop>sm</Prop>). Two seats keep the column, for the same
-        reason: a shedding game&apos;s thirteen cards are a fan rather than a row, and a bank game&apos;s seats hold a
-        wager — where the row applies, its right half carries the chips a hand would have gone in.
+        <strong>The container has two halves and the halves never meet.</strong> The left half is who is sitting
+        there; the right half is what they are holding. That is why a hand stays a <Prop>CardRow</Prop> and a wager
+        stays a <Prop>ChipStack</Prop>, and why neither is a prop of the seat: the container splits a frame and{" "}
+        <em>nothing else</em>, so a table can put a fan in the right half, or chips, or nothing, without the left half
+        hearing about it.
+      </P>
+
+      <P>
+        It used to be a column — name, hand, stack, all in one 160x176 frame — and in a column the hand and the name
+        compete for the same middle: at <Prop>md</Prop> two cards are <strong>40% of a portrait frame&apos;s
+        area</strong> (measured on the six-seat flop example), which made a hidden hand the largest thing in a seat
+        that is mostly about who is sitting there. A row wants a landscape frame: 240x112 keeps <Prop>md</Prop> cards
+        and drops the two rows a portrait frame was reserving height for, and 240x96 drops the hand to{" "}
+        <Prop>sm</Prop> — both measured, which is why the number is 112. Two seats keep the column, for the same
+        reason: a shedding game&apos;s thirteen cards are a fan rather than a row, and a bank game&apos;s seat holds a
+        wager, which is what its right half carries.
       </P>
 
       <Api slug="seat" />

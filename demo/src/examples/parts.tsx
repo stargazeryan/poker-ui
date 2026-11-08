@@ -6,7 +6,6 @@ import {
   cardSizeFor,
   readableScale,
   useDesignScale,
-  type CardSize,
   type FrameBox,
   type SeatBox,
   type TableRing,
@@ -51,11 +50,15 @@ export const SAMPLE: {
   pot: 415,
 };
 
+
 /**
- * Room a `layout="row"` seat spends on the player's own two lines — the name and
- * the stack — before the hand gets the rest of the width.
+ * Room the container spends on the seat-info half, before the hand gets the rest of
+ * the width. Published because the *caller* sizes its own half against it.
  */
-const ROW_INFO_W = 72;
+export const INFO_HALF_W = 72;
+
+/** The size the info half draws its two lines at — what its floor is measured for. */
+const INFO_TEXT_PX = 11;
 
 /** The radius every demo puts its betting line at. */
 export const BET_RADIUS = 0.72;
@@ -88,154 +91,148 @@ export function betSlots(bets: readonly number[] = SAMPLE.bets, radius = BET_RAD
   ];
 }
 
-export interface PlayerSeatProps {
-  index: number;
+/* ---------------------------------------------------------------- the halves -- */
+
+export interface PlayerInfoProps {
+  /** Defaults to "You" for seat 0 and "Seat n" otherwise. */
+  index?: number;
+  /** Overrides the name. */
+  label?: ReactNode;
+  /** Overrides the stack, in chip units. `null` draws no stack line. */
+  stack?: number | null;
+  /** A third line, for what is not a stack: a wager, a badge. */
+  extra?: ReactNode;
+  className?: string;
+}
+
+/**
+ * Who is sitting there: a name and a stack, and nothing else.
+ *
+ * It knows nothing about cards — that is the other half's business — which is what
+ * lets either half be swapped on its own: this for a plate, a `CardRow` for a hand,
+ * a `ChipStack` for a wager, none of them aware of the others.
+ *
+ * It carries the text floor itself, through the exported `readableScale`: a component
+ * that draws text is the thing that has to keep it legible, because text written
+ * inside a seat's `children` gets no compensation from the seat.
+ */
+export function PlayerInfo({ index = 0, label, stack, extra, className = "" }: PlayerInfoProps) {
+  const floor = readableScale(useDesignScale(), INFO_TEXT_PX, MIN_TEXT_PX);
+  // `undefined` is the sample stack; `null` is none at all, because a game with no
+  // stacks — a twenty-one table, a bank game — should not be shown a number it never had.
+  const amount = stack === undefined ? SAMPLE.stacks[index % SAMPLE.stacks.length] : stack;
+  return (
+    <span
+      className={`flex flex-col items-start ${className}`}
+      style={floor === 1 ? undefined : { transform: `scale(${floor})`, transformOrigin: "left center" }}
+    >
+      <span className="max-w-full truncate text-[11px] font-semibold">
+        {label ?? (index === 0 ? "You" : `Seat ${index}`)}
+      </span>
+      {amount === null ? null : (
+        <span className="font-mono text-[11px] text-gold-light">{formatBB(amount, 20)}</span>
+      )}
+      {extra}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------- the container -- */
+
+export interface SeatRowProps {
   /** Frame size from `SeatBox`. Omit to let the table's context size it. */
   width?: number;
   height?: number;
   isActive?: boolean;
   isWinner?: boolean;
   isDimmed?: boolean;
+  /** The left half: who is sitting there. */
+  info: ReactNode;
   /**
-   * The cards in the frame — or `null` for a **plate**: a seat with nothing to show
-   * draws no cards and nothing where they would be. Defaults to the sample hand,
-   * face up.
-   */
-  cards?: (string | null)[] | null;
-  /**
-   * How the frame is laid out. `"stack"` (the default) puts the player over their
-   * hand, which is what a portrait frame with two large cards wants. `"row"` splits
-   * the frame in two: the player on the left, what they are holding on the right.
+   * The right half: what they are holding, given the box that is left for it — so a
+   * hand can size itself with `cardSizeFor` and a chip stack can ignore the box.
    *
-   * The split is the point — a hidden hand in the middle of a portrait frame
-   * competes with the name and the stack for the same column, and wins, because two
-   * `md` cards are 40% of the frame. Beside them, each is legible. A row wants a
-   * landscape frame: at 240x112 it keeps `md` cards, where a 240x96 row drops them
-   * to `sm`.
+   * A function rather than a node because the half's size is the container's to know
+   * and its content's to use: passing a node would leave every caller computing the
+   * same box by hand, and passing *cards* would make the container a card component,
+   * which is the dependency this is here to avoid.
    */
-  layout?: "stack" | "row";
-  /**
-   * What the seat is holding, for `layout="row"`. Defaults to its cards, so a card
-   * game passes nothing and a betting game passes its chips.
-   */
-  hold?: ReactNode;
-  /**
-   * Defaults to the largest size that fits `width`/`height` — `cardSizeFor`.
-   * A hand-written size is how the default seat ended up two-thirds empty.
-   */
-  cardSize?: CardSize;
-  /** Defaults to "You" for seat 0 and "Seat n" otherwise. */
-  label?: ReactNode;
-  /** Defaults to that seat's sample stack, formatted as big blinds. */
-  footer?: ReactNode;
+  hold: (box: { width: number; height: number }) => ReactNode;
 }
 
 /**
- * A seat with a name, a stack in big blinds and a hand — the block that used to
- * be copy-pasted into every demo on every page.
+ * The container: one frame, two halves. It knows how big the frame is and splits it;
+ * it does not know what a card is, and the two halves never see each other.
+ *
+ * The frame is the library's own neutral `Seat`, so the border, the states and the
+ * rows come from there and nothing is re-implemented here.
  */
-export function PlayerSeat({
-  index,
-  width,
-  height,
-  isActive,
-  isWinner,
-  isDimmed,
-  cards = SAMPLE.hand,
-  layout = "stack",
-  hold,
-  cardSize,
-  label,
-  footer,
-}: PlayerSeatProps) {
-  const stack = SAMPLE.stacks[index % SAMPLE.stacks.length];
-  const shown = cards ?? [];
-  const rowwise = layout === "row";
-  const name = label ?? (index === 0 ? "You" : `Seat ${index}`);
+export function SeatRow({ width, height, isActive, isWinner, isDimmed, info, hold }: SeatRowProps) {
   /*
-   * A row spends part of its width on the player's own two lines, so what is left
-   * for the cards is the frame minus `ROW_INFO_W` — and none of the `chrome` a
-   * portrait frame reserves for a header and a footer, because a row has neither.
+   * The left half is a fixed width and `shrink-0`, not `min-w-0`: a flex child that is
+   * allowed to shrink gets squeezed by whatever the right half is, and the name ends up
+   * behind the cards — which is exactly the contest the container exists to settle.
    */
-  const cardBox =
-    width !== undefined && height !== undefined
-      ? rowwise
-        ? { width: Math.max(80, width - ROW_INFO_W), height }
-        : { width, height }
-      : undefined;
-  // The frame is the thing that knows how much room there is. Outside a table
-  // nothing reported a size, so `sm` is the honest fallback.
-  const size =
-    cardSize ?? (cardBox ? cardSizeFor(cardBox, shown.length || 1, rowwise ? { chrome: 0 } : undefined) : "sm");
-  const stackLine = <span className="w-full text-center font-mono text-gold-light">{formatBB(stack, 20)}</span>;
-  /*
-   * A row writes its own two lines, so it carries the floor the seat's own rows
-   * carry — through the exported `readableScale`, which is what that export is for.
-   * Text a caller writes inside `children` gets no compensation otherwise, and a flat
-   * `text-base` lands under `MIN_TEXT_PX` on any table the ring has shrunk.
-   */
-  const rowFloor = readableScale(useDesignScale(), 11, MIN_TEXT_PX);
-
+  const box = { width: Math.max(80, (width ?? 240) - INFO_HALF_W), height: height ?? 112 };
   return (
-    <Seat
-      width={width}
-      height={height}
-      isActive={isActive}
-      isWinner={isWinner}
-      isDimmed={isDimmed}
-      /*
-       * A row has no header or footer: its two lines are the left half of `children`,
-       * beside the hand. Everything the frame's own rows would have done for that text
-       * — the floor above all — is done there instead.
-       */
-      header={rowwise ? undefined : <span className="w-full truncate text-center font-semibold">{name}</span>}
-      /*
-       * A plate draws no cards and nothing where they would be — the empty middle is
-       * the mark. It keeps the same footer every other seat has, because the stack is
-       * the one number on a table and it cannot be shouted in one seat's middle and
-       * whispered in the next seat's footer.
-       */
-      footer={rowwise ? undefined : (footer ?? stackLine)}
-    >
-      {rowwise ? (
-        <div className="flex w-full items-center justify-between gap-2">
-          {/*
-            * `shrink-0` and a real width, not `min-w-0`: a flex column that is
-            * allowed to shrink gets squeezed by the cards and the name ends up
-            * behind them — which is exactly the contest the row exists to settle.
-            * 72px is ROW_INFO_W, the number the card size was computed against.
-            */}
-          <span
-            className="flex shrink-0 flex-col items-start"
-            style={{
-              width: ROW_INFO_W,
-              ...(rowFloor === 1 ? null : { transform: `scale(${rowFloor})`, transformOrigin: "left center" }),
-            }}
-          >
-            <span className="max-w-full truncate text-[11px] font-semibold">{name}</span>
-            <span className="font-mono text-[11px] text-gold-light">{formatBB(stack, 20)}</span>
-          </span>
-          {hold ?? (cards === null ? null : <CardRow cards={[...shown]} size={size} />)}
-        </div>
-      ) : cards === null ? null : (
-        <CardRow cards={[...shown]} size={size} />
-      )}
+    <Seat width={width} height={height} isActive={isActive} isWinner={isWinner} isDimmed={isDimmed}>
+      <div className="flex w-full items-center justify-between gap-2">
+        <span className="shrink-0" style={{ width: INFO_HALF_W }}>
+          {info}
+        </span>
+        <span className="shrink-0">{hold(box)}</span>
+      </div>
     </Seat>
   );
 }
 
-/** `renderSeat` for a table of `PlayerSeat`s. */
-export function renderPlayers(opts: Omit<PlayerSeatProps, "index"> = {}) {
-  return (index: number, box: SeatBox) => (
-    <PlayerSeat index={index} width={box.width} height={box.height} {...opts} />
+/* ------------------------------------------------- the demo's own two halves -- */
+
+/**
+ * The demo's usual right half: a hand, sized to whatever box the container hands it.
+ * A card game's content, in one place, so a page that is not about cards can say
+ * `hold={handHalf()}` and mean "the sample hand".
+ */
+export function handHalf(cards: (string | null)[] = SAMPLE.hand) {
+  return (box: { width: number; height: number }) => (
+    // `chrome: 0` because a row has no header or footer for `cardSizeFor` to reserve.
+    <CardRow cards={cards} size={cardSizeFor(box, cards.length || 1, { chrome: 0 })} />
   );
 }
 
-/** `renderHand` for a dealer table of `PlayerSeat`s. */
-export function renderHands(opts: Omit<PlayerSeatProps, "index"> = {}) {
-  // The box is handed over so the hand's cards are sized to the frame the row
-  // was laid out for, rather than to whatever size was written by hand.
-  return (index: number, box: FrameBox) => (
-    <PlayerSeat index={index} width={box.width} height={box.height} {...opts} />
+export interface SeatOpts {
+  isActive?: (index: number) => boolean;
+  isWinner?: (index: number) => boolean;
+  isDimmed?: (index: number) => boolean;
+  /** The right half, per seat. Defaults to the sample hand. */
+  hold?: (index: number) => (box: { width: number; height: number }) => ReactNode;
+  /** The left half's name, per seat. */
+  label?: (index: number) => ReactNode;
+  /** The left half's stack, per seat. */
+  stack?: (index: number) => number;
+}
+
+/** One row assembled from the opts, in one place, so `renderSeat` and `renderHand` cannot drift. */
+function seatRow(index: number, box: { width: number; height: number }, opts: SeatOpts) {
+  return (
+    <SeatRow
+      width={box.width}
+      height={box.height}
+      isActive={opts.isActive?.(index)}
+      isWinner={opts.isWinner?.(index)}
+      isDimmed={opts.isDimmed?.(index)}
+      info={<PlayerInfo index={index} label={opts.label?.(index)} stack={opts.stack?.(index)} />}
+      hold={opts.hold?.(index) ?? handHalf()}
+    />
   );
+}
+
+/** `renderSeat` for a table of rows: a `PlayerInfo` on the left, the sample hand right. */
+export function renderPlayers(opts: SeatOpts = {}) {
+  return (index: number, box: SeatBox) => seatRow(index, box, opts);
+}
+
+/** `renderHand` for a dealer table of rows — the same pair, one row per position. */
+export function renderHands(opts: SeatOpts = {}) {
+  return (index: number, box: FrameBox) => seatRow(index, box, opts);
 }

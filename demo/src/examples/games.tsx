@@ -13,7 +13,7 @@ import {
   type CardSize,
 } from "@stargazeryan/poker-ui";
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
-import { BET_RING, SAMPLE, WATERMARK, PlayerSeat, betSlots } from "./parts";
+import { BET_RING, SAMPLE, WATERMARK, PlayerInfo, SeatRow, betSlots, handHalf } from "./parts";
 
 /**
  * Four games, built out of the table types and nothing else.
@@ -76,17 +76,17 @@ export function FlopPokerExample({
       rings={[BET_RING]}
       slots={betSlots(bets)}
       renderSeat={(i, box) => (
-        <PlayerSeat
-          index={i}
+        <SeatRow
           width={box.width}
           height={box.height}
           isActive={activeSeat === i}
-          layout="row"
-          // Yours is face up. Everyone else's is two backs, in their own half of the
-          // row: the same drawing as before, no longer the thing in the middle of
-          // their seat that the name has to fit around.
-          cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
-          label={i === 0 ? "You" : `Seat ${i}`}
+          // The left half is who is sitting there, the right half is what they hold.
+          // Neither knows about the other; the container is the only thing that does.
+          info={<PlayerInfo index={i} />}
+          // Yours is face up. Everyone else's is two backs — in their own half of the
+          // row, no longer the thing in the middle of their seat that the name has to
+          // fit around.
+          hold={handHalf(i === 0 ? SAMPLE.hand : SAMPLE.faceDown)}
         />
       )}
       center={
@@ -212,16 +212,16 @@ export function BankingExample({
         </div>
       }
       handCount={wagers.length}
-      renderHand={(i) => (
-        <PlayerSeat
-          index={i}
+      renderHand={(i, box) => (
+        <SeatRow
+          width={box.width}
+          height={box.height}
           isWinner={won && wagers[i] > 0}
-          layout="row"
+          info={<PlayerInfo index={i} stack={null} />}
           // A bank game's seat holds a wager, not a hand — the cards are the gate in
-          // the head — so the right half of the row carries the chips. Same split,
-          // a different thing held.
-          cards={null}
-          hold={
+          // the head — so the right half carries the chips. Same container, a
+          // different thing held, and the container cannot tell the difference.
+          hold={() =>
             wagers[i] > 0 ? (
               <ChipStack amount={wagers[i]} size="sm" />
             ) : (
@@ -284,25 +284,26 @@ export function TwentyOneExample({
         </Seat>
       }
       handCount={hands.length}
-      renderHand={(i) => {
+      renderHand={(i, box) => {
         const hand = hands[i];
         if (!hand) return null;
         return (
-          <PlayerSeat
-            index={i}
-            layout="row"
+          <SeatRow
+            width={box.width}
+            height={box.height}
             isActive={hand.isActive}
             isWinner={hand.isWinner}
             isDimmed={hand.isDimmed}
-            cards={hand.cards}
-            label={hand.label}
-            footer={
-              hand.bet !== undefined ? (
-                <span className="w-full text-center">
-                  <ChipStack amount={hand.bet} size="sm" />
-                </span>
-              ) : undefined
+            // A 21 table has no stacks, and a hand's wager is not one: the name, then
+            // the wager where a stack would go in a game that had them.
+            info={
+              <PlayerInfo
+                label={hand.label}
+                stack={null}
+                extra={hand.bet !== undefined ? <ChipStack amount={hand.bet} size="sm" /> : null}
+              />
             }
+            hold={handHalf(hand.cards)}
           />
         );
       }}
