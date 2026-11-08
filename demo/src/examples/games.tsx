@@ -65,6 +65,12 @@ export function FlopPokerExample({
   return (
     <RoundTable
       seatCount={6}
+      /* 152 is the shortest frame that still fits two `md` cards —
+         `cardSizeFor` needs 148, and 140 would quietly drop your hand to `sm`. A
+         ring's frames are one size, so the five plates pay for your two cards and
+         no more. */
+      seatWidth={160}
+      seatHeight={152}
       watermark={WATERMARK}
       /* The betting line is a ring this file declares. A game with no betting
          would simply not declare one — and nothing would be drawn. */
@@ -76,9 +82,10 @@ export function FlopPokerExample({
           width={box.width}
           height={box.height}
           isActive={activeSeat === i}
-          // Yours is face up; nobody else's is. `PlayerSeat` handles the name
-          // and the stack, which is the part every demo wants identically.
-          cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
+          // Yours is face up, and only yours — because only yours is information.
+          // Everyone else is a plate: two card backs are a pattern rather than a
+          // hand, and at `md` that pattern is 40% of the seat frame's area.
+          cards={i === 0 ? SAMPLE.hand : null}
           label={i === 0 ? "You" : `Seat ${i}`}
         />
       )}
@@ -209,8 +216,9 @@ export function BankingExample({
         <PlayerSeat
           index={i}
           isWinner={won && wagers[i] > 0}
-          cards={SAMPLE.faceDown}
-          cardSize="md"
+          // A bank game's seats hold wagers, not hands — the cards are the gate in
+          // the head — so two backs here would claim a hand the game does not deal.
+          cards={null}
           footer={
             wagers[i] > 0 ? (
               <span className="w-full text-center">

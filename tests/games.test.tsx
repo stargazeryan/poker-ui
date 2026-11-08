@@ -47,14 +47,30 @@ describe("the flop example", () => {
     expect(container.textContent).toContain("♠♥♦♣");
   });
 
+  it("draws no card backs in its seats: nobody's hand but yours is information", () => {
+    setElementSize(1200, 900);
+    const { container } = render(<FlopPokerExample />);
+
+    // the count below could be met by any arrangement; this is the claim itself
+    expect(labels(container).filter((l) => l?.includes("face-down"))).toHaveLength(0);
+    // and a seat holding no cards is still a seat: a name, a stack, and nothing
+    // pretending to be a hand
+    const seats = [...container.querySelectorAll('[data-part="seat"]')];
+    expect(seats).toHaveLength(6);
+    for (const seat of seats) expect(seat.textContent).toMatch(/You|Seat \d/);
+  });
+
   it("puts exactly the cards on the board that the street says", () => {
-    // No wagers here, so every `role="img"` in the tree is a card: 12 in the six
-    // seats, plus however many are on the board.
+    // No wagers here, so every `role="img"` in the tree is a card. The example
+    // draws exactly one hand — yours — because an opponent's face-down cards are a
+    // pattern rather than information: the count is two, plus the board. The other
+    // two examples that DO draw hands in seats are the shedding and twenty-one
+    // games, where every hand is public.
     for (const [street, cards] of [
-      [0, 12],
-      [3, 15],
-      [4, 16],
-      [5, 17],
+      [0, 2],
+      [3, 5],
+      [4, 6],
+      [5, 7],
     ] as const) {
       const { container, unmount } = render(<FlopPokerExample street={street} bets={[0, 0, 0, 0, 0, 0]} />);
       expect(container.querySelectorAll('[role="img"]'), `${street} on board`).toHaveLength(cards);

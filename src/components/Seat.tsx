@@ -117,6 +117,13 @@ export interface SeatProps {
  * `header` / `children` / `footer`, and use `above` / `below` / `topLeft` /
  * `topRight` / `topCenter` / `overlay` for floating bits.
  *
+ * The overhanging slots — `topLeft`, `topRight` and `topCenter` — hang off the frame
+ * by a *fraction of its height* (`FLOAT`, 8px on a 176px seat), so content taller
+ * than that straddles the border. That is what makes a `Marker` look pinned to the
+ * seat, and it is why a ring, which is read from its silhouette, does not belong
+ * there — the border crosses it and cuts the shape you are reading. `above`,
+ * `below` and `overlay` sit clear of the edge.
+ *
  * It draws no default decoration. A crown over the winner is a decoration, not a
  * state, so `isWinner` draws the frame and the caller passes the crown through
  * `topLeft`.

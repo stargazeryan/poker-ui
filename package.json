@@ -14,7 +14,16 @@
     "**/*.css"
   ],
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/*.js",
+    "dist/**/*.cjs",
+    "dist/*.cjs",
+    "dist/**/*.d.ts",
+    "dist/*.d.ts",
+    "dist/**/*.d.cts",
+    "dist/*.d.cts",
+    "dist/**/*.css",
+    "dist/*.css",
     "src/styles.css",
     "README.md",
     "LICENSE"
