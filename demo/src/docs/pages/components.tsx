@@ -302,6 +302,10 @@ function SeatGapDemo() {
         <CardTable
           seatCount={count}
           seatGap={gap}
+          /* A ring's frames are one size, so a table of plates can say what a plate
+             needs: the docs' own short-frame demo uses 104. */
+          seatWidth={160}
+          seatHeight={104}
           renderSeat={(i, box) => (
             <PlayerSeat index={i} width={box.width} height={box.height} isActive={i === 1} cards={null} />
           )}
@@ -524,6 +528,8 @@ export function CardTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={count}
+              seatWidth={160}
+              seatHeight={104}
               renderSeat={renderPlayers({ cards: null })}
               center={<Counter label="Main" amount={487} />}
             />
@@ -557,6 +563,8 @@ export function CardTablePage() {
             seatCount={6}
             rings={[BET_RING]}
             slots={betSlots(SAMPLE.bets)}
+            seatWidth={160}
+            seatHeight={104}
             renderSeat={renderPlayers({ cards: null })}
             center={<Counter label="Main" amount={487} />}
           />
@@ -592,6 +600,8 @@ export function CardTablePage() {
           <div className="aspect-[4/3] max-h-[560px] w-full">
             <CardTable
               seatCount={6}
+              seatWidth={160}
+              seatHeight={104}
               glow={turn}
               renderOverlay={() => (winner ? <Confetti colors={["#f39c12", "#e74c3c", "#2ecc71"]} /> : null)}
               renderSeat={(i, box) => (
@@ -836,12 +846,21 @@ export function SeatPage() {
         bubble or a glow that reaches just past the box is drawn rather than cut off.
       </P>
       <P>
-        The frame&apos;s own rows are kept at or above <Prop>MIN_TEXT_PX</Prop> on screen whatever the table is scaled to
-        — an 11px name is 6.6px in a 725px container and 3px on a phone without it. Pass <Prop>minTextPx={'{0}'}</Prop>{" "}
-        to switch that off. A frame can be named with <Prop>label</Prop>, and the two highlights are drawn differently: a
-        current seat is an outline, a winner is a heavier one with a gold wash and a second inset ring behind it — they
-        used to be the same gold ring at two brightnesses, which is the same state as far as anyone at the table can
-        tell.
+        The frame&apos;s own rows are kept at or above <Prop>MIN_TEXT_PX</Prop> on screen — up to the{" "}
+        <Prop>MAX_TEXT_SCALE</Prop> cap of 3x, because past that the text is wider than the frame it sits in. An 11px
+        name is 6.6px in a 725px container and 3px on a phone without the floor; at 0.267 — a 1200x900 box in a
+        320x240 container — the cap binds and the name lands at 8.8px, which is where a table drawn as a stamp is
+        allowed to be one. Pass <Prop>minTextPx={'{0}'}</Prop> to switch the floor off.
+      </P>
+
+      <P>
+        A frame can be named with <Prop>label</Prop>, and the three states are drawn in different languages rather
+        than at three brightnesses. A current seat is an <em>outline</em> — a gold border and a halo, dark inside —
+        and a winner is <em>filled</em>: the same border under a gold wash mixed into the surface colour, so the felt
+        cannot tint it where the seat crosses the rail. Put side by side they used to be one drawing at two opacities,
+        a 1px border and a 10% tint apart, with a second hairline that only made the border look thicker — a
+        difference that did not survive greyscale, which is the one thing a fill does. <Prop>isDimmed</Prop> is the
+        third state: a grey outline, no fill.
       </P>
 
       <Demo
@@ -958,8 +977,8 @@ export function CounterPage() {
       <P>
         The settled amount is a live region, so a screen reader hears <Prop>&quot;Main: 240&quot;</Prop> once rather than
         sixty frames of a count-up. Inside a table the amount and its label are also kept at or above{" "}
-        <Prop>MIN_TEXT_PX</Prop> on screen, like a seat&apos;s own rows — pass <Prop>minTextPx={'{0}'}</Prop> to switch
-        that off.
+        <Prop>MIN_TEXT_PX</Prop> on screen, like a seat&apos;s own rows and up to the same{" "}
+        <Prop>MAX_TEXT_SCALE</Prop> cap — pass <Prop>minTextPx={'{0}'}</Prop> to switch that off.
       </P>
 
       <Api slug="counter" />

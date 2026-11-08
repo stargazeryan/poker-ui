@@ -117,6 +117,8 @@ export function GettingStarted() {
       >
         <RoundTable
           seatCount={6}
+          seatWidth={160}
+          seatHeight={152}
           rings={[BET_RING]}
           slots={[
             {
@@ -227,6 +229,8 @@ export function Theming() {
           <div style={tokens as CSSProperties} className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={6}
+              seatWidth={160}
+              seatHeight={152}
               rings={[BET_RING]}
               renderSeat={(i, box) => (
                 <PlayerSeat

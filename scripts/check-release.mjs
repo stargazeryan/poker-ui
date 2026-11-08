@@ -102,7 +102,7 @@ if (pack.status !== 0) {
   const maps = (info?.files ?? []).filter((f) => f.path.endsWith(".map"));
   const mapBytes = maps.reduce((sum, f) => sum + f.size, 0);
   console.log(
-    `  \u001b[2m${maps.length} sourcemap(s), ${(mapBytes / 1024).toFixed(0)}kB of ${((info?.unpackedSize ?? 0) / 1024).toFixed(0)}kB unpacked — add "*.map" to a .npmignore to drop them\u001b[0m`,
+    `  \u001b[2m${maps.length} sourcemap(s), ${(mapBytes / 1024).toFixed(0)}kB of ${((info?.unpackedSize ?? 0) / 1024).toFixed(0)}kB unpacked — list the extensions you ship in package.json's "files" to drop them — npm 12 ignores .npmignore for anything a "files" entry already covers\u001b[0m`,
   );
 }
 

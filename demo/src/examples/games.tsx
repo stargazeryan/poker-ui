@@ -65,6 +65,12 @@ export function FlopPokerExample({
   return (
     <RoundTable
       seatCount={6}
+      /* 152 is the shortest frame that still fits two `md` cards —
+         `cardSizeFor` needs 148, and 140 would quietly drop your hand to `sm`. A
+         ring's frames are one size, so the five plates pay for your two cards and
+         no more. */
+      seatWidth={160}
+      seatHeight={152}
       watermark={WATERMARK}
       /* The betting line is a ring this file declares. A game with no betting
          would simply not declare one — and nothing would be drawn. */
