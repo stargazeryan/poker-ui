@@ -117,8 +117,8 @@ export function GettingStarted() {
       >
         <RoundTable
           seatCount={6}
-          seatWidth={160}
-          seatHeight={152}
+          seatWidth={240}
+          seatHeight={112}
           rings={[BET_RING]}
           slots={[
             {
@@ -138,7 +138,8 @@ export function GettingStarted() {
               width={box.width}
               height={box.height}
               isActive={i === 3}
-              cards={i === 0 ? SAMPLE.hand : null}
+              layout="row"
+              cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
             />
           )}
           center={
@@ -229,8 +230,8 @@ export function Theming() {
           <div style={tokens as CSSProperties} className="aspect-[4/3] max-h-[560px] w-full">
             <RoundTable
               seatCount={6}
-              seatWidth={160}
-              seatHeight={152}
+              seatWidth={240}
+              seatHeight={112}
               rings={[BET_RING]}
               renderSeat={(i, box) => (
                 <PlayerSeat
@@ -238,7 +239,8 @@ export function Theming() {
                   width={box.width}
                   height={box.height}
                   isActive={i === 3}
-                  cards={i === 0 ? SAMPLE.hand : null}
+                  layout="row"
+                  cards={i === 0 ? SAMPLE.hand : SAMPLE.faceDown}
                 />
               )}
               center={

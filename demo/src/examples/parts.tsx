@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
 import {
   CardRow,
+  MIN_TEXT_PX,
   Seat,
   cardSizeFor,
+  readableScale,
+  useDesignScale,
   type CardSize,
   type FrameBox,
   type SeatBox,
@@ -48,6 +51,12 @@ export const SAMPLE: {
   pot: 415,
 };
 
+/**
+ * Room a `layout="row"` seat spends on the player's own two lines — the name and
+ * the stack — before the hand gets the rest of the width.
+ */
+const ROW_INFO_W = 72;
+
 /** The radius every demo puts its betting line at. */
 export const BET_RADIUS = 0.72;
 
@@ -88,11 +97,28 @@ export interface PlayerSeatProps {
   isWinner?: boolean;
   isDimmed?: boolean;
   /**
-   * The cards in the frame — or `null` for a **plate**: a seat whose cards the
-   * viewer cannot read shows the stack in their place instead of two card backs
-   * that say nothing. Defaults to the sample hand, face up.
+   * The cards in the frame — or `null` for a **plate**: a seat with nothing to show
+   * draws no cards and nothing where they would be. Defaults to the sample hand,
+   * face up.
    */
   cards?: (string | null)[] | null;
+  /**
+   * How the frame is laid out. `"stack"` (the default) puts the player over their
+   * hand, which is what a portrait frame with two large cards wants. `"row"` splits
+   * the frame in two: the player on the left, what they are holding on the right.
+   *
+   * The split is the point — a hidden hand in the middle of a portrait frame
+   * competes with the name and the stack for the same column, and wins, because two
+   * `md` cards are 40% of the frame. Beside them, each is legible. A row wants a
+   * landscape frame: at 240x112 it keeps `md` cards, where a 240x96 row drops them
+   * to `sm`.
+   */
+  layout?: "stack" | "row";
+  /**
+   * What the seat is holding, for `layout="row"`. Defaults to its cards, so a card
+   * game passes nothing and a betting game passes its chips.
+   */
+  hold?: ReactNode;
   /**
    * Defaults to the largest size that fits `width`/`height` — `cardSizeFor`.
    * A hand-written size is how the default seat ended up two-thirds empty.
@@ -116,18 +142,39 @@ export function PlayerSeat({
   isWinner,
   isDimmed,
   cards = SAMPLE.hand,
+  layout = "stack",
+  hold,
   cardSize,
   label,
   footer,
 }: PlayerSeatProps) {
   const stack = SAMPLE.stacks[index % SAMPLE.stacks.length];
   const shown = cards ?? [];
+  const rowwise = layout === "row";
+  const name = label ?? (index === 0 ? "You" : `Seat ${index}`);
+  /*
+   * A row spends part of its width on the player's own two lines, so what is left
+   * for the cards is the frame minus `ROW_INFO_W` — and none of the `chrome` a
+   * portrait frame reserves for a header and a footer, because a row has neither.
+   */
+  const cardBox =
+    width !== undefined && height !== undefined
+      ? rowwise
+        ? { width: Math.max(80, width - ROW_INFO_W), height }
+        : { width, height }
+      : undefined;
   // The frame is the thing that knows how much room there is. Outside a table
   // nothing reported a size, so `sm` is the honest fallback.
   const size =
-    cardSize ??
-    (width !== undefined && height !== undefined ? cardSizeFor({ width, height }, shown.length || 1) : "sm");
+    cardSize ?? (cardBox ? cardSizeFor(cardBox, shown.length || 1, rowwise ? { chrome: 0 } : undefined) : "sm");
   const stackLine = <span className="w-full text-center font-mono text-gold-light">{formatBB(stack, 20)}</span>;
+  /*
+   * A row writes its own two lines, so it carries the floor the seat's own rows
+   * carry — through the exported `readableScale`, which is what that export is for.
+   * Text a caller writes inside `children` gets no compensation otherwise, and a flat
+   * `text-base` lands under `MIN_TEXT_PX` on any table the ring has shrunk.
+   */
+  const rowFloor = readableScale(useDesignScale(), 11, MIN_TEXT_PX);
 
   return (
     <Seat
@@ -136,20 +183,43 @@ export function PlayerSeat({
       isActive={isActive}
       isWinner={isWinner}
       isDimmed={isDimmed}
-      header={
-        <span className="w-full truncate text-center font-semibold">
-          {label ?? (index === 0 ? "You" : `Seat ${index}`)}
-        </span>
-      }
+      /*
+       * A row has no header or footer: its two lines are the left half of `children`,
+       * beside the hand. Everything the frame's own rows would have done for that text
+       * — the floor above all — is done there instead.
+       */
+      header={rowwise ? undefined : <span className="w-full truncate text-center font-semibold">{name}</span>}
       /*
        * A plate draws no cards and nothing where they would be — the empty middle is
        * the mark. It keeps the same footer every other seat has, because the stack is
        * the one number on a table and it cannot be shouted in one seat's middle and
        * whispered in the next seat's footer.
        */
-      footer={footer ?? stackLine}
+      footer={rowwise ? undefined : (footer ?? stackLine)}
     >
-      {cards === null ? null : <CardRow cards={[...shown]} size={size} />}
+      {rowwise ? (
+        <div className="flex w-full items-center justify-between gap-2">
+          {/*
+            * `shrink-0` and a real width, not `min-w-0`: a flex column that is
+            * allowed to shrink gets squeezed by the cards and the name ends up
+            * behind them — which is exactly the contest the row exists to settle.
+            * 72px is ROW_INFO_W, the number the card size was computed against.
+            */}
+          <span
+            className="flex shrink-0 flex-col items-start"
+            style={{
+              width: ROW_INFO_W,
+              ...(rowFloor === 1 ? null : { transform: `scale(${rowFloor})`, transformOrigin: "left center" }),
+            }}
+          >
+            <span className="max-w-full truncate text-[11px] font-semibold">{name}</span>
+            <span className="font-mono text-[11px] text-gold-light">{formatBB(stack, 20)}</span>
+          </span>
+          {hold ?? (cards === null ? null : <CardRow cards={[...shown]} size={size} />)}
+        </div>
+      ) : cards === null ? null : (
+        <CardRow cards={[...shown]} size={size} />
+      )}
     </Seat>
   );
 }
