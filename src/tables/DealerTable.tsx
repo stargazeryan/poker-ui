@@ -1,5 +1,4 @@
 import { useMemo, type ReactNode } from "react";
-import { cn } from "../cn";
 import { FitBox, type DesignBox } from "../components/FitBox";
 import { SeatSizeContext } from "../components/seatSize";
 import { TableGlow, TableRim, TableSurface } from "../components/TableSurface";
@@ -333,7 +332,7 @@ function DealerSurface({
       </SeatSizeContext.Provider>
 
       {renderOverlay !== undefined && (
-        <div data-part="overlay" className={cn("pointer-events-none absolute inset-0 z-30")}>
+        <div data-part="overlay" className="pointer-events-none absolute inset-0 z-30">
           {renderOverlay({ designWidth: width, designHeight: height, scale: boxScale })}
         </div>
       )}
