@@ -245,6 +245,13 @@ concern:
 | `motion` | `COUNT_UP_MS`, `STAGGER_MS`, `FLIP_MS` |
 | misc | `cn`, `nextSeatIndex` |
 
+`cn` is the one export there that is not a rule of the game: it joins class names and
+lets the **last** of two conflicting Tailwind utilities win (`twMerge` from
+`tailwind-merge`). Every component passes your `className` through it last, so a
+utility you set really does override ours of the same kind — `max-w-lg` beats a
+default `max-w-sm` — instead of both landing in the class list for the generated
+stylesheet's order to sort out.
+
 ## Two entry points
 
 ```tsx
@@ -416,9 +423,10 @@ Two things are deliberately not tokens of ours:
 - the **card face** and the standard deck's ink — white stock, red hearts and
   diamonds, black spades and clubs — are Tailwind's palette rather than a token,
   because they are what a playing card looks like rather than what the table
-  looks like. Restyle them with `className` (and `frameClassName` on `Seat`), and
-  reach for `fourColor` on `PlayingCard` / `CardRow` / `CardFan` when the suit has
-  to be carried by more than red-versus-black.
+  looks like. Restyle them with `className` (and `frameClassName` on `Seat`) — merged
+  last, so your utilities beat ours of the same kind — and reach for `fourColor` on
+  `PlayingCard` / `CardRow` / `CardFan` when the suit has to be carried by more than
+  red-versus-black.
 
 ## Docs site and development
 
