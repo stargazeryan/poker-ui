@@ -4,6 +4,118 @@ Newest first. Entries are grouped by what you have to do about them: **Changed**
 lists behaviour that differs from the previous release, so it is the section to
 read before upgrading.
 
+## 0.12.0 — the card turns over
+
+The card API stopped guessing. A card holds both of its sides, so it can be
+*turned over* rather than swapped for another card; a row arranges whatever
+children it is handed and never learns how big a card is; and the two things that
+did need a card's width — overlapping a large hand, and fitting one into a frame —
+are functions you call, not a component that measures for you.
+
+Everything in **Changed** is a rename, a removal or a default that moves, so read
+it before upgrading: `CardRow` takes children instead of `cards`, `CardFan` is
+gone, and the row's old `animation="flip"` is the card's `flipKey` now.
+
+A documentation pass landed on `main` between 0.11.0 and this release: the `cn`
+helper and the `className` merge precedence are written down in the README and on
+the theming page; a comment claiming `tailwind-merge` drops a colour beside a
+gradient (it does not — it drops a utility of the same *kind*) was corrected; and a
+no-op `cn()` around one constant string went with it. No rendering changes.
+
+Sizes, measured on this release: the compiled stylesheet is 28.5 kB minified
+against 0.11.0's 28.3 kB — 167 bytes, being four arbitrary-property utilities the
+two-sided card needs and a rewritten `card-flip`. No component and no token were
+added to it.
+
+### Changed (read this before upgrading)
+
+- **A card is two sides, and `revealed` says which one is showing.** `PlayingCard`
+  used to be one side at a time: a face when you held the code, or a `CardBack`
+  standing in for it. Both sides are one element now — the back sits at 180°
+  behind the face (`preserve-3d`, `backface-visibility`) — so the same card can
+  *turn over* instead of being replaced by another. `revealed` picks the side
+  (defaulting to `card !== null`, exactly as before), and `flipKey` says when the
+  turn happens: on mount, for a card that arrives already revealed, and again
+  whenever the value changes, the way `enterKey` re-deals an unchanged hand. The
+  turn is one way, back to face, so a key on a hidden card does nothing and a card
+  that never gets a key simply appears. `revealed={false}` draws the back of a card
+  you *do* hold the code for and renders nothing of that code while it is hidden —
+  not the rank, not the suit, and not the accessible name, which stays "face-down
+  card". A card a player is not meant to see should not be readable in the DOM.
+- **A row arranges; a card is a card.** `CardRow` takes `children`, one child per
+  position, and knows nothing else about them: no `cards` array, no `size`, no
+  `fourColor`, no `renderCard`, and no `slots` / `placeholder` for a position held
+  open (a `CardSlot` holds it open, and goes in the children like any other card).
+  So the row cannot draw a card of a size its child is not, and a hand's size is
+  the cards' own. Its one animation prop is `enter` (was `animation`, which under a
+  two-sided card reads as if the *row* flipped them), with `enterKey` (was
+  `animationKey`) to replay it and `stagger` between positions; `enter="deal"` is
+  unchanged, and `enter={false}` is how you ask for no arrival at all.
+- **The fan is `overlap` plus `arc`, and the row's `overlap` is pixels.**
+  `CardFan`'s `overlap` was a fraction of a card width; the row's is a length, and
+  it *replaces* the row's gap. `arc` means what it always meant — degrees, spread
+  across the hand, decorative — and the row is still never told a card's size to
+  draw it. A fanned hand that has to fit a frame is therefore the caller's
+  arithmetic: `fanOverlap({ count, cardWidth, fitWidth })` is what `CardFan`'s
+  `fitWidth` was doing internally, and it is exported now. The arc is drawn on a
+  layer of its own inside the entrance wrapper, because the arrival animates
+  `transform` too and the two of them on one element fight — measured: on one
+  element the arc is flattened to `matrix(1,0,0,1,0,0)`; nested, it survives.
+- **`fourColor` is `PlayingCard`'s prop alone.** It was on the row and the fan,
+  which drew the cards for you; both take children now, so it goes on your cards.
+- **`card-flip` is a real turn.** The keyframe was `rotateY(90deg)` and
+  `scale(0.9)` — half a turn, shrunk — under an opacity fade, which reads as a card
+  *appearing* rather than one turning over; it draws `rotateY(180deg)` → `0deg`
+  with no opacity and no scale now, so a card animating it turns. Anything else you were animating with
+  `--animate-card-flip` will rotate, which is what the name says.
+
+### Removed
+
+| removed | use instead |
+| --- | --- |
+| `CardFan`, `CardFanProps` | `CardRow` with `overlap` and `arc`, and `fanOverlap` for the number |
+| `CardFan`'s `fitWidth` | `fanOverlap({ count, cardWidth, fitWidth })` |
+| `CardAnimation` (the type) | `CardEntrance` (`"deal"`, or `false`) |
+| `FLIP_MS` | nothing — the turn is the card's (`flipKey`), and a row's pacing is `stagger` |
+| `CardRow`'s `cards`, `size`, `fourColor` | `children`, one card per position |
+| `CardRow`'s `slots`, `placeholder` | `CardSlot`, in the children |
+| `CardRow`'s `animation`, `animationKey` | `enter`, `enterKey` |
+| `CardBack` as the way to draw a back | `revealed={false}` on the card — `CardBack` stays for a back with no card behind it |
+
+### Added
+
+- **`PlayingCard`**: `revealed` (which side is showing) and `flipKey` (when it
+  turns over).
+- **`CardRow`**: `overlap` (px tucked under the card before, replacing the row's
+  gap) and `arc` (degrees, about the pivot `FAN_PIVOT` describes).
+- **Exports**: `fanOverlap`, `fanAngles`, `FAN_OVERLAP`, `FAN_MAX_OVERLAP`,
+  `FAN_PIVOT`. `fanOverlap({ count, cardWidth, overlap?, fitWidth? })` is the px a
+  hand of `count` cards at `cardWidth` tucks under to fit `fitWidth` — or the
+  fraction `overlap` as px, for a hand with no frame to fit — and
+  `fanAngles(count, arc)` is the degrees each card of an arc gets. `FAN_PIVOT` is a
+  multiple of a card's *height* (1.35: 35% below its bottom edge), which is why
+  turning a card needs no pixel measurement of it, and `FAN_OVERLAP` /
+  `FAN_MAX_OVERLAP` bound the fraction `fanOverlap` works in.
+
+### Verified in this release
+
+`npx vitest run` (383 tests), `npm run typecheck`, `npm run build`, the compiled
+stylesheet and the docs site build are green, and the sizes above are the minified
+output of the shipped stylesheet. The card's own claims were measured in a browser
+against the built component rather than inferred: a `revealed={false}` card is
+64x88 with its code absent from the DOM and the back drawn at its centre; a
+`flipKey` card goes from `rotateY(180deg)` to `matrix(1,0,0,1,0,0)` over 0.5s, and
+`prefers-reduced-motion` collapses that to `1e-05s`; a hand at `overlap={20}` lands
+its cards' left edges on 0/20/40px with the row's `column-gap` at 0; and
+`rotate(-30deg)` beside `animate-deal-in` settles flat at `matrix(1,0,0,1,0,0)` on
+one element and keeps `matrix(0.866,-0.5,0.5,0.866,0,0)` when nested — which is why
+the arc is nested.
+
+Not run for this entry: `npm run test:consumer`, which packs the tarball and
+installs it into a throwaway app, and eslint. Neither can run where this was
+written — there is no installable `node_modules` for either — so the consumer smoke
+test and the lint gate are the release command's business, not this branch's claim.
+
 ## 0.11.0 — readable at any size
 
 **0.10.0 was never published.** If you are upgrading from 0.9.0 — npm's latest —
