@@ -12,10 +12,10 @@ const ROW_TEXT_PX = 11;
  *
  * Written as one arbitrary background-image on purpose. A `bg-gold/25` over
  * `bg-surface/80` is a translucent wash over a translucent seat, so 20% of the felt
- * comes through it and the winner is mossy green across the rail and amber off it.
- * And a colour class next to a gradient class is a class tailwind-merge drops: the
- * first attempt at this lost *both* `bg-surface/80` and the colour that was meant to
- * replace it, leaving no background at all.
+ * comes through it and the winner is mossy green across the rail and amber off it —
+ * and those two are one tailwind-merge group, so in a single `cn()` only the later
+ * of them would survive. A background-image is a group of its own and is painted
+ * above the seat's `bg-surface/80`, which is what lets one opaque fill cover it.
  *
  * Mixing into the surface keeps the fill themed — `--color-gold` and
  * `--color-surface` are still the knobs — while making it opaque.
@@ -181,9 +181,9 @@ export function Seat({
    * the border look thicker. A fill is a different kind of mark, and it is the one
    * cue here that survives greyscale.
    *
-   * WINNER_WASH is that fill. It replaces the seat's own `bg-surface/80` — the two
-   * are the same tailwind-merge group — which is the point: a winner is a solid
-   * object, not a tinted window.
+   * WINNER_WASH is that fill. It is opaque and a background-image, so it covers the
+   * seat's own `bg-surface/80` rather than tinting it: a winner is a solid object,
+   * not a tinted window.
    */
   const winnerClass = animated
     ? `border-2 border-gold animate-winner-glow ${WINNER_WASH}`
