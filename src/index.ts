@@ -29,7 +29,15 @@ export {
 
 export { SIZES, type CardSize, type ChipSize, type Size } from "./sizes";
 export { CARD_HEIGHT, CARD_WIDTH, cardSizeFor, type CardSizeFit } from "./cardSize";
-export { COUNT_UP_MS, FLIP_MS, STAGGER_MS } from "./motion";
+export {
+  FAN_MAX_OVERLAP,
+  FAN_OVERLAP,
+  FAN_PIVOT,
+  fanAngles,
+  fanOverlap,
+  type FanOverlapOptions,
+} from "./fan";
+export { COUNT_UP_MS, STAGGER_MS } from "./motion";
 export { MAX_TEXT_SCALE, MIN_TEXT_PX, readableScale, useDesignScale } from "./designScale";
 
 /* ------------------------------------------------------------------- cards -- */
@@ -120,13 +128,11 @@ export {
 
 export {
   CardBack,
-  CardFan,
   CardRow,
   CardSlot,
   PlayingCard,
-  type CardAnimation,
+  type CardEntrance,
   type CardBackProps,
-  type CardFanProps,
   type CardRowProps,
   type CardSlotProps,
   type PlayingCardProps,

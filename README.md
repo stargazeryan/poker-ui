@@ -9,8 +9,7 @@ seats, cards, and — one subpath over — chips.
   placement, and slots for rings, per-seat content and an overlay
 - 💺 **`Seat`** — a neutral frame with named slots (`header`, `children`, …) and
   turn/winner/dimmed states
-- 🎴 **`PlayingCard`** / **`CardBack`** / **`CardRow`** / **`CardFan`** /
-  **`CardSlot`**
+- 🎴 **`PlayingCard`** / **`CardBack`** / **`CardRow`** / **`CardSlot`**
 - 🧮 **`Counter`** — a labelled amount that counts up
 - ⏳ **`TurnTimer`** — a countdown ring, drawn from one number you own
 - 🔘 **`Marker`** — a themed disc for a position (a dealer button, a bid marker)
@@ -94,7 +93,9 @@ import { RoundTable, Seat, CardRow, TABLE_TYPES } from "@stargazeryan/poker-ui";
   seatCount={6}
   renderSeat={(i, box) => (
     <Seat width={box.width} height={box.height} isActive={activeSeat === i}>
-      <CardRow cards={hands[i]} size="sm" />
+      <CardRow>
+        {hands[i].map((card, k) => <PlayingCard key={k} card={card} size="sm" />)}
+      </CardRow>
     </Seat>
   )}
 />
@@ -115,7 +116,7 @@ game and twenty-one out of the same two entry points you get. The source is
 
 - **The shedding game declares no `rings`, no `slots` and no `watermark`**, so
   nothing is drawn — no betting line on a game with no betting, no chip anywhere
-  in the tree, and a `CardFan` for the thirteen-card hands.
+  in the tree, and the thirteen-card hands are a plain `CardRow` pulled together by an overlap.
 - **The twenty-one and banking games use the same table type** (`DealerTable`)
   and draw no surface at all, because that type has none to draw.
 
@@ -213,10 +214,9 @@ tables cannot drift. The short version:
 | `Counter` | `amount`, `label`, `format`, `animate`, `minTextPx` |
 | `TurnTimer` | `remaining`, `size`, `stroke`, `tone`, `label`, `title`, `className` |
 | `Marker` | `children`, `size`, `tone`, `label`, `className` |
-| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label`, `fourColor` |
+| `PlayingCard` | `card` (`"As"`, `"10h"`, `null` = face down), `size`, `label`, `fourColor`, `revealed`, `flipKey` |
 | `CardBack` | `size`, `label`, `className` |
-| `CardRow` | `cards`, `size`, `animation` (`"deal" \| "flip" \| false`), `stagger`, `animationKey`, `slots`, `placeholder`, `fourColor`, `label`, `className` |
-| `CardFan` | `cards`, `size`, `overlap`, `arc`, `fourColor`, `label`, `className` |
+| `CardRow` | children (one card per position), `enter` (`"deal" \| false`), `stagger`, `enterKey`, `overlap`, `arc`, `label`, `className` |
 | `CardSlot` | `size`, `label`, `children`, `className` |
 | `Confetti` | `count`, `colors`, `className` |
 
@@ -242,7 +242,8 @@ concern:
 | `designScale` | `useDesignScale`, `readableScale`, `MIN_TEXT_PX`, `MAX_TEXT_SCALE` |
 | `color` | `parseColor`, `relativeLuminance`, `flatten`, `contrastRatio`, `mostVisible` |
 | `sizes` | `SIZES` |
-| `motion` | `COUNT_UP_MS`, `STAGGER_MS`, `FLIP_MS` |
+| `fan` | `fanOverlap`, `fanAngles`, `FAN_OVERLAP`, `FAN_MAX_OVERLAP`, `FAN_PIVOT` |
+| `motion` | `COUNT_UP_MS`, `STAGGER_MS` |
 | misc | `cn`, `nextSeatIndex` |
 
 `cn` is the one export there that is not a rule of the game: it joins class names and
@@ -352,12 +353,12 @@ so a bubble stays attached at any frame size.
 
 ## Animations
 
-All on by default, each toggleable:
+All on by default, each toggleable — except the card turn-over, which happens when you ask for it:
 
 | Effect | Where | Disable with |
 | --- | --- | --- |
-| Deal-in | `CardRow` | `animation={false}` |
-| 3D flip | `CardRow animation="flip"` | `animation={false}` |
+| Deal-in | `CardRow` | `enter={false}` |
+| Card turn-over | `PlayingCard` — give it a `flipKey` | omit `flipKey` |
 | Turn glow | `Seat isActive` | `animated={false}` |
 | Winner glow | `Seat isWinner` | `animated={false}` |
 | Counter count-up | `Counter` | `animate={false}` |
@@ -425,8 +426,7 @@ Two things are deliberately not tokens of ours:
   because they are what a playing card looks like rather than what the table
   looks like. Restyle them with `className` (and `frameClassName` on `Seat`) — merged
   last, so your utilities beat ours of the same kind — and reach for `fourColor` on
-  `PlayingCard` / `CardRow` / `CardFan` when the suit has to be carried by more than
-  red-versus-black.
+  `PlayingCard` when the suit has to be carried by more than red-versus-black.
 
 ## Docs site and development
 

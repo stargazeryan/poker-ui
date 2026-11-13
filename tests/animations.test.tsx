@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import { CardRow } from "../src/components/PlayingCard";
+import { CardRow, PlayingCard } from "../src/components/PlayingCard";
 import { Counter } from "../src/components/Counter";
 import { Confetti } from "../src/components/Confetti";
 
@@ -118,9 +118,13 @@ describe("Confetti — a decoration that cannot be talked into nonsense", () => 
   });
 });
 
-describe("CardRow animation=deal", () => {
-  const dealt = (cards: (string | null)[], animationKey?: number) => (
-    <CardRow cards={cards} size="sm" animation="deal" animationKey={animationKey} />
+describe("CardRow enter=deal", () => {
+  const dealt = (cards: (string | null)[], enterKey?: number) => (
+    <CardRow enter="deal" enterKey={enterKey}>
+      {cards.map((code, i) => (
+        <PlayingCard key={`${i}:${code ?? "back"}`} card={code} />
+      ))}
+    </CardRow>
   );
 
   it("re-mounts a card that changed, so the deal animation replays", () => {
@@ -141,7 +145,7 @@ describe("CardRow animation=deal", () => {
     expect(after[1]).toBe(before[1]);
   });
 
-  it("re-deals the whole hand when animationKey changes (same cards, new round)", () => {
+  it("re-deals the whole hand when enterKey changes (same cards, new round)", () => {
     const { container, rerender } = render(dealt(["As", "Kh"], 1));
     const before = [...container.querySelectorAll(".animate-deal-in")];
     rerender(dealt(["As", "Kh"], 2));

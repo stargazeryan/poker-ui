@@ -3,6 +3,7 @@ import {
   CardRow,
   Counter,
   DealerTable,
+  PlayingCard,
   RoundTable,
   Seat,
   SquareTable,
@@ -110,7 +111,7 @@ export function TableTypesPage() {
               handHeight={170}
               head={
                 <Seat width={190} height={140} header={<span className="w-full text-center text-[10px] font-semibold">dealer</span>}>
-                  <CardRow cards={SAMPLE.hand} size="xs" />
+                  <CardRow>{SAMPLE.hand.map((code, i) => <PlayingCard key={i} card={code} size="xs" />)}</CardRow>
                 </Seat>
               }
               handCount={3}
@@ -158,7 +159,7 @@ export function RoundTablePage() {
   seatCount={6}
   renderSeat={(i, box) => (
     <Seat width={box.width} height={box.height}>
-      <CardRow cards={hands[i]} size="xs" />
+      <CardRow>{hands[i].map((c, k) => <PlayingCard key={k} card={c} size="xs" />)}</CardRow>
     </Seat>
   )}
 />`}
@@ -327,10 +328,10 @@ export function DealerTablePage() {
         previewClassName="p-0 overflow-hidden"
         code={`<DealerTable
   handCount={hands.length}
-  head={<Seat header="Dealer"><CardRow cards={dealer} /></Seat>}
+  head={<Seat header="Dealer"><CardRow>{dealer.map((c, i) => <PlayingCard key={i} card={c} />)}</CardRow></Seat>}
   renderHand={(i) => (
     <Seat isActive={hands[i].active} footer={<ChipStack amount={hands[i].bet} />}>
-      <CardRow cards={hands[i].cards} />
+      <CardRow>{hands[i].cards.map((c, k) => <PlayingCard key={k} card={c} />)}</CardRow>
     </Seat>
   )}
 />`}
@@ -344,7 +345,7 @@ export function DealerTablePage() {
               handCount={handCount}
               head={
                 <Seat width={240} height={200} header={<span className="w-full text-center font-semibold">Dealer</span>}>
-                  <CardRow cards={SAMPLE.hand} size="md" />
+                  <CardRow>{SAMPLE.hand.map((code, i) => <PlayingCard key={i} card={code} size="md" />)}</CardRow>
                 </Seat>
               }
               renderHand={(i, box) => (

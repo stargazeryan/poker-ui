@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import {
   CardBack,
-  CardFan,
   CardRow,
   CardSlot,
   CardTable,
@@ -57,8 +56,19 @@ describe("server rendering — no DOM, no effects", () => {
       ["Counter", renderToString(<Counter label="Main" amount={240} />)],
       ["PlayingCard", renderToString(<PlayingCard card="As" />)],
       ["CardBack", renderToString(<CardBack />)],
-      ["CardRow", renderToString(<CardRow cards={["As", "Kh"]} animation="flip" />)],
-      ["CardFan", renderToString(<CardFan cards={["As", "Kh"]} arc={30} />)],
+      ["CardRow", renderToString(<CardRow>{["As", "Kh"].map((code, i) => <PlayingCard key={i} card={code} />)}</CardRow>)],
+      ["PlayingCard (turning)", renderToString(<PlayingCard card="As" flipKey={1} />)],
+      ["PlayingCard (hidden)", renderToString(<PlayingCard card="As" revealed={false} />)],
+      [
+        "CardRow (arced, overlapped)",
+        renderToString(
+          <CardRow arc={30} overlap={20}>
+            {["As", "Kh"].map((code, i) => (
+              <PlayingCard key={i} card={code} />
+            ))}
+          </CardRow>,
+        ),
+      ],
       ["CardSlot (empty)", renderToString(<CardSlot />)],
       ["CardSlot (filled)", renderToString(<CardSlot>{<PlayingCard card="As" />}</CardSlot>)],
       ["Confetti", renderToString(<Confetti count={8} />)],

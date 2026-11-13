@@ -317,11 +317,23 @@ describe("the four-colour deck carries the suit without hue alone", () => {
   });
 
   it("reaches the cards of a row when the row is told once", () => {
-    const { container } = render(<CardRow cards={["Ad", "Ac"]} animation={false} fourColor />);
+    const { container } = render(
+      <CardRow enter={false}>
+        {["Ad", "Ac"].map((code, i) => (
+          <PlayingCard key={i} card={code} fourColor />
+        ))}
+      </CardRow>,
+    );
     expect(container.innerHTML).toContain("text-blue-700");
     expect(container.innerHTML).toContain("text-green-700");
     // and a row that was not told keeps the standard ink
-    const plain = render(<CardRow cards={["Ad", "Ac"]} animation={false} />).container;
+    const plain = render(
+      <CardRow enter={false}>
+        {["Ad", "Ac"].map((code, i) => (
+          <PlayingCard key={i} card={code} />
+        ))}
+      </CardRow>,
+    ).container;
     expect(plain.innerHTML).not.toContain("text-blue-700");
   });
 });

@@ -15,6 +15,3 @@ export const COUNT_UP_MS = 500;
 
 /** Stagger between the cards of one row arriving, in ms. */
 export const STAGGER_MS = 100;
-
-/** Stagger between the cards of one row flipping in, in ms. */
-export const FLIP_MS = 70;

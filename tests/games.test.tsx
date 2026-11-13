@@ -62,11 +62,16 @@ describe("the flop example", () => {
   });
 
   it("puts exactly the cards on the board that the street says", () => {
-    // No wagers here, so every `role="img"` in the tree is a card: two in each of
-    // the six seats — yours face up, the five others face down — plus whatever is on
-    // the board. A row draws the hand whatever it shows, which is the difference
-    // between this and a plate: the split separates the hand from the name, it does
-    // not remove it.
+    // No wagers here, so every `role="img"` in the tree is a card — two in each of
+    // the six seats (yours face up, the five others face down) plus whatever is on
+    // the board — *except* the board's undealt positions, which are `CardSlot`s and
+    // announce themselves as empty positions rather than as cards. A row draws the
+    // hand whatever it shows, which is the difference between this and a plate: the
+    // split separates the hand from the name, it does not remove it.
+    const cardsOnly = (container: HTMLElement) =>
+      [...container.querySelectorAll('[role="img"]')].filter(
+        (el) => el.getAttribute("aria-label") !== "empty card slot",
+      );
     for (const [street, cards] of [
       [0, 12],
       [3, 15],
@@ -74,7 +79,9 @@ describe("the flop example", () => {
       [5, 17],
     ] as const) {
       const { container, unmount } = render(<FlopPokerExample street={street} bets={[0, 0, 0, 0, 0, 0]} />);
-      expect(container.querySelectorAll('[role="img"]'), `${street} on board`).toHaveLength(cards);
+      expect(cardsOnly(container), `${street} on board`).toHaveLength(cards);
+      // and the board holds five positions from the first hand, cards and slots together
+      expect(container.querySelectorAll('[aria-label="empty card slot"]')).toHaveLength(5 - street);
       unmount();
     }
   });

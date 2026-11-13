@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { CardRow, Seat, TABLE_TYPES } from "../src/index";
+import { CardRow, PlayingCard, Seat, TABLE_TYPES } from "../src/index";
 import { DealerTable, RoundTable, SquareTable } from "../src/tables";
 import { setElementSize } from "./setup";
 
@@ -290,7 +290,13 @@ describe("DealerTable", () => {
   });
 
   it("shows its content, whatever that content is", () => {
-    const { container } = render(<DealerTable head={<CardRow cards={["As", "9d"]} animation={false} />} renderHand={hand} />);
+    const { container } = render(<DealerTable head={
+      <CardRow enter={false}>
+        {["As", "9d"].map((code, i) => (
+          <PlayingCard key={i} card={code} />
+        ))}
+      </CardRow>
+    } renderHand={hand} />);
     expect([...container.querySelectorAll('[role="img"]')].map((el) => el.getAttribute("aria-label"))).toEqual([
       "Ace of spades",
       "Nine of diamonds",
