@@ -48,7 +48,8 @@ export interface CardSizeFit {
  *
  * ```tsx
  * <Seat width={box.width} height={box.height}>
- *   <CardRow cards={hand} size={cardSizeFor(box, hand.length)} />
+ *   const size = cardSizeFor(box, hand.length);
+ *   <CardRow>{hand.map((c, i) => <PlayingCard key={i} card={c} size={size} />)}</CardRow>
  * </Seat>
  * ```
  *

@@ -111,17 +111,19 @@
    * matching `--animate-*` token is actually used. Keeping them outside shipped
    * all of them to every consumer.
    */
+  /*
+   * A card turning over: 180° to 0°, which is the face arriving from behind the
+   * back. The card's own box holds both sides — the back sits at 180° — so this
+   * is a card leaving one side for the other rather than a card fading in.
+   *
+   * `PlayingCard`'s `flipKey` is what plays it. Nothing plays it on its own.
+   */
   @keyframes card-flip {
     0% {
-      opacity: 0;
-      transform: rotateY(90deg) scale(0.9);
-    }
-    60% {
-      opacity: 1;
+      transform: rotateY(180deg);
     }
     100% {
-      opacity: 1;
-      transform: rotateY(0deg) scale(1);
+      transform: rotateY(0deg);
     }
   }
 

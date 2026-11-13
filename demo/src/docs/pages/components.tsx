@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
+  CARD_WIDTH,
   CardBack,
-  CardFan,
   CardRow,
   CardSlot,
   CardTable,
@@ -14,11 +14,13 @@ import {
   DESIGN_W,
   FitBox,
   PlayingCard,
+  fanOverlap,
   Seat,
   layoutTable,
   minFrameSeparation,
   seatAngle,
   useFitBox,
+  type CardSize,
   type SeatPlacement,
   type TableShape,
 } from "@stargazeryan/poker-ui";
@@ -485,7 +487,7 @@ function CardTablePlayground() {
           )}
           center={
             <div className="flex flex-col items-center gap-2">
-              <CardRow cards={SAMPLE.board.slice(0, 3)} size="md" animation="flip" />
+              <CardRow enter={false}>{handOf(SAMPLE.board.slice(0, 3), "md")}</CardRow>
               <Counter label="Main" amount={487} format={formatBB} />
             </div>
           }
@@ -518,7 +520,7 @@ export function CardTablePage() {
   startAngle={90}
   renderSeat={(i, box) => (
     <Seat width={box.width} height={box.height} header={<b>{i}</b>}>
-      <CardRow cards={hands[i]} size="sm" />
+      <CardRow>{hands[i].map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}</CardRow>
     </Seat>
   )}
   center={<Counter label="Main" amount={487} />}
@@ -791,7 +793,7 @@ export function SeatPage() {
             header={<span className="w-full text-center font-semibold">isActive</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">100 BB</span>}
           >
-            <CardRow cards={SAMPLE.hand} size="sm" animation={false} />
+            <CardRow enter={false}>{handOf(SAMPLE.hand, "sm")}</CardRow>
           </Seat>
           <Seat
             isWinner
@@ -799,14 +801,14 @@ export function SeatPage() {
             header={<span className="w-full text-center font-semibold">isWinner</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">340 BB</span>}
           >
-            <CardRow cards={["Ah", "Ad"]} size="sm" animation={false} />
+            <CardRow enter={false}>{handOf(["Ah", "Ad"], "sm")}</CardRow>
           </Seat>
           <Seat
             isDimmed={dimmed}
             header={<span className="w-full text-center font-semibold">isDimmed</span>}
             footer={<span className="w-full text-center font-mono text-neutral-400">folded</span>}
           >
-            <CardRow cards={SAMPLE.faceDown} size="sm" animation={false} />
+            <CardRow enter={false}>{handOf(SAMPLE.faceDown, "sm")}</CardRow>
           </Seat>
         </div>
       </Demo>
@@ -919,7 +921,7 @@ export function SeatPage() {
           </div>
           <div className="flex flex-wrap items-start gap-6">
             {[
-              { info: <PlayerInfo index={0} />, hold: <CardRow cards={SAMPLE.hand} size="md" animation={false} /> },
+              { info: <PlayerInfo index={0} />, hold: <CardRow enter={false}>{handOf(SAMPLE.hand, "md")}</CardRow> },
               { info: <PlayerInfo index={5} stack={null} />, hold: <ChipStack amount={60} size="sm" /> },
               { info: <PlayerInfo index={4} />, hold: null },
             ].map((half, i) => (
@@ -1067,7 +1069,7 @@ export function PlayingCardPage() {
           </>
         }
         code={`<PlayingCard card="Ad" fourColor />
-<CardRow cards={["Ad", "Ac"]} fourColor />`}
+<CardRow>{["Ad", "Ac"].map((c, i) => <PlayingCard key={i} card={c} fourColor />)}</CardRow>`}
         previewClassName="p-4"
       >
         <div className="flex flex-col gap-3">
@@ -1158,11 +1160,27 @@ export function CardBackPage() {
 
 const FAN_HAND = ["3s", "4h", "5d", "6c", "7s", "9h", "10d", "Jc", "Qs", "Kh", "2d", "2c", "2s"];
 
+/**
+ * A board card's `flipKey`: the flop's three arrive together on street 3, the turn
+ * on 4, the river on 5. The key *is* the moment of the reveal, so a card turns
+ * over when it is dealt and not again — an unchanged key leaves the element where
+ * it is.
+ */
+const BOARD_STREET = [3, 3, 3, 4, 5];
+
+/** A hand the way a caller composes one: one child per card, and the size is the card's. */
+const handOf = (codes: (string | null)[], size: CardSize = "md", fourColor = false) =>
+  codes.map((code, i) => <PlayingCard key={i} card={code} size={size} fourColor={fourColor} />);
+
 export function CardRowPage() {
   const [street, setStreet] = useState(3);
   const [round, setRound] = useState(1);
-  const [overlap, setOverlap] = useState(0.68);
+  const [fit, setFit] = useState(160);
   const [arc, setArc] = useState(20);
+  // The two numbers a hand that has to fit a frame is made of: the size comes from
+  // `cardSizeFor`, the spacing from `fanOverlap`, and the row is told neither.
+  const overlap = fanOverlap({ count: FAN_HAND.length, cardWidth: CARD_WIDTH.sm, fitWidth: fit });
+  const handWidth = FAN_HAND.length * CARD_WIDTH.sm - (FAN_HAND.length - 1) * overlap;
   const hands = [
     SAMPLE.hand,
     ["Qd", "Jc"],
@@ -1177,23 +1195,37 @@ export function CardRowPage() {
       <Sec slug="card-row" />
 
       <Demo
-        title="One component, three arrivals"
+        title="One component, two arrivals"
         description={
           <>
             The arrangement is the same in every card game; only the entrance differs.{" "}
-            <Prop>animation=&quot;deal&quot;</Prop> slides each card in, <Prop>&quot;flip&quot;</Prop> turns it over in
-            3D, and <Prop>false</Prop> renders the row static. The vocabulary a game uses — hole cards, a board, a
+            <Prop>enter=&quot;deal&quot;</Prop> slides each card in and <Prop>false</Prop> renders the row static. A
+            card <em>turning over</em> is not here, because a row does not hold the other side of a card it did not
+            draw: the turn is <Prop>PlayingCard</Prop>&apos;s own (<Prop>flipKey</Prop>). The row arranges whatever
+            children you give it, so a hand is one child per card and a board is five positions — a{" "}
+            <Prop>CardSlot</Prop> where a card has not been dealt. The vocabulary a game uses — hole cards, a board, a
             meld, up-cards — is the caller&apos;s, not the component&apos;s.
           </>
         }
-        code={`<CardRow cards={hand} animation="deal" size="sm" />
-<CardRow cards={board.slice(0, street)} animation="flip" size="lg" />
-<CardRow cards={hand} animation={false} size="sm" />`}
+        code={`<CardRow enter="deal">{hand.map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}</CardRow>
+<CardRow enter={false}>{hand.map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}</CardRow>
+<CardRow enter={false}>
+  {board.slice(0, street).map((c, i) =>
+    <PlayingCard key={i} card={c} size="lg" flipKey={BOARD_STREET[i]} />)}
+  {Array.from({ length: 5 - street }, (_, i) => <CardSlot key={\`slot:\${i}\`} size="lg" />)}
+</CardRow>`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CardRow cards={SAMPLE.hand} animation="deal" size="sm" />
-          <CardRow cards={SAMPLE.board.slice(0, street)} animation="flip" size="lg" />
-          <CardRow cards={SAMPLE.hand} animation={false} size="sm" />
+          <CardRow enter="deal">{handOf(SAMPLE.hand, "sm")}</CardRow>
+          <CardRow enter={false}>{handOf(SAMPLE.hand, "sm")}</CardRow>
+          <CardRow enter={false}>
+            {SAMPLE.board.slice(0, street).map((code, i) => (
+              <PlayingCard key={i} card={code} size="lg" flipKey={BOARD_STREET[i]} />
+            ))}
+            {Array.from({ length: 5 - street }, (_, i) => (
+              <CardSlot key={`slot:${i}`} size="lg" />
+            ))}
+          </CardRow>
         </div>
       </Demo>
       <Row className="mt-3 justify-center">
@@ -1205,93 +1237,149 @@ export function CardRowPage() {
       </Row>
 
       <Demo
-        title="Reserved positions"
+        title="Positions you hold open"
         description={
           <>
-            <Prop>slots</Prop> reserves a fixed number of positions so the row&apos;s width never changes as cards
-            arrive — useful when something is centred next to it. A <Prop>null</Prop> <em>inside</em> the row is a
-            face-down card by default; pass <Prop>placeholder=&quot;empty&quot;</Prop> for an undealt position, and a
-            position past the end of the array is always empty.
+            A board is five positions from the first hand, and the row is exactly as wide as its children — so the
+            positions a street has not dealt yet are yours to write. A <Prop>CardSlot</Prop> is one of them: a
+            card-sized position with nothing in it, which is how a client lays out the final shape of a game before any
+            card exists. A <Prop>null</Prop> is a different thing: a card that is face down.
           </>
         }
-        code={`<CardRow cards={board} slots={5} />
-<CardRow cards={board} slots={5} placeholder="empty" />`}
+        code={`{/* five positions: the cards dealt, then a slot for each one still to come */}
+<CardRow>
+  {[0, 1, 2, 3, 4].map((i) =>
+    i < street
+      ? <PlayingCard key={i} card={board[i]} size="lg" />
+      : <CardSlot key={i} size="lg" />)}
+</CardRow>
+
+{/* or a back for every position still to come */}
+<CardRow>
+  {[0, 1, 2, 3, 4].map((i) =>
+    <PlayingCard key={i} card={i < street ? board[i] : null} size="lg" />)}
+</CardRow>`}
       >
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-1">
-            <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="back"</span>
-            <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation="flip" />
+            <span className="font-mono text-[11px] text-neutral-500">a slot for each position still to come</span>
+            <CardRow enter={false}>
+              {[0, 1, 2, 3, 4].map((i) =>
+                i < street ? (
+                  <PlayingCard key={i} card={SAMPLE.board[i]} size="lg" />
+                ) : (
+                  <CardSlot key={i} size="lg" />
+                ),
+              )}
+            </CardRow>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <span className="font-mono text-[11px] text-neutral-500">slots=5 · placeholder="empty"</span>
-            <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation={false} placeholder="empty" />
+            <span className="font-mono text-[11px] text-neutral-500">a back for each position still to come</span>
+            <CardRow enter={false}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <PlayingCard key={i} card={i < street ? SAMPLE.board[i] : null} size="lg" />
+              ))}
+            </CardRow>
           </div>
         </div>
       </Demo>
 
       <Api slug="card-row" />
 
-      <H2>CardFan</H2>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{inlineMd(DOC_BY_SLUG["card-fan"].summary)}</p>
+      <H2>Arc, and a hand that fits</H2>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+        <Prop>arc</Prop> splays a hand by turning each card about a pivot below the row — the tops come
+        apart, the bottoms stay together. <Prop>overlap</Prop> is the spacing, in px: it pulls each card
+        under the one before it, and it replaces the row&apos;s gap. Neither needs the row to know how wide
+        a card is, which is why neither is a prop called <Prop>size</Prop> — <Prop>fanOverlap</Prop> does
+        that arithmetic. Give it a card width and the frame the hand has to fit, and it answers with the px
+        to tuck under; <Prop>cardSizeFor</Prop> answers the size beside it.
+      </p>
       <Demo
-        title="Overlap, and an arc"
+        title="A hand, held"
         description={
           <>
-            <Prop>overlap</Prop> is how much of a card width the next one covers; <Prop>arc</Prop> splays the tops
-            apart by rotating each card about a pivot below the row. <Prop>arc=0</Prop> is a flat overlapping row.
+            Drag the width: <Prop>fanOverlap</Prop> is recomputed on every render and the row is simply
+            handed the answer. The size is <Prop>cardSizeFor</Prop>&apos;s, the spacing is{" "}
+            <Prop>fanOverlap</Prop>&apos;s, and the row is told neither a size nor a frame.
           </>
         }
-        code={`<CardFan cards={hand} size="sm" overlap={0.68} arc={20} />`}
+        code={`const size = cardSizeFor(frame, hand.length);           // "xs" for 13 cards in 160px
+const overlap = fanOverlap({ count: hand.length, cardWidth: CARD_WIDTH[size], fitWidth: frame.width });
+
+<CardRow arc={20} overlap={overlap}>
+  {hand.map((c, i) => <PlayingCard key={i} card={c} size={size} />)}
+</CardRow>`}
       >
         <div className="flex flex-col items-center gap-5">
           <Row className="justify-center">
-            <Stepper label="overlap" value={overlap} min={0} max={0.95} step={0.05} format={(n) => n.toFixed(2)} onChange={setOverlap} />
+            <Stepper label="fit width" value={fit} min={120} max={420} step={10} onChange={setFit} />
             <Stepper label="arc" value={arc} min={0} max={60} step={2} onChange={setArc} />
           </Row>
-          <CardFan cards={FAN_HAND} size="sm" overlap={overlap} arc={arc} />
+          <CardRow arc={arc} overlap={overlap}>
+            {handOf(FAN_HAND, "sm")}
+          </CardRow>
+          <Field
+            label="fanOverlap:"
+            value={`${overlap.toFixed(1)}px tucked under a ${CARD_WIDTH.sm}px card · the hand is ${handWidth.toFixed(0)}px wide`}
+          />
         </div>
       </Demo>
-      <Api slug="card-fan" />
 
-      <H2>Dealing a hand, flipping a board</H2>
+      <H2>Dealing a hand, turning a board over</H2>
       <p className="mt-3 text-sm leading-relaxed text-neutral-300">
-        <Prop>CardRow</Prop> covers both: <Prop>animation=&quot;deal&quot;</Prop> for a hand arriving,{" "}
-        <Prop>animation=&quot;flip&quot;</Prop> for a board being turned over. There used to be two components for this,
-        named after one game&apos;s words for each; they are gone.
+        <Prop>CardRow</Prop> deals: <Prop>enter=&quot;deal&quot;</Prop> slides a hand in. Turning a board over is not
+        the row&apos;s to do — a turn is a card leaving its back for its face, and the row never held the back — so the
+        card turns, and the row is handed the children that do it — five positions, a <Prop>CardSlot</Prop> where the
+        board has not dealt yet. There used to be two components
+        for dealing, named after one game&apos;s words for each; they are gone.
       </p>
 
       <Demo
         title="A hand, dealt"
         description={
           <>
-            <Prop>CardRow</Prop> with <Prop>size=&quot;lg&quot;</Prop> and <Prop>animation=&quot;deal&quot;</Prop>.{" "}
-            <Prop>animationKey</Prop> re-deals an unchanged hand, because React reuses an element whose key has not
+            <Prop>CardRow</Prop> with <Prop>size=&quot;lg&quot;</Prop> and <Prop>enter=&quot;deal&quot;</Prop>.{" "}
+            <Prop>enterKey</Prop> re-deals an unchanged hand, because React reuses an element whose key has not
             changed and a reused element never restarts its CSS animation.
           </>
         }
-        code={`<CardRow cards={hand} size="lg" animation="deal" animationKey={round} />`}
+        code={`<CardRow enter="deal" enterKey={round}>{hand.map((c, i) => <PlayingCard key={i} card={c} size="lg" />)}</CardRow>`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CardRow cards={hand} size="lg" animation="deal" animationKey={round} />
+          <CardRow enter="deal" enterKey={round}>{handOf(hand, "lg")}</CardRow>
           <Row className="justify-center">
             <Btn onClick={() => setRound((r) => r + 1)}>deal the next hand</Btn>
           </Row>
-          <Field label="hand:" value={`${hand.join(" ")}  ·  animationKey=${round}`} />
+          <Field label="hand:" value={`${hand.join(" ")}  ·  enterKey=${round}`} />
         </div>
       </Demo>
       <Demo
-        title="A board, flipped"
+        title="A board, turned over"
         description={
           <>
-            <Prop>CardRow</Prop> with <Prop>animation=&quot;flip&quot;</Prop>, <Prop>slots</Prop> to hold the row&apos;s
-            width, and <Prop>placeholder=&quot;empty&quot;</Prop> so an undealt position stays empty rather than
-            becoming a card back.
+            Five positions are written out — a <Prop>PlayingCard</Prop> per dealt card and a{" "}
+            <Prop>CardSlot</Prop> for each one still to come — so the cards that <em>arrive</em> are the
+            street&apos;s. <Prop>flipKey</Prop> names the street each one belongs to: the flop turns over together, the
+            turn and the river each on their own, and a card whose key has not changed does not turn again. The turn is
+            one way — back to face.
           </>
         }
-        code={`<CardRow cards={board.slice(0, street)} slots={5} animation="flip" placeholder="empty" />`}
+        code={`<CardRow enter={false}>
+  {board.slice(0, street).map((c, i) =>
+    <PlayingCard key={i} card={c} size="lg" flipKey={BOARD_STREET[i]} />)}
+  {Array.from({ length: 5 - street }, (_, i) => <CardSlot key={\`slot:\${i}\`} size="lg" />)}
+</CardRow>`}
       >
         <div className="flex flex-col items-center gap-4">
-          <CardRow cards={SAMPLE.board.slice(0, street)} size="lg" slots={5} animation="flip" placeholder="empty" />
+          <CardRow enter={false}>
+            {SAMPLE.board.slice(0, street).map((code, i) => (
+              <PlayingCard key={i} card={code} size="lg" flipKey={BOARD_STREET[i]} />
+            ))}
+            {Array.from({ length: 5 - street }, (_, i) => (
+              <CardSlot key={`slot:${i}`} size="lg" />
+            ))}
+          </CardRow>
           <Row className="justify-center">
             {[0, 3, 4, 5].map((n) => (
               <Btn key={n} onClick={() => setStreet(n)} active={street === n}>

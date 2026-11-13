@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   CardRow,
   MIN_TEXT_PX,
+  PlayingCard,
   Seat,
   cardSizeFor,
   readableScale,
@@ -194,10 +195,17 @@ export function SeatRow({ width, height, isActive, isWinner, isDimmed, info, hol
  * `hold={handHalf()}` and mean "the sample hand".
  */
 export function handHalf(cards: (string | null)[] = SAMPLE.hand) {
-  return (box: { width: number; height: number }) => (
+  return (box: { width: number; height: number }) => {
     // `chrome: 0` because a row has no header or footer for `cardSizeFor` to reserve.
-    <CardRow cards={cards} size={cardSizeFor(box, cards.length || 1, { chrome: 0 })} />
-  );
+    const size = cardSizeFor(box, cards.length || 1, { chrome: 0 });
+    return (
+      <CardRow>
+        {cards.map((code, i) => (
+          <PlayingCard key={i} card={code} size={size} />
+        ))}
+      </CardRow>
+    );
+  };
 }
 
 export interface SeatOpts {

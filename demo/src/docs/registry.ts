@@ -418,7 +418,7 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "PlayingCard",
     interfaceName: "PlayingCardProps",
     summary:
-      'A single card, driven by a compact code like "As" or "10h", or a card back. Size comes from the `size` prop, never from viewport breakpoints, so cards scale predictably inside any container.',
+      'A single card, driven by a compact code like "As" or "10h", or a card back. Both sides are one element, so a card can *turn over* rather than be replaced by another card: `revealed` says which side is showing and `flipKey` turns it. Size comes from the `size` prop, never from viewport breakpoints, so cards scale predictably inside any container.',
     props: [
       { name: "card", type: "string | null", description: 'Compact card code ("As", "10h", "Kd") or `null` for a face-down card back.' },
       {
@@ -431,7 +431,7 @@ export const COMPONENTS: ComponentDoc[] = [
         name: "label",
         type: "string",
         description:
-          'Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather than the fragments "A" and "♠" a screen reader would otherwise read out. A null card forwards it to CardBack.',
+          'Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather than the fragments "A" and "♠" a screen reader would otherwise read out. A face-down card defaults to "face-down card", and a hidden card keeps that name whatever code it is holding.',
       },
       {
         name: "fourColor",
@@ -439,6 +439,19 @@ export const COMPONENTS: ComponentDoc[] = [
         default: "false",
         description:
           "Draw the suit in four colours — diamonds blue, clubs green — so the suit is not carried by red-versus-black alone. At `xs`/`sm` there is no room for the suit letter either, so hue is the only cue on a small card. The accessible name is unchanged.",
+      },
+      {
+        name: "revealed",
+        type: "boolean",
+        default: "card !== null",
+        description:
+          'Which side is showing. `revealed={false}` draws the back of a card you *do* have the code for, and nothing of that code is rendered while it is hidden — not the rank, not the suit, and not the accessible name.',
+      },
+      {
+        name: "flipKey",
+        type: "string | number",
+        description:
+          "Turn the card over. `revealed` says which side is showing; this says when the turn happens, so a card can be shown without being animated. Give it a value and the card turns from back to face — on mount for a card that arrives already revealed, and again whenever the value changes, like `CardRow`'s `enterKey`. One way only: a key on a hidden card has nothing to turn to.",
       },
       { name: "className", type: "string", description: "Extra classes." },
     ],
@@ -448,7 +461,7 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "CardBack",
     interfaceName: "CardBackProps",
     summary:
-      "The face-down card: a dark red gradient, a gold rosette drawn as inline SVG, and a themed border. This is what PlayingCard renders for a null card.",
+      "The face-down card: a dark red gradient, a gold rosette drawn as inline SVG, and a themed border. This is the hidden side of a PlayingCard — a null card, a card that is `revealed={false}`, and the side a card turns from.",
     props: [
       { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
       { name: "label", type: "string", default: '"face-down card"', description: "Accessible name." },
@@ -460,63 +473,44 @@ export const COMPONENTS: ComponentDoc[] = [
     title: "CardRow",
     interfaceName: "CardRowProps",
     summary:
-      "A row of cards — a hand, a board, a meld, a dealer's up-cards. **One** component with one animation prop, instead of a component per game term: the arrangement and the entrance are the same in every card game, and only the vocabulary differs.",
+      "A row of cards — a hand, a board, a meld, a dealer's up-cards. It arranges what you give it: `flex gap-2`, one position per child, and the arrival — instead of a component per game term, or a `cards` array it would have to interpret. The arrival is the row's; a card *turning over* is the card's (`PlayingCard`'s `flipKey`).",
     props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards; `null` entries render as card backs (or as empty positions, see `placeholder`)." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"md"', description: "Card size." },
       {
-        name: "animation",
-        type: '"deal" | "flip" | false',
-        default: '"deal"',
-        description: '`"deal"` slides each card in, `"flip"` turns it over in 3D, `false` renders the row static.',
-      },
-      { name: "stagger", type: "number", default: "STAGGER_MS / FLIP_MS", description: "Delay between neighbouring cards, in ms." },
-      {
-        name: "animationKey",
-        type: "string | number",
-        description: "Change this to replay the animation for an unchanged row (a hand id, a round number).",
-      },
-      { name: "slots", type: "number", description: "Reserve this many positions so the row's width never changes as cards arrive." },
-      {
-        name: "placeholder",
-        type: '"back" | "empty"',
-        default: '"back"',
+        name: "children",
+        type: "ReactNode",
         description:
-          'What a `null` **within** `cards` means: a face-down card, or an undealt position. Past the end of the array is always empty.',
+          'The cards, in order — anything that draws a card: a `PlayingCard`, a `CardSlot` where one has not been dealt yet, a card with a badge on it. One child is one position, and a `null`/`false`/`undefined` child is skipped. The row does not size, name or turn what it is handed, which is why there is no `size` here; the gap is a class (`className="gap-4"`).',
       },
       {
-        name: "fourColor",
-        type: "boolean",
-        default: "false",
-        description: "Draw every card in the row in the four-colour deck (see `PlayingCard`). Told to the row once rather than per card.",
+        name: "enter",
+        type: '"deal" | false',
+        default: '"deal"',
+        description:
+          '`"deal"` slides each card in, `false` renders the row static. A card turning over is not here: a row does not hold the other side of a card it did not draw, so the turn belongs to `PlayingCard` (`flipKey`).',
+      },
+      { name: "stagger", type: "number", default: "STAGGER_MS", description: "Delay between neighbouring cards, in ms." },
+      {
+        name: "enterKey",
+        type: "string | number",
+        description: "Change this to replay the entrance for an unchanged row (a hand id, a round number).",
+      },
+      {
+        name: "overlap",
+        type: "number",
+        description:
+          "How much each card tucks under the one before it, in px — the spacing of a fanned hand, and what `fanOverlap` answers. Give it and it replaces the row's gap: the cards are laid out edge to edge and pulled together by this much.",
+      },
+      {
+        name: "arc",
+        type: "number",
+        description:
+          "Total spread in degrees. Each card turns by its share of it about a pivot below the row (`FAN_PIVOT`), so the tops splay and the bottoms stay together. The turn gets a layer of its own inside the entrance wrapper, because the arrival animates `transform` too.",
       },
       {
         name: "label",
         type: "string",
         description:
           'Accessible name for the row — "Your hand", "The board". The cards are grouped under it; without it nothing is named and no role is added.',
-      },
-      { name: "className", type: "string", description: "Extra classes." },
-    ],
-  },
-  {
-    slug: "card-fan",
-    title: "CardFan",
-    interfaceName: "CardFanProps",
-    page: "card-row",
-    summary:
-      "Overlapping cards, optionally fanned into an arc — the shape a large hand wants. Thirteen cards at any readable size are wider than a seat frame; overlapped, they fit.",
-    props: [
-      { name: "cards", type: "(string | null)[]", description: "The cards, left to right; `null` renders a card back." },
-      { name: "size", type: '"xs" | "sm" | "md" | "lg"', default: '"lg"', description: "Card size." },
-      { name: "overlap", type: "number", default: "0.55", description: "How much neighbouring cards overlap, 0–0.95 of a card width. `0` is a plain row." },
-      { name: "arc", type: "number", default: "0", description: "Total spread in degrees. `0` is a flat overlapping row; 20–30 reads as a held hand." },
-      { name: "fitWidth", type: "number", description: "The width the fan has to fit, in px — usually a seat frame's. Give it and the **overlap is chosen for you**, brought together until the fan is no wider than this. It never pulls the cards apart past no overlap." },
-      { name: "fourColor", type: "boolean", default: "false", description: "Draw every card in the fan in the four-colour deck (see `PlayingCard`)." },
-      {
-        name: "label",
-        type: "string",
-        description: 'Accessible name for the fan — "Your hand", "The meld". Without it nothing is named and no role is added.',
       },
       { name: "className", type: "string", description: "Extra classes." },
     ],

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  CardFan,
+  CARD_WIDTH,
   CardRow,
   CardSlot,
   Counter,
@@ -9,6 +9,7 @@ import {
   PlayingCard,
   RoundTable,
   Seat,
+  fanOverlap,
   SquareTable,
   type CardSize,
 } from "@stargazeryan/poker-ui";
@@ -56,6 +57,14 @@ export interface FlopPokerExampleProps {
   board?: string[];
 }
 
+/**
+ * The `flipKey` of each board position: the flop's three arrive on street 3, the
+ * turn on 4, the river on 5. A card turns over on the street it is dealt — the key
+ * *is* the moment of the reveal — and never again, because an unchanged key leaves
+ * the element alone.
+ */
+const BOARD_STREET = [3, 3, 3, 4, 5];
+
 export function FlopPokerExample({
   street = 3,
   bets = SAMPLE.bets,
@@ -91,7 +100,18 @@ export function FlopPokerExample({
       )}
       center={
         <div className="flex flex-col items-center gap-3">
-          <CardRow cards={board.slice(0, street)} size="lg" slots={5} animation="flip" />
+          {/* The board: one card per street, dealt into a reserved position and
+              turning as it arrives. The row holds the positions; the card holds the
+              turn — `PlayingCard`'s `flipKey`. */}
+          <CardRow enter={false}>
+            {[0, 1, 2, 3, 4].map((i) =>
+              i < street ? (
+                <PlayingCard key={i} card={board[i]} size="lg" flipKey={BOARD_STREET[i]} />
+              ) : (
+                <CardSlot key={i} size="lg" />
+              ),
+            )}
+          </CardRow>
           <Counter label="Main" amount={SAMPLE.pot} />
         </div>
       }
@@ -150,13 +170,22 @@ export function SheddingExample({
             <span className="w-full text-center font-mono text-neutral-400">{hands[i]?.length ?? 0} cards</span>
           }
         >
-          <CardFan cards={hands[i] ?? []} size={cardSize} overlap={0.68} />
+          {/* A thirteen-card hand has to be tucked together to fit a seat frame. The
+              row is told the overlap in px; `fanOverlap` is the arithmetic that turns
+              "68% of a card" into it, from the card width this seat's size implies. */}
+          <CardRow
+            overlap={fanOverlap({ count: (hands[i] ?? []).length, cardWidth: CARD_WIDTH[cardSize], overlap: 0.68 })}
+          >
+            {(hands[i] ?? []).map((code, k) => (
+              <PlayingCard key={k} card={code} size={cardSize} />
+            ))}
+          </CardRow>
         </Seat>
       )}
       center={
         <div className="flex flex-col items-center gap-2">
           <span className="text-[11px] uppercase tracking-wider text-neutral-400">last play</span>
-          <CardRow cards={discard} size="md" />
+          <CardRow>{discard.map((code, i) => <PlayingCard key={i} card={code} size="md" />)}</CardRow>
         </div>
       }
     />
@@ -280,7 +309,7 @@ export function TwentyOneExample({
           header={<span className="w-full text-center font-semibold">Dealer</span>}
           footer={<span className="w-full text-center font-mono text-neutral-400">{dealer.length} cards</span>}
         >
-          <CardRow cards={shown} size="md" />
+          <CardRow>{shown.map((code, i) => <PlayingCard key={i} card={code} size="md" />)}</CardRow>
         </Seat>
       }
       handCount={hands.length}

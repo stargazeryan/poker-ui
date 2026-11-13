@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
+import { FAN_PIVOT, fanAngles } from "../fan";
 import { cn } from "../cn";
 import { CARD_HEIGHT, CARD_WIDTH } from "../cardSize";
 import { describeCard, getSuitSymbol, isKnownSuit, isRedSuit, parseCard } from "../cards";
-import { FLIP_MS, STAGGER_MS } from "../motion";
+import { STAGGER_MS } from "../motion";
 import { type CardSize } from "../sizes";
 
 const SIZE_CLASSES: Record<CardSize, string> = {
@@ -79,6 +80,8 @@ export interface PlayingCardProps {
   /**
    * Accessible name. Defaults to `describeCard(card)` — "Ace of spades" rather
    * than the fragments "A" and "♠" a screen reader would otherwise read out.
+   * A face-down card defaults to "face-down card" instead, and a card that is
+   * hidden keeps that name whatever code it is holding.
    */
   label?: string;
   /**
@@ -87,20 +90,105 @@ export interface PlayingCardProps {
    * Default false.
    */
   fourColor?: boolean;
+  /**
+   * Which side is showing. Defaults to `card !== null`: a code is a face, a null
+   * is a back.
+   *
+   * `revealed={false}` draws the back of a card you *do* have the code for, and
+   * nothing of that code is rendered while it is hidden — not the rank, not the
+   * suit, and not the accessible name, which stays "face-down card". A card a
+   * player is not meant to see should not be readable in the DOM.
+   */
+  revealed?: boolean;
+  /**
+   * Turn the card over. `revealed` says which side is showing; this says when the
+   * turn happens, and the two are separate so that a card can be *shown* without
+   * being *animated*.
+   *
+   * Give it a value and the card turns from back to face: on mount, for a card
+   * that arrives already revealed — a street being dealt — and again whenever the
+   * value changes, the way `CardRow`'s `enterKey` re-deals an unchanged hand.
+   * A card that never gets a key simply appears, because a component that guessed
+   * at a turn would flip every card on every re-render.
+   *
+   * The turn is one way — back to face — so a key on a hidden card does nothing.
+   * Under `prefers-reduced-motion` the card arrives on its face instead.
+   */
+  flipKey?: string | number;
   className?: string;
 }
 
-const CARD_FACE = "relative bg-gradient-to-br from-white via-white to-neutral-100 rounded-md border border-neutral-300/90 overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
+const CARD_FACE =
+  "bg-gradient-to-br from-white via-white to-neutral-100 rounded-md border border-neutral-300/90 overflow-hidden shadow-[0_2px_6px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
 
 /**
  * A single card. Size is driven by the `size` prop (never viewport
  * breakpoints) so cards scale predictably inside any container. Small sizes
  * (xs / sm) show only a larger upright index, centered in the card.
+ *
+ * Both sides are one element: the back sits at 180° behind the face, which is
+ * what lets a card in a row turn over rather than be replaced by another card.
+ * The caller drives it — `revealed` for which side, `flipKey` for the turn; see
+ * the props.
  */
-export function PlayingCard({ card, size = "md", label, fourColor = false, className }: PlayingCardProps) {
-  if (!card) return <CardBack size={size} className={className} label={label} />;
+export function PlayingCard({
+  card,
+  size = "md",
+  label,
+  fourColor = false,
+  revealed,
+  flipKey,
+  className,
+}: PlayingCardProps) {
+  const showFace = card !== null && (revealed ?? true);
+  // A turn is one way: back to face. A key on a hidden card has no side to turn
+  // to, so it is ignored rather than flipping the back away and back.
+  const turning = showFace && flipKey !== undefined;
 
-  const name = label ?? describeCard(card);
+  /**
+   * The card's own box, with one side or the other inside it: the outer element
+   * is the size the table measures and the name a screen reader reads, and the
+   * two sides are the card.
+   */
+  const shell = (face: ReactNode) => (
+    <div
+      role="img"
+      aria-label={showFace && card !== null ? (label ?? describeCard(card)) : (label ?? "face-down card")}
+      className={cn(SIZE_CLASSES[size], "[perspective:800px]")}
+      style={{ aspectRatio: "10/14" }}
+    >
+      <div
+        // A new key is a new element, so the CSS animation starts again — the
+        // trick CardRow plays with `enterKey`.
+        key={turning ? `flip:${flipKey}` : "card"}
+        className={cn("relative h-full w-full", turning && "animate-card-flip")}
+        style={{ transformStyle: "preserve-3d", ...(showFace ? null : { transform: "rotateY(180deg)" }) }}
+      >
+        {showFace && (
+          <div className={cn("absolute inset-0 [backface-visibility:hidden]", CARD_FACE, className)}>{face}</div>
+        )}
+        {/*
+         * The back is drawn when it can be seen or is about to be: a card that is
+         * face down, or a card that is turning over. A card that only ever faces
+         * up does not carry one.
+         *
+         * It is `CardBack` itself, one layer down and out of the accessible tree
+         * — the card's own element carries the name, and one card should be one
+         * image to a screen reader rather than two.
+         */}
+        {(turning || !showFace) && (
+          <div
+            className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]"
+            aria-hidden="true"
+          >
+            <CardBackArt size={size} className={className} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (!showFace || card === null) return shell(null);
 
   const { rank, suit } = parseCard(card);
   const suitSymbol = getSuitSymbol(suit);
@@ -109,44 +197,32 @@ export function PlayingCard({ card, size = "md", label, fourColor = false, class
 
   // Small cards: rank centered in the top half, suit centered in the bottom half.
   if (!large) {
-    return (
-      <div
-        role="img"
-        aria-label={name}
-        className={cn(SIZE_CLASSES[size], CARD_FACE, className)}
-        style={{ aspectRatio: "10/14" }}
-      >
-        <div className={cn("absolute inset-0 flex flex-col leading-none", suitClass)}>
-          <div className="flex flex-1 items-center justify-center">
-            <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-          </div>
-          <div className="flex flex-1 items-center justify-center">
-            <span className={SMALL_SUIT[size]}>{suitSymbol}</span>
-          </div>
+    return shell(
+      <div className={cn("absolute inset-0 flex flex-col leading-none", suitClass)}>
+        <div className="flex flex-1 items-center justify-center">
+          <span className={cn(SMALL_RANK[size], "font-bold tracking-tight")}>{rank}</span>
         </div>
-      </div>
+        <div className="flex flex-1 items-center justify-center">
+          <span className={cn(SMALL_SUIT[size], "-mt-[8px]")}>{suitSymbol}</span>
+        </div>
+      </div>,
     );
   }
 
-  return (
-    <div
-      role="img"
-      aria-label={name}
-      className={cn(SIZE_CLASSES[size], CARD_FACE, className)}
-      style={{ aspectRatio: "10/14" }}
-    >
+  return shell(
+    <>
       <div className={cn("absolute top-[3px] left-[5px] flex flex-col items-center leading-none", suitClass)}>
         <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-        <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
+        <span className={cn(CORNER_SUIT[size], "-mt-[8px]")}>{suitSymbol}</span>
       </div>
       <div className={cn("absolute bottom-[3px] right-[5px] flex flex-col items-center leading-none rotate-180", suitClass)}>
         <span className={cn(CORNER_RANK[size], "font-bold tracking-tight")}>{rank}</span>
-        <span className={cn(CORNER_SUIT[size], "-mt-[1px]")}>{suitSymbol}</span>
+        <span className={cn(CORNER_SUIT[size], "-mt-[8px]")}>{suitSymbol}</span>
       </div>
       <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", suitClass)}>
         <span className={CENTER_SUIT[size]}>{suitSymbol}</span>
       </div>
-    </div>
+    </>,
   );
 }
 
@@ -172,11 +248,25 @@ function CardBackEmblem({ size }: { size: CardSize }) {
   );
 }
 
-/** The face-down card back (dark red + gold rosette). */
-export function CardBack({ size = "md", label = "face-down card", className }: CardBackProps) {
+/**
+ * The back's art, with no accessible name of its own. `CardBack` puts one on it,
+ * and `PlayingCard` draws it as the far side of a card whose own element already
+ * carries the name — one card should be one image to a screen reader, not two.
+ */
+function CardBackArt({
+  size,
+  className,
+  role,
+  label,
+}: {
+  size: CardSize;
+  className?: string;
+  role?: string;
+  label?: string;
+}) {
   return (
     <div
-      role="img"
+      role={role}
       aria-label={label}
       className={cn(
         SIZE_CLASSES[size],
@@ -194,42 +284,64 @@ export function CardBack({ size = "md", label = "face-down card", className }: C
   );
 }
 
-/** How a card arrives: sliding in, turning over, or not at all. */
-export type CardAnimation = "deal" | "flip" | false;
+/** The face-down card back (dark red + gold rosette). */
+export function CardBack({ size = "md", label = "face-down card", className }: CardBackProps) {
+  return <CardBackArt size={size} label={label} role="img" className={className} />;
+}
+
+/**
+ * How a card arrives: sliding in, or not at all. A card *turning over* is not an
+ * arrival and is not here — a turn belongs to the card (`PlayingCard`'s
+ * `flipKey`), because a row does not hold the other side of a card it did not
+ * draw and cannot turn one over itself.
+ */
+export type CardEntrance = "deal" | false;
 
 export interface CardRowProps {
-  cards: (string | null)[];
-  /** Default `"md"`. */
-  size?: CardSize;
   /**
-   * Arrival animation. `"deal"` slides each card in (the default), `"flip"`
-   * turns it over in 3D, `false` renders the row static.
+   * The cards, in order — anything that draws a card: a `PlayingCard`, a
+   * `CardSlot` waiting for one, a card with a badge on it. The row arranges; it
+   * does not size, name or flip what it is handed. One child is one position, and
+   * a `null`/`false`/`undefined` child is skipped, so a conditional
+   * (`{hand.map((c, i) => i < 5 && <PlayingCard key={i} card={c} />)}`) reserves
+   * nothing and draws nothing.
    */
-  animation?: CardAnimation;
-  /** Delay between neighbouring cards, in ms. Defaults to `STAGGER_MS` / `FLIP_MS`. */
+  children?: ReactNode;
+  /**
+   * How the cards arrive. `"deal"` slides each card in (the default), `false`
+   * renders the row static. The arrival is the row's — it is the thing that knows
+   * the order and the stagger — and is not a card turning over, which is the
+   * card's own (`PlayingCard`'s `flipKey`).
+   */
+  enter?: CardEntrance;
+  /** Delay between neighbouring cards, in ms. Defaults to `STAGGER_MS`. */
   stagger?: number;
   /**
-   * Change this to replay the animation for an unchanged row (e.g. a hand id or
-   * a round number). Without it, a card whose value changed re-animates on its
-   * own, but a new hand holding the same cards looks identical.
+   * Change this to replay the entrance for an unchanged row (e.g. a hand id or a
+   * round number). A child whose own `key` changed re-enters on its own, because
+   * the entrance hangs on a wrapper keyed by it.
    */
-  animationKey?: string | number;
+  enterKey?: string | number;
   /**
-   * Reserve this many slots, so the row's width never changes as cards arrive.
-   * Positions past the end of `cards` render as empty space.
+   * How much each card tucks under the one before it, in px — the fan's spacing.
+   * `fanOverlap` answers it from a card's width and the width the hand has to fit.
+   *
+   * Give it and it **replaces the row's gap**: the row lays its cards out edge to
+   * edge and pulls them together by this much, so 20 on 40px cards is half a card
+   * showing. Without it the row keeps `gap-2`, which `className="gap-4"` can change.
    */
-  slots?: number;
+  overlap?: number;
   /**
-   * What a `null` **within** `cards` means: `"back"` (default) is a face-down
-   * card, `"empty"` is an undealt position. Past the end of the array is always
-   * empty.
+   * Total spread in degrees: the cards splay like a held hand, each turning by its
+   * share of this about a pivot below the row (`FAN_PIVOT`), so the tops come apart
+   * while the bottoms stay together.
+   *
+   * The turn is a `transform`, so the row gives an arced card one layer of its own
+   * inside the entrance wrapper — the arrival animates `transform` too, and two of
+   * them on one element would flatten the arc. A row that is not arced has no such
+   * layer, so turning the arc on remounts the cards.
    */
-  placeholder?: "back" | "empty";
-  /**
-   * Draw the suit in four colours (see `PlayingCard`). A row that is four-colour
-   * has to be told once, here, rather than per card. Default false.
-   */
-  fourColor?: boolean;
+  arc?: number;
   /**
    * Accessible name for the row — "Your hand", "The board", the dealer's. A row
    * is a group of cards that belong together, and this is how a screen reader
@@ -240,70 +352,63 @@ export interface CardRowProps {
   className?: string;
 }
 
+/** A child's own key, if it has one — `Children.toArray` gives every element one. */
+function keyOf(child: ReactNode): string | number {
+  const key =
+    typeof child === "object" && child !== null && "key" in child ? (child as { key?: string | null }).key : null;
+  return key ?? "";
+}
+
 /**
- * A row of cards — a hand, a board, a meld, a dealer's up-cards. One component
- * with one animation prop, rather than a component per game term: the
- * arrangement and the entrance are the same in every card game, and only the
- * vocabulary differs.
+ * A row of cards — a hand, a board, a meld, a dealer's up-cards. It arranges what
+ * you give it: one position per child, the arrival, the overlap and the arc.
+ *
+ * There is no `size` here, and no way to be told one: a card knows its own size, and
+ * the row never measures or boxes what it is handed — which is why a `CardSlot` can
+ * hold a position open beside three cards. A hand that has to fit a frame is
+ * `fanOverlap` for the spacing and `cardSizeFor` for the size, both the caller's.
  */
 export function CardRow({
-  cards,
-  size = "md",
-  animation = "deal",
+  children,
+  enter = "deal",
   stagger,
-  animationKey,
-  slots,
-  placeholder = "back",
-  fourColor = false,
+  enterKey,
+  overlap = 0,
+  arc = 0,
   label,
   className,
 }: CardRowProps) {
-  const count = Math.max(slots ?? cards.length, cards.length);
-  const step = stagger ?? (animation === "flip" ? FLIP_MS : STAGGER_MS);
-  const shown = Array.from({ length: count }, (_, i) => (i < cards.length ? cards[i] : undefined));
+  const step = stagger ?? STAGGER_MS;
+  const cards = Children.toArray(children);
+  const angles = fanAngles(cards.length, arc);
 
   return (
     <div
       role={label === undefined ? undefined : "group"}
       aria-label={label}
-      className={cn("flex gap-2", animation === "flip" && "[perspective:800px]", className)}
+      className={cn("flex", overlap > 0 ? "gap-0" : "gap-2", className)}
     >
-      {shown.map((card, i) => {
-        const key =
-          animation === "deal"
-            ? animationKey !== undefined
-              ? `${animationKey}:${i}`
-              : `${i}:${card ?? "back"}`
-            : `${animationKey ?? ""}:${i}`;
-        const style = animation ? { animationDelay: `${i * step}ms` } : undefined;
-        const animClass =
-          animation === "deal" ? "animate-deal-in" : animation === "flip" ? "animate-card-flip" : undefined;
-
-        if (card === undefined) {
-          // Past the end of `cards`: an undealt position keeps the row's width.
-          // It holds nothing, so it says nothing.
-          return (
-            <div
-              key={`${i}:empty`}
-              aria-hidden="true"
-              className={SIZE_CLASSES[size]}
-              style={{ aspectRatio: "10/14" }}
-            />
-          );
-        }
-        if (card === null && placeholder === "empty") {
-          return (
-            <div key={`${i}:gap`} aria-hidden="true" className={SIZE_CLASSES[size]} style={{ aspectRatio: "10/14" }} />
-          );
-        }
-
+      {cards.map((child, i) => {
+        const angle = angles[i];
         return (
           <div
-            key={key}
-            className={cn(SIZE_CLASSES[size], animClass)}
-            style={{ aspectRatio: "10/14", ...style }}
+            // The wrapper is what carries the entrance, so it is keyed by the child:
+            // a card that changed is a position that arrives again.
+            key={`${enterKey ?? ""}:${keyOf(child) || i}`}
+            className={enter === "deal" ? "animate-deal-in" : undefined}
+            style={{
+              animationDelay: enter ? `${i * step}ms` : undefined,
+              marginInlineStart: overlap > 0 && i > 0 ? -overlap : undefined,
+            }}
           >
-            <PlayingCard card={card} size={size} fourColor={fourColor} />
+            {angle === 0 ? (
+              child
+            ) : (
+              // A layer of its own, because the entrance above animates `transform`.
+              <div style={{ transform: `rotate(${angle}deg)`, transformOrigin: `50% ${FAN_PIVOT * 100}%` }}>
+                {child}
+              </div>
+            )}
           </div>
         );
       })}
@@ -342,93 +447,6 @@ export function CardSlot({ size = "md", label = "empty card slot", children, cla
       style={{ width: CARD_WIDTH[size], height: CARD_HEIGHT[size] }}
     >
       {children}
-    </div>
-  );
-}
-
-export interface CardFanProps {
-  cards: (string | null)[];
-  /** Default `"lg"`. */
-  size?: CardSize;
-  /** How much neighbouring cards overlap, 0–0.95 of a card width. Default 0.55. */
-  overlap?: number;
-  /** Total spread in degrees. `0` (the default) is a flat overlapping row. */
-  arc?: number;
-  /** Draw the suit in four colours (see `PlayingCard`). Default false. */
-  fourColor?: boolean;
-  /**
-   * The width the fan has to fit, in px — usually a seat frame's. Give it and the
-   * **overlap is chosen for you**: the cards are brought together until the fan is
-   * no wider than this. Without it, `overlap` is taken as given and nothing checks
-   * that the fan fits wherever it was put.
-   */
-  fitWidth?: number;
-  /**
-   * Accessible name for the fan — "Your hand", "The meld". Read out once, with
-   * the cards grouped under it; nothing is named by default, and without a
-   * label no role is added at all.
-   */
-  label?: string;
-  className?: string;
-}
-
-/**
- * Overlapping cards, optionally fanned into an arc — the shape a large hand
- * wants. A 13-card hand at `size="sm"` laid out flat is wider than any seat
- * frame; overlapped, it fits.
- */
-export function CardFan({
-  cards,
-  size = "lg",
-  overlap = 0.55,
-  arc = 0,
-  fitWidth,
-  fourColor = false,
-  label,
-  className,
-}: CardFanProps) {
-  const width = CARD_WIDTH[size];
-  const height = CARD_HEIGHT[size];
-  const n = cards.length;
-  // `fitWidth` answers "how much overlap does this hand need" from the frame,
-  // which is the half of this that could be measured. It never pulls the cards
-  // apart past no overlap: a fan that cannot fit is drawn at its smallest and
-  // left to the caller to size differently.
-  const needed = n > 1 && fitWidth !== undefined ? 1 - (fitWidth - width) / ((n - 1) * width) : 0;
-  // Only ever **tighter** than the overlap that was asked for. A fan already
-  // narrower than the width it was given is left where it is, rather than spread
-  // out to fill it: this fits a fan into a frame, it does not justify one.
-  const step = width * (1 - Math.min(0.95, Math.max(0, overlap, needed)));
-  const mid = (n - 1) / 2;
-  const total = (n - 1) * step;
-  // The cards pivot about a point below the row, so a non-zero arc splays the
-  // tops apart while the bottoms stay together — a held hand, not a row.
-  const pivot = height * 0.35;
-
-  return (
-    <div
-      role={label === undefined ? undefined : "group"}
-      aria-label={label}
-      className={cn("relative", className)}
-      style={{ width: total + width, height }}
-    >
-      {cards.map((card, i) => {
-        const t = n === 1 ? 0 : (i - mid) / mid;
-        const rotate = (t * arc) / 2;
-        return (
-          <div
-            key={`${i}:${card ?? "back"}`}
-            className="absolute top-0"
-            style={{
-              left: i * step,
-              transform: rotate === 0 ? undefined : `rotate(${rotate}deg)`,
-              transformOrigin: rotate === 0 ? undefined : `50% calc(100% + ${pivot}px)`,
-            }}
-          >
-            <PlayingCard card={card} size={size} fourColor={fourColor} />
-          </div>
-        );
-      })}
     </div>
   );
 }

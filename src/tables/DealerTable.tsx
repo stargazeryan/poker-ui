@@ -51,10 +51,10 @@ import { tableSurface, type TableShape } from "../surface";
  * ```tsx
  * <DealerTable
  *   handCount={hands.length}
- *   head={<Seat header="Dealer"><CardRow cards={dealer} /></Seat>}
+ *   head={<Seat header="Dealer"><CardRow>{dealer.map((c, i) => <PlayingCard key={i} card={c} />)}</CardRow></Seat>}
  *   renderHand={(i) => (
  *     <Seat isActive={hands[i].active} footer={<ChipStack amount={hands[i].bet} />}>
- *       <CardRow cards={hands[i].cards} />
+ *       <CardRow>{hands[i].cards.map((c, k) => <PlayingCard key={k} card={c} />)}</CardRow>
  *     </Seat>
  *   )}
  * />

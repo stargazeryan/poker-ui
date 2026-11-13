@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CardRow, Marker, Seat, TurnTimer } from "@stargazeryan/poker-ui";
+import { CardRow, Marker, PlayingCard, Seat, TurnTimer } from "@stargazeryan/poker-ui";
 import { AmountSlider, formatBB } from "@stargazeryan/poker-ui/wager";
 import { Api, Sec } from "./components";
 import { Btn, Callout, Demo, Field, P, Prop, Row, Stepper } from "../ui";
@@ -185,7 +185,7 @@ export function MarkerPage() {
             header={<span className="w-full text-center font-semibold">Seat 3</span>}
             footer={<span className="w-full text-center font-mono text-gold-light">{formatBB(SAMPLE.stacks[3], 20)}</span>}
           >
-            <CardRow cards={["Ah", "Ad"]} size="sm" animation={false} />
+            <CardRow enter={false}>{["Ah", "Ad"].map((code, i) => <PlayingCard key={i} card={code} size="sm" />)}</CardRow>
           </Seat>
         </div>
       </Demo>

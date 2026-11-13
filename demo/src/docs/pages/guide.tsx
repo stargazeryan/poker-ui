@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { CardRow, Counter, RoundTable } from "@stargazeryan/poker-ui";
+import { CardRow, CardSlot, Counter, PlayingCard, RoundTable } from "@stargazeryan/poker-ui";
 import { ChipStack } from "@stargazeryan/poker-ui/wager";
 import { ApiTable, Btn, Callout, CodeBlock, Demo, Field, H2, P, Prop, Row } from "../ui";
 import { COLOUR_TOKENS, TOKENS } from "../inventory";
@@ -34,12 +34,15 @@ export function Table({ hands, board, activeSeat }) {
             isActive={activeSeat === i}   /* your state, your call */
             header={<b>{i === 0 ? "You" : "Seat " + i}</b>}
           >
-            <CardRow cards={hands[i]} size="sm" />
+            <CardRow>{hands[i].map((c, k) => <PlayingCard key={k} card={c} size="sm" />)}</CardRow>
           </Seat>
         )}
         center={
           <>
-            <CardRow cards={board} size="lg" slots={5} animation="flip" />
+            <CardRow>
+              {board.map((c, k) => <PlayingCard key={k} card={c} size="lg" />)}
+              {Array.from({ length: 5 - board.length }, (_, k) => <CardSlot key={\`s\${k}\`} size="lg" />)}
+            </CardRow>
             <Counter label="Main" amount={240} />
           </>
         }
@@ -143,7 +146,15 @@ export function GettingStarted() {
           )}
           center={
             <div className="flex flex-col items-center gap-4">
-              <CardRow cards={SAMPLE.board.slice(0, 3)} size="lg" slots={5} animation="flip" />
+              <CardRow enter={false}>
+                {[0, 1, 2, 3, 4].map((i) =>
+                  i < 3 ? (
+                    <PlayingCard key={i} card={SAMPLE.board[i]} size="lg" />
+                  ) : (
+                    <CardSlot key={i} size="lg" />
+                  ),
+                )}
+              </CardRow>
               <Counter label="Main" amount={240} />
             </div>
           }
@@ -243,7 +254,7 @@ export function Theming() {
               )}
               center={
                 <div className="flex flex-col items-center gap-3">
-                  <CardRow cards={SAMPLE.board.slice(0, 3)} size="lg" animation="flip" />
+                  <CardRow enter={false}>{SAMPLE.board.slice(0, 3).map((code, i) => <PlayingCard key={i} card={code} size="lg" />)}</CardRow>
                   <div className="flex items-center gap-3">
                     <Counter label="Main" amount={240} />
                     <ChipStack amount={65} size="sm" />
@@ -293,8 +304,8 @@ const GAPS: Array<[string, string]> = [
     "Round, square and dealer are the three ways the library arranges people. A seating that is none of them — a wheel of options, seats on two opposite arcs, anything irregular — means composing FitBox and the functions in frames.ts yourself, or setting CardTable's own shape and seatPlacement props. That is the same code the three types are built from, so nothing is hidden, but there is no named component to reach for.",
   ],
   [
-    "CardFan's arc is decorative",
-    "CardFan overlaps a large hand so it fits, and arc splays the tops by rotating each card about a pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, and the cards are not laid on a true circle. For fitting, pass fitWidth — usually a seat frame's — and the overlap is chosen from it, never looser than the overlap you asked for; arc is the one that only looks nice.",
+    "The arc is decorative, and the fitting is yours",
+    "arc splays the tops by turning each card about a fixed pivot below the row. It is a visual fan, not a solved arc: the pivot and rotation are fixed, and the cards are not laid on a true circle. Fitting is `fanOverlap` — a function you call before drawing, with a card width and the width the hand has to fit — and what it returns is the px the row tucks under. arc is the one that only looks nice.",
   ],
   [
     "Reduced motion is per-component, not global",
@@ -310,7 +321,7 @@ const GAPS: Array<[string, string]> = [
   ],
   [
     "A seat frame is a fixed size with no overflow handling",
-    "A seat frame does not clip or scroll its content. CardRow at size=\"lg\" is wider than the default 160px frame for two cards, and a 13-card hand laid out flat is wider still — CardFan overlaps the cards so a large hand fits, but nothing forces a seat to use it, and the fan's own width is cards × (1 − overlap) plus one card. Use a fan or a smaller size inside seats.",
+    "A seat frame does not clip or scroll its content. Two `lg` cards are already wider than the default 160px frame, and a 13-card hand laid out flat is wider still. The library hands you the two numbers — `cardSizeFor` for the size, `fanOverlap` for how much to tuck under — but nothing forces a seat to use them, and a row given no overlap keeps `gap-2` and overflows.",
   ],
   [
     "Accessibility is still incomplete",

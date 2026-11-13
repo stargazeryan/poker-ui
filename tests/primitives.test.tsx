@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
-import { CardFan, CardTable, MARKER_SIZE, MIN_TEXT_PX, Marker, TIMER_SIZE, TurnTimer, cardSizeFor } from "../src/index";
+import {
+  CARD_WIDTH,
+  CardTable,
+  FAN_MAX_OVERLAP,
+  MARKER_SIZE,
+  MIN_TEXT_PX,
+  Marker,
+  TIMER_SIZE,
+  TurnTimer,
+  cardSizeFor,
+  fanOverlap,
+} from "../src/index";
 import { AmountSlider, formatBB } from "../src/wager";
 import { setElementSize } from "./setup";
 
@@ -15,7 +26,6 @@ import { setElementSize } from "./setup";
  * the caller, the number is readable, the control is a real labelled control.
  */
 
-const px = (value: string) => Number(value.replace("px", ""));
 /** The factor out of an element's `transform: scale(x)`. */
 const scaleIn = (el: HTMLElement): number => {
   const match = /scale\(([\d.]+)\)/.exec(el.style.transform);
@@ -217,48 +227,47 @@ describe("AmountSlider", () => {
   });
 });
 
-describe("CardFan's fitWidth", () => {
-  const widthOf = (container: HTMLElement) => {
-    const fan = container.firstElementChild as HTMLElement;
-    return px(fan.style.width);
-  };
+/**
+ * The width a hand actually takes: `count` cards less the overlap between them. The
+ * row does this arithmetic itself in CSS (`flex` plus a negative margin), so this is
+ * the same sum the browser does — which is what makes the fit provable here rather
+ * than in a screenshot.
+ */
+const handWidth = (count: number, cardWidth: number, overlap: number) => count * cardWidth - (count - 1) * overlap;
 
-  it("brings the cards together until the fan fits the width it was given", () => {
-    const cards = ["As", "Kh", "Qd", "Jc", "10s", "9h", "8d", "7c", "6s", "5h", "4d", "3c", "2s"];
-    const wide = render(<CardFan cards={cards} size="sm" />).container;
-    const fitted = render(<CardFan cards={cards} size="sm" fitWidth={160} />).container;
-    expect(widthOf(wide)).toBeGreaterThan(160);
-    expect(widthOf(fitted)).toBeLessThanOrEqual(160);
-    // and every card is still drawn
-    expect(fitted.querySelectorAll('[role="img"]')).toHaveLength(cards.length);
+describe("fanOverlap — how tight a hand has to be pulled to fit", () => {
+  it("brings the cards together until the hand fits the width it was given", () => {
+    const count = 13;
+    const width = CARD_WIDTH.sm;
+    const asked = fanOverlap({ count, cardWidth: width });
+    const fitted = fanOverlap({ count, cardWidth: width, fitWidth: 160 });
+    expect(fitted).toBeGreaterThan(asked);
+    expect(handWidth(count, width, asked)).toBeGreaterThan(160);
+    expect(handWidth(count, width, fitted)).toBeLessThanOrEqual(160);
   });
 
-  it("does its best with a width smaller than one card, rather than going past the overlap ceiling", () => {
-    const cards = ["As", "Kh", "Qd"];
-    const { container } = render(<CardFan cards={cards} size="lg" fitWidth={10} />);
+  it("does its best with a width smaller than one card, rather than going past the ceiling", () => {
     // 0.95 is as tight as an overlap gets, and it is what a hopeless width gets
-    const tightest = render(<CardFan cards={cards} size="lg" overlap={0.95} />).container;
-    expect(widthOf(container)).toBe(widthOf(tightest));
+    const hopeless = fanOverlap({ count: 3, cardWidth: CARD_WIDTH.lg, fitWidth: 10 });
+    expect(hopeless).toBe(fanOverlap({ count: 3, cardWidth: CARD_WIDTH.lg, overlap: FAN_MAX_OVERLAP }));
   });
 
   it("never spreads a hand out to fill the width", () => {
-    const two = ["As", "Kh"];
-    // two `sm` cards at the default overlap are 58px: a 300px frame changes nothing
-    const roomy = render(<CardFan cards={two} size="sm" fitWidth={300} />).container;
-    const plain = render(<CardFan cards={two} size="sm" />).container;
-    expect(widthOf(roomy)).toBe(widthOf(plain));
-    expect(widthOf(roomy)).toBe(58);
-
-    const one = render(<CardFan cards={["As"]} size="lg" fitWidth={20} />).container;
-    expect(widthOf(one)).toBe(96);
+    // two `sm` cards at the default overlap are 58px wide: a 300px frame changes nothing
+    const two = fanOverlap({ count: 2, cardWidth: CARD_WIDTH.sm, fitWidth: 300 });
+    expect(two).toBe(fanOverlap({ count: 2, cardWidth: CARD_WIDTH.sm }));
+    expect(handWidth(2, CARD_WIDTH.sm, two)).toBe(58);
+    // and one card has no neighbour to tuck under: it stays one card wide
+    const one = fanOverlap({ count: 1, cardWidth: CARD_WIDTH.lg, fitWidth: 20 });
+    expect(handWidth(1, CARD_WIDTH.lg, one)).toBe(96);
   });
 
   it("pairs with cardSizeFor: a 13-card hand fits the seat it is measured against", () => {
-    const hand = ["As", "Kh", "Qd", "Jc", "10s", "9h", "8d", "7c", "6s", "5h", "4d", "3c", "2s"];
     const frame = { width: 160, height: 176 };
-    const size = cardSizeFor(frame, hand.length);
-    const { container } = render(<CardFan cards={hand} size={size} fitWidth={frame.width} />);
-    expect(widthOf(container)).toBeLessThanOrEqual(frame.width);
+    const count = 13;
+    const size = cardSizeFor(frame, count);
+    const overlap = fanOverlap({ count, cardWidth: CARD_WIDTH[size], fitWidth: frame.width });
+    expect(handWidth(count, CARD_WIDTH[size], overlap)).toBeLessThanOrEqual(frame.width);
     expect(size).toBe("xs");
   });
 });
