@@ -106,7 +106,7 @@ createRoot(document.getElementById("root")!).render(
     seatCount={4}
     renderSeat={(i, box) => (
       <Seat width={box.width} height={box.height} isActive={i === 0} footer={<Counter amount={240} />}>
-        <CardRow cards={["As", "Kh"]} size="sm" />
+        <CardRow>{["As", "Kh"].map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}</CardRow>
         <ChipStack amount={25} size="sm" />
       </Seat>
     )}
@@ -141,11 +141,12 @@ import {
   CardTable,
   Confetti,
   Counter,
+  CARD_WIDTH,
   CardBack,
-  CardFan,
   CardRow,
   CardSlot,
   DealerTable,
+  PlayingCard,
   RoundTable,
   Seat,
   SquareTable,
@@ -166,7 +167,7 @@ createRoot(document.getElementById("root")!).render(
       ]}
       renderSeat={(i, box) => (
         <Seat width={box.width} height={box.height} isActive={i === 0} header={<b>{i === 0 ? "you" : i}</b>}>
-          <CardRow cards={i === 0 ? ["As", "Kh"] : [null, null]} size="sm" />
+          <CardRow>{(i === 0 ? ["As", "Kh"] : [null, null]).map((c, k) => <PlayingCard key={k} card={c} size="sm" />)}</CardRow>
         </Seat>
       )}
       renderOverlay={({ layout }) => (
@@ -177,7 +178,11 @@ createRoot(document.getElementById("root")!).render(
       )}
       center={
         <div>
-          <CardRow cards={["Ah", "Kd", "7c"]} size="md" animation="flip" slots={5} />
+          <CardRow enter={false}>
+            {["Ah", "Kd", "7c", null, null].map((c, i) => (
+              <PlayingCard key={i} card={c} size="md" flipKey={i} />
+            ))}
+          </CardRow>
           <Counter label="Main" amount={240} format={formatBB} />
           <CardSlot>
             <CardBack size="xs" />
@@ -189,16 +194,18 @@ createRoot(document.getElementById("root")!).render(
     {/* The other two types, so the tarball is exercised end to end. */}
     <SquareTable seatCount={4} renderSeat={(i, box) => (
       <Seat width={box.width} height={box.height}>
-        <CardFan cards={["As", "Kh", "Qd", "Jc", "10s"]} size="xs" />
+        <CardRow overlap={CARD_WIDTH.xs * 0.6} arc={20}>
+          {["As", "Kh", "Qd", "Jc", "10s"].map((c, i) => <PlayingCard key={i} card={c} size="xs" />)}
+        </CardRow>
       </Seat>
     )} />
 
     <DealerTable
       handCount={2}
-      head={<Seat><CardRow cards={["As", "9d"]} size="md" /></Seat>}
+      head={<Seat><CardRow>{["As", "9d"].map((c, i) => <PlayingCard key={i} card={c} size="md" />)}</CardRow></Seat>}
       renderHand={(i) => (
         <Seat footer={<ChipStack amount={25 * (i + 1)} size="sm" />}>
-          <CardRow cards={["10h", "7s"]} size="sm" />
+          <CardRow>{["10h", "7s"].map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}</CardRow>
         </Seat>
       )}
     />
