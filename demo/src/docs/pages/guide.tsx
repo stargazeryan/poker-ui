@@ -286,7 +286,11 @@ export function Theming() {
       </P>
       <P>
         Individual components also take <Prop>className</Prop>; <Prop>Seat</Prop> additionally takes{" "}
-        <Prop>frameClassName</Prop> and <Prop>frameStyle</Prop> for its inner frame.
+        <Prop>frameClassName</Prop> and <Prop>frameStyle</Prop> for its inner frame. Your classes are merged{" "}
+        last, so a Tailwind utility you set beats ours of the same kind — <Prop>max-w-lg</Prop> overrides the{" "}
+        amount slider&apos;s default <Prop>max-w-sm</Prop>, instead of both landing in the class list for the{" "}
+        generated stylesheet to sort out. <Prop>cn</Prop> — that merge — is exported, so your own components{" "}
+        can follow the same rule.
       </P>
     </>
   );
